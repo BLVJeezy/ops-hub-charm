@@ -8,7 +8,7 @@ import { HealthDot } from "@/components/HealthDot";
 import { QuickAddProspect } from "@/components/QuickAddProspect";
 import { PIPELINE_STAGES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, TrendingUp, BarChart3, Users, Heart, Plus, ArrowRight } from "lucide-react";
+import { CalendarDays, TrendingUp, BarChart3, Heart, Plus, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Dashboard,
@@ -365,6 +365,3 @@ function Dashboard() {
     </div>
   );
 }
-
-// silence unused warning for Users icon import removal
-void Users;

@@ -27,11 +27,37 @@ async function loadLogoDataUrl(): Promise<string | null> {
     if (!response.ok) return null;
     const blob = await response.blob();
 
-    return await new Promise((resolve) => {
+    const rawDataUrl = await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
+    });
+    if (!rawDataUrl) return null;
+
+    // Render into a circular canvas so the logo appears rounded in the PDF.
+    return await new Promise<string | null>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(rawDataUrl);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
+        ctx.restore();
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => resolve(rawDataUrl);
+      img.src = rawDataUrl;
     });
   } catch {
     return null;

@@ -9,6 +9,9 @@ import { formatCurrency, todayISO } from "@/lib/format";
 import { computeMRR } from "@/lib/fees";
 import { toast } from "sonner";
 import type { ClientRow } from "@/components/ClientModal";
+import { QuickAddProspect } from "@/components/QuickAddProspect";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/pipeline")({
   component: Pipeline,
@@ -19,11 +22,12 @@ type Row = ClientRow & { id: string };
 function Pipeline() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quickAdd, setQuickAdd] = useState(false);
   const navigate = useNavigate();
 
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase.from("clients").select("*").order("updated_at", { ascending: false });
+    const { data, error } = await supabase.from("clients").select("*").in("status", ["Prospect", "Write-off"]).order("updated_at", { ascending: false });
     if (error) toast.error(error.message);
     setRows((data as unknown as Row[]) ?? []);
     setLoading(false);
@@ -81,15 +85,20 @@ function Pipeline() {
     toast.success(`Moved to ${newStage}`);
   }
 
+  const BOARD_STAGES = PIPELINE_STAGES.filter((s) => s !== "Converted");
+
   return (
     <div className="p-4 md:p-6">
-      <h1 className="text-2xl font-semibold mb-4">Pipeline</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Pipeline</h1>
+        <Button onClick={() => setQuickAdd(true)} className="gap-2"><Plus className="w-4 h-4" /> New prospect</Button>
+      </div>
       {loading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-4">
-            {PIPELINE_STAGES.map((stage) => (
+            {BOARD_STAGES.map((stage) => (
               <Droppable droppableId={stage} key={stage}>
                 {(prov, snap) => (
                   <div
@@ -131,6 +140,7 @@ function Pipeline() {
           </div>
         </DragDropContext>
       )}
+      <QuickAddProspect open={quickAdd} onOpenChange={setQuickAdd} onSaved={() => load()} />
     </div>
   );
 }

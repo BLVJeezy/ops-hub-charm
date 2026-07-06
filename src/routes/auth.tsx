@@ -14,7 +14,6 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,18 +26,9 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: `${window.location.origin}/` },
-        });
-        if (error) throw error;
-        toast.success("Account created. Check your email if confirmation is required.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: "/" });
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate({ to: "/" });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Auth error");
     } finally {
@@ -63,19 +53,6 @@ function AuthPage() {
         </div>
 
         <div className="bg-card border rounded-xl p-6">
-          <div className="flex gap-1 mb-5 p-1 bg-muted rounded-md">
-            {(["signin", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className="flex-1 text-xs py-1.5 rounded transition"
-                style={{ backgroundColor: mode === m ? "hsl(var(--card))" : "transparent" }}
-              >
-                {m === "signin" ? "Sign in" : "Sign up"}
-              </button>
-            ))}
-          </div>
-
           <form onSubmit={onSubmit} className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">Email</label>
@@ -95,7 +72,7 @@ function AuthPage() {
               type="submit" disabled={busy}
               className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
             >
-              {busy ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+              {busy ? "…" : "Sign in"}
             </button>
           </form>
 
@@ -112,7 +89,7 @@ function AuthPage() {
         </div>
 
         <p className="text-[10px] text-muted-foreground text-center mt-4">
-          First user must be promoted to admin via the database.
+          Accounts are created by the administrator. Contact Jason for access.
         </p>
       </div>
     </div>

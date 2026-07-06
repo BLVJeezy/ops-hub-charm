@@ -175,8 +175,9 @@ function ClientDetail() {
       <Tabs defaultValue="overview">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="actions">Actions ({actions.length})</TabsTrigger>
           <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
+          <TabsTrigger value="actions">Actions ({actions.length})</TabsTrigger>
           <TabsTrigger value="contact">Contact log ({contactLog.length})</TabsTrigger>
           <TabsTrigger value="status">Status history ({statusLog.length})</TabsTrigger>
         </TabsList>

@@ -97,13 +97,13 @@ function Pipeline() {
         <div className="text-sm text-muted-foreground">Loading…</div>
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-3 overflow-x-auto pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pb-4">
             {BOARD_STAGES.map((stage) => (
               <Droppable droppableId={stage} key={stage}>
                 {(prov, snap) => (
                   <div
                     ref={prov.innerRef} {...prov.droppableProps}
-                    className={`shrink-0 w-72 rounded-xl border border-border bg-card/50 flex flex-col ${snap.isDraggingOver ? "ring-2 ring-primary/30" : ""}`}
+                    className={`rounded-xl border border-border bg-card/50 flex flex-col ${snap.isDraggingOver ? "ring-2 ring-primary/30" : ""}`}
                   >
                     <div className="px-3 py-2 border-b border-border flex items-center justify-between">
                       <div className="flex items-center gap-2">

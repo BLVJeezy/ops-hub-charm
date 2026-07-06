@@ -73,7 +73,7 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
 
   // ===== Header =====
   if (logoDataUrl) {
-    doc.addImage(logoDataUrl, "PNG", L, 14, 20, 27);
+    doc.addImage(logoDataUrl, "PNG", L, 14, 20, 20);
   }
 
   doc.setTextColor(DARK);

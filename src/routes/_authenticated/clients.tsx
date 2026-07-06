@@ -105,14 +105,18 @@ function ClientsPage() {
             const days = daysUntil(r.renewal_date);
             const warn = days !== null && days <= 30;
             return (
-              <li key={r.id} className="rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+              <li key={r.id} className="relative rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
+                <Link
+                  to="/clients/$id"
+                  params={{ id: r.id }}
+                  aria-label={`Open ${r.name}`}
+                  className="absolute inset-0 rounded-2xl z-0"
+                />
+                <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 pointer-events-none">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <HealthDot health={r.health} />
-                      <Link to="/clients/$id" params={{ id: r.id }} className="font-semibold hover:underline truncate">
-                        {r.name}
-                      </Link>
+                      <span className="font-semibold truncate">{r.name}</span>
                     </div>
                     {r.location && <div className="text-xs text-muted-foreground mt-0.5 truncate">{r.location}{r.sector ? ` · ${r.sector}` : ""}</div>}
                     <div className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
@@ -128,7 +132,7 @@ function ClientsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
+                  <div className="flex flex-col items-end gap-2 shrink-0 pointer-events-auto">
                     <StatusBadge status={r.status} />
                     <PhoneButtons phone={r.contact_phone} />
                   </div>

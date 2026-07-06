@@ -15,108 +15,140 @@ export type InvoicePDFInput = {
   total: number;
 };
 
+const DARK = 30;
+const MUTED = 120;
+
 export function generateInvoicePDF(inv: InvoicePDFInput): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210;
-  let y = 20;
+  const L = 20;
+  const R = W - 20;
+  let y = 25;
 
-  // Header
+  // ===== Header =====
+  doc.setTextColor(DARK);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text("FACTUUR", 20, y);
-
+  doc.setFontSize(14);
+  doc.text("Solyn Global", L, y);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(COMPANY.name, W - 20, y - 4, { align: "right" });
-  const addrLines = doc.splitTextToSize(COMPANY.address, 80);
-  doc.text(addrLines, W - 20, y + 1, { align: "right" });
-  doc.text(`Company no.: ${COMPANY.companyNumber}`, W - 20, y + 1 + addrLines.length * 4, { align: "right" });
+  doc.setTextColor(MUTED);
+  doc.text("Ops & Invoicing", L, y + 6);
 
-  y += 30;
-  doc.setDrawColor(200);
-  doc.line(20, y, W - 20, y);
-  y += 8;
-
-  // Meta + Bill to
+  doc.setTextColor(DARK);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Factuurnummer", 20, y);
-  doc.text("Factuurdatum", 20, y + 6);
+  doc.setFontSize(24);
+  doc.text("FACTUUR", R, y, { align: "right" });
   doc.setFont("helvetica", "normal");
-  doc.text(String(inv.invoice_number), 60, y);
-  doc.text(formatDate(inv.date), 60, y + 6);
+  doc.setFontSize(11);
+  doc.setTextColor(MUTED);
+  doc.text(`#${inv.invoice_number}`, R, y + 7, { align: "right" });
 
+  y += 20;
+
+  // ===== Bill to / meta =====
   doc.setFont("helvetica", "bold");
-  doc.text("Aan:", W / 2, y);
+  doc.setFontSize(9);
+  doc.setTextColor(MUTED);
+  doc.text("GEFACTUREERD AAN:", L, y);
+  doc.text("DATUM:", R, y, { align: "right" });
+
   doc.setFont("helvetica", "normal");
-  doc.text(inv.client_name, W / 2, y + 6);
+  doc.setFontSize(11);
+  doc.setTextColor(DARK);
+  doc.text(inv.client_name, L, y + 6);
+  doc.text(formatDate(inv.date), R, y + 6, { align: "right" });
+
   let by = y + 12;
   if (inv.client_address) {
-    const lines = doc.splitTextToSize(inv.client_address, 80);
-    doc.text(lines, W / 2, by);
-    by += lines.length * 4;
+    const lines = doc.splitTextToSize(inv.client_address, 100);
+    doc.text(lines, L, by);
+    by += lines.length * 5;
   }
+
   if (inv.client_vat_number) {
-    doc.text(`BTW: ${inv.client_vat_number}`, W / 2, by);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(MUTED);
+    doc.text("BEDRIJFSNUMMER:", R, y + 14, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(DARK);
+    doc.text(inv.client_vat_number, R, y + 20, { align: "right" });
   }
 
-  y += 26;
+  y = Math.max(by, y + 26) + 10;
 
-  // Table header
-  doc.setFillColor(240, 240, 240);
-  doc.rect(20, y, W - 40, 8, "F");
+  // ===== Table header =====
+  doc.setFillColor(245, 245, 245);
+  doc.rect(L, y, R - L, 9, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.text("Omschrijving", 22, y + 5.5);
-  doc.text("Aantal", 120, y + 5.5, { align: "right" });
-  doc.text("Prijs", 150, y + 5.5, { align: "right" });
-  doc.text("Totaal", W - 22, y + 5.5, { align: "right" });
-  y += 10;
+  doc.setTextColor(MUTED);
+  doc.text("BESCHRIJVING", L + 3, y + 6);
+  doc.text("PRIJS", R - 3, y + 6, { align: "right" });
+  y += 13;
 
+  // ===== Line items =====
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(11);
+  doc.setTextColor(DARK);
   for (const item of inv.line_items) {
-    const lines = doc.splitTextToSize(item.description || "", 90);
+    const desc = item.qty > 1 ? `${item.description} (x${item.qty})` : item.description;
+    const lines = doc.splitTextToSize(desc || "", 130);
     const lineTotal = item.qty * item.unit_price;
-    doc.text(lines, 22, y + 4);
-    doc.text(String(item.qty), 120, y + 4, { align: "right" });
-    doc.text(formatCurrency(item.unit_price), 150, y + 4, { align: "right" });
-    doc.text(formatCurrency(lineTotal), W - 22, y + 4, { align: "right" });
-    y += Math.max(6, lines.length * 4 + 2);
-    doc.setDrawColor(230);
-    doc.line(20, y, W - 20, y);
-    y += 2;
+    doc.text(lines, L + 3, y);
+    doc.text(formatCurrency(lineTotal), R - 3, y, { align: "right" });
+    y += lines.length * 5 + 2;
   }
 
-  // Total
-  y += 4;
+  if (inv.vat_note) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(MUTED);
+    doc.text(inv.vat_note, L + 3, y);
+    y += 5;
+  }
+
+  y += 6;
+  doc.setDrawColor(220);
+  doc.line(L, y, R, y);
+  y += 8;
+
+  // ===== Total =====
+  doc.setFillColor(245, 245, 245);
+  doc.rect(L, y - 4, R - L, 10, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text("Totaal", 120, y + 4);
-  doc.text(formatCurrency(inv.total), W - 22, y + 4, { align: "right" });
-  y += 12;
+  doc.setTextColor(DARK);
+  doc.text("TOTAAL:", L + 3, y + 3);
+  doc.text(formatCurrency(inv.total), R - 3, y + 3, { align: "right" });
 
-  // VAT note
-  if (inv.vat_note) {
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(9);
-    const lines = doc.splitTextToSize(inv.vat_note, W - 40);
-    doc.text(lines, 20, y);
-    y += lines.length * 4 + 4;
-  }
-
-  // Payment details footer
-  y = Math.max(y, 250);
-  doc.setDrawColor(200);
-  doc.line(20, y, W - 20, y);
-  y += 6;
+  // ===== Footer: pay to =====
+  let fy = 240;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.text("Betaalgegevens", 20, y);
+  doc.setTextColor(MUTED);
+  doc.text("BETAAL AAN:", L, fy);
+  fy += 6;
   doc.setFont("helvetica", "normal");
-  doc.text(`IBAN: ${COMPANY.iban}`, 20, y + 5);
-  doc.text(`BIC: ${COMPANY.bic}`, 20, y + 10);
-  doc.text(`Vermeld factuurnummer ${inv.invoice_number} bij betaling.`, 20, y + 15);
+  doc.setFontSize(10);
+  doc.setTextColor(DARK);
+  doc.text(`Bedrijfsnaam: ${COMPANY.name}`, L, fy); fy += 5;
+  const addrLines = doc.splitTextToSize(COMPANY.address, R - L);
+  doc.text(addrLines, L, fy); fy += addrLines.length * 5;
+  doc.text(`Bedrijfsnummer: ${COMPANY.companyNumber}`, L, fy); fy += 5;
+  doc.text(`Rekeningnummer: ${COMPANY.iban}`, L, fy); fy += 5;
+  doc.text(`BIC: ${COMPANY.bic}`, L, fy); fy += 8;
+
+  if (inv.vat_note) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(MUTED);
+    const legal = "Btw verlegd: De medecontractant is gehouden tot voldoening van de belasting overeenkomstig artikel 196 van Richtlijn 2006/112/EG.";
+    const legalLines = doc.splitTextToSize(legal, R - L);
+    doc.text(legalLines, L, fy);
+  }
 
   return doc;
 }

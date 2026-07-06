@@ -89,93 +89,88 @@ function Invoices() {
 
   const counts = { All: rows.length, Draft: rows.filter(r => r.status === "Draft").length, Sent: rows.filter(r => r.status === "Sent").length, Paid: rows.filter(r => r.status === "Paid").length };
 
+  const statusColor: Record<string, string> = {
+    Draft: "bg-muted text-muted-foreground",
+    Sent: "bg-amber-500/15 text-amber-400",
+    Paid: "bg-emerald-500/15 text-emerald-400",
+  };
+
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold">Invoices</h1>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Invoices</h1>
         {isAdmin && (
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> New invoice
+          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
+            <Plus className="w-4 h-4" /> New Invoice
           </Button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <Stat label="Paid (all-time)" value={formatCurrency(totals.paid)} />
-        <Stat label="Outstanding (Sent)" value={formatCurrency(totals.sent)} />
-        <Stat label="Invoices" value={String(rows.length)} />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+        <Stat label="Paid" value={formatCurrency(totals.paid)} />
+        <Stat label="Outstanding" value={formatCurrency(totals.sent)} />
+        <Stat label="Invoices" value={String(rows.length)} className="col-span-2 md:col-span-1" />
       </div>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
+      <div className="space-y-2 mb-4">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-4">
             {(["All", "Draft", "Sent", "Paid"] as const).map((t) => (
-              <TabsTrigger key={t} value={t}>
-                {t} <span className="ml-1.5 text-xs opacity-60">{counts[t]}</span>
+              <TabsTrigger key={t} value={t} className="text-xs">
+                {t} <span className="ml-1 opacity-60">{counts[t]}</span>
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="flex-1 min-w-[200px] max-w-md" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full" />
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <EmptyState icon={FileText} title="No invoices" description="Create one to get started." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-2.5">#</th>
-                  <th className="text-left px-4 py-2.5">Date</th>
-                  <th className="text-left px-4 py-2.5">Client</th>
-                  <th className="text-right px-4 py-2.5">Total</th>
-                  <th className="text-left px-4 py-2.5">Status</th>
-                  <th className="text-right px-4 py-2.5">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-t border-border hover:bg-muted/20">
-                    <td className="px-4 py-2.5 font-mono">{r.invoice_number}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{formatDate(r.date)}</td>
-                    <td className="px-4 py-2.5">{r.client_name}</td>
-                    <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(Number(r.total || 0))}</td>
-                    <td className="px-4 py-2.5">
-                      {isAdmin ? (
-                        <select
-                          value={r.status}
-                          onChange={(e) => markStatus(r, e.target.value)}
-                          className="bg-transparent border border-border rounded px-2 py-1 text-xs"
-                        >
-                          {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">{r.status}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="inline-flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => downloadPdf(r)} title="Download PDF">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={FileText} title="No invoices" description="Create one to get started." />
+      ) : (
+        <ul className="space-y-2">
+          {filtered.map((r) => (
+            <li key={r.id} className="rounded-2xl border border-border bg-card p-4">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-mono">#{r.invoice_number}</span>
+                    <span>·</span>
+                    <span>{formatDate(r.date)}</span>
+                  </div>
+                  <div className="font-semibold truncate mt-0.5">{r.client_name}</div>
+                  <div className="text-lg font-bold mt-1 tabular-nums">{formatCurrency(Number(r.total || 0))}</div>
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  {isAdmin ? (
+                    <select
+                      value={r.status}
+                      onChange={(e) => markStatus(r, e.target.value)}
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium border-0 ${statusColor[r.status] ?? "bg-muted"}`}
+                    >
+                      {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s} className="bg-card text-foreground">{s}</option>)}
+                    </select>
+                  ) : (
+                    <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColor[r.status] ?? "bg-muted"}`}>{r.status}</span>
+                  )}
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => downloadPdf(r)} title="Download PDF">
+                      <Download className="w-4 h-4" />
+                    </Button>
+                    {isAdmin && (
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <InvoiceModal
         open={modalOpen}
@@ -188,11 +183,11 @@ function Invoices() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, className = "" }: { label: string; value: string; className?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
-      <div className="mt-1 text-xl font-semibold">{value}</div>
+    <div className={`rounded-2xl border border-border bg-card p-3 ${className}`}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-lg font-bold tabular-nums">{value}</div>
     </div>
   );
 }

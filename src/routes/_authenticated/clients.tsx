@@ -69,94 +69,75 @@ function ClientsPage() {
   }), [rows]);
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold">Clients</h1>
-        <Button onClick={() => setModalOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> New client
+    <div className="p-4 md:p-6 max-w-7xl mx-auto pb-24">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Clients</h1>
+        <Button onClick={() => setModalOpen(true)} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
+          <Plus className="w-4 h-4" /> New Client
         </Button>
       </div>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
+      <div className="space-y-2 mb-4">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-5">
             {(["Active", "Paused", "Prospect", "Write-off", "All"] as const).map((t) => (
-              <TabsTrigger key={t} value={t}>
-                {t} <span className="ml-1.5 text-xs opacity-60">{counts[t]}</span>
+              <TabsTrigger key={t} value={t} className="text-xs">
+                {t.replace("Write-off", "W/O")} <span className="ml-1 opacity-60">{counts[t]}</span>
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+        <div className="relative w-full">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-9" />
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <EmptyState icon={Users} title="No clients"
-            description={q ? "No results for this search." : "Create your first client to get started."} />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-2.5">Client</th>
-                  <th className="text-left px-4 py-2.5">Sector</th>
-                  <th className="text-left px-4 py-2.5">Status</th>
-                  <th className="text-left px-4 py-2.5">Contact</th>
-                  <th className="text-right px-4 py-2.5">MRR</th>
-                  <th className="text-right px-4 py-2.5">Setup</th>
-                  <th className="text-left px-4 py-2.5">Renewal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => {
-                  const mrr = computeMRR(r);
-                  const days = daysUntil(r.renewal_date);
-                  const warn = days !== null && days <= 30;
-                  return (
-                    <tr key={r.id} className="border-t border-border hover:bg-muted/20">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <HealthDot health={r.health} />
-                          <Link to="/clients/$id" params={{ id: r.id }} className="font-medium hover:underline">
-                            {r.name}
-                          </Link>
-                        </div>
-                        {r.location && <div className="text-xs text-muted-foreground mt-0.5">{r.location}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{r.sector}</td>
-                      <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{r.contact_name || "—"}</span>
-                          <PhoneButtons phone={r.contact_phone} />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium">{formatCurrency(mrr)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
-                        {r.setup_fee ? formatCurrency(r.setup_fee) : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {r.renewal_date ? (
-                          <span className={warn ? "text-[hsl(var(--destructive))] font-medium" : ""}>
-                            {formatDate(r.renewal_date)}
-                            {days !== null && <span className="text-xs opacity-70 ml-1">({days}d)</span>}
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Users} title="No clients"
+          description={q ? "No results for this search." : "Create your first client to get started."} />
+      ) : (
+        <ul className="space-y-2">
+          {filtered.map((r) => {
+            const mrr = computeMRR(r);
+            const days = daysUntil(r.renewal_date);
+            const warn = days !== null && days <= 30;
+            return (
+              <li key={r.id} className="rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <HealthDot health={r.health} />
+                      <Link to="/clients/$id" params={{ id: r.id }} className="font-semibold hover:underline truncate">
+                        {r.name}
+                      </Link>
+                    </div>
+                    {r.location && <div className="text-xs text-muted-foreground mt-0.5 truncate">{r.location}{r.sector ? ` · ${r.sector}` : ""}</div>}
+                    <div className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
+                      <span className="tabular-nums">MRR {formatCurrency(mrr)}</span>
+                      {r.setup_fee ? <><span>·</span><span className="tabular-nums">Setup {formatCurrency(r.setup_fee)}</span></> : null}
+                      {r.renewal_date && (
+                        <>
+                          <span>·</span>
+                          <span className={warn ? "text-destructive font-medium" : ""}>
+                            Renews {formatDate(r.renewal_date)}
                           </span>
-                        ) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <StatusBadge status={r.status} />
+                    <PhoneButtons phone={r.contact_phone} />
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <ClientModal open={modalOpen} onOpenChange={setModalOpen} onSaved={() => load()} />
     </div>

@@ -77,80 +77,87 @@ function Expenses() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold">Expenses</h1>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Expenses</h1>
         {isAdmin && (
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> New expense
+          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
+            <Plus className="w-4 h-4" /> New Expense
           </Button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <Stat label="Total monthly" value={formatCurrency(totals.monthly)} />
-        <Stat label="Business-wide" value={formatCurrency(totals.business)} />
-        <Stat label="Client-linked" value={formatCurrency(totals.client)} />
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <Stat label="Total /mo" value={formatCurrency(totals.monthly)} />
+        <Stat label="Business" value={formatCurrency(totals.business)} />
+        <Stat label="Client" value={formatCurrency(totals.client)} />
       </div>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="grid grid-cols-2 gap-2 mb-3">
         <Select value={cat} onValueChange={setCat}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
             {["Tool", "Directory/Citations", "Subscription", "Other"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={scope} onValueChange={setScope}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All scopes</SelectItem>
             <SelectItem value="business">Business-wide</SelectItem>
             <SelectItem value="client">Client-linked</SelectItem>
           </SelectContent>
         </Select>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="flex-1 min-w-[200px] max-w-md" />
       </div>
+      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full mb-4" />
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <EmptyState icon={Wallet} title="No expenses" description="Add your recurring monthly costs." />
-        ) : (
-          <ul className="divide-y divide-border">
-            {filtered.map((r) => {
-              const color = EXPENSE_CATEGORY_COLORS[r.category] ?? "#B7BCC2";
-              return (
-                <li key={r.id} className="p-3 flex items-center gap-3 hover:bg-muted/20">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{r.name}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <span>{r.category}</span>
-                      <span>·</span>
-                      <span>{r.clients?.name ? `Client: ${r.clients.name}` : "Business-wide"}</span>
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Wallet} title="No expenses" description="Add your recurring monthly costs." />
+      ) : (
+        <ul className="space-y-2">
+          {filtered.map((r) => {
+            const color = EXPENSE_CATEGORY_COLORS[r.category] ?? "#B7BCC2";
+            return (
+              <li key={r.id} className="rounded-2xl border border-border bg-card p-4">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{r.name}</div>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="inline-flex items-center gap-1 text-[11px] rounded-full px-2 py-0.5"
+                        style={{ backgroundColor: `${color}22`, color }}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                        {r.category}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {r.clients?.name ? `Linked: ${r.clients.name}` : "Business-wide"}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right tabular-nums font-medium mr-2">
-                    {formatCurrency(Number(r.monthly_cost || 0))}<span className="text-xs text-muted-foreground">/mo</span>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="text-lg font-bold tabular-nums">
+                      {formatCurrency(Number(r.monthly_cost || 0))}
+                      <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(r); setModalOpen(true); }}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => del(r)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  {isAdmin && (
-                    <>
-                      <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => del(r)} className="text-muted-foreground hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <ExpenseModal
         open={modalOpen}
@@ -165,9 +172,9 @@ function Expenses() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
-      <div className="mt-1 text-xl font-semibold">{value}</div>
+    <div className="rounded-2xl border border-border bg-card p-3">
+      <div className="text-xs text-muted-foreground truncate">{label}</div>
+      <div className="mt-1 text-base md:text-lg font-bold tabular-nums truncate">{value}</div>
     </div>
   );
 }

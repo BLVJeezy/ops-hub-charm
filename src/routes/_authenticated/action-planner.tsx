@@ -80,79 +80,80 @@ function ActionPlanner() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold">Action Planner</h1>
-        <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> New action
+    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Actions</h1>
+        <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
+          <Plus className="w-4 h-4" /> New Action
         </Button>
       </div>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
+      <div className="space-y-2 mb-4">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-4">
             {(["Open", "Overdue", "Completed", "All"] as const).map((t) => (
-              <TabsTrigger key={t} value={t}>
-                {t} <span className="ml-1.5 text-xs opacity-60">{counts[t]}</span>
+              <TabsTrigger key={t} value={t} className="text-xs">
+                {t} <span className="ml-1 opacity-60">{counts[t]}</span>
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
-        <Select value={clientFilter} onValueChange={setClientFilter}>
-          <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All clients</SelectItem>
-            {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="flex-1 min-w-[200px] max-w-md" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Select value={clientFilter} onValueChange={setClientFilter}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All clients</SelectItem>
+              {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full" />
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <EmptyState icon={ListChecks} title="No actions" description="Create an action to get started." />
-        ) : (
-          <ul className="divide-y divide-border">
-            {filtered.map((r) => {
-              const days = r.due_date ? daysUntil(r.due_date) : null;
-              const overdue = days !== null && days < 0 && r.status !== "Completed";
-              const done = r.status === "Completed";
-              return (
-                <li key={r.id} className="p-3 flex items-start gap-3 hover:bg-muted/20">
-                  <Checkbox checked={done} onCheckedChange={(v) => toggleComplete(r, !!v)} className="mt-1" />
-                  <button className="flex-1 text-left" onClick={() => { setEditing(r); setModalOpen(true); }}>
-                    <div className={`text-sm ${done ? "line-through text-muted-foreground" : ""}`}>
-                      {r.action_description}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={ListChecks} title="No actions" description="Create an action to get started." />
+      ) : (
+        <ul className="space-y-2">
+          {filtered.map((r) => {
+            const days = r.due_date ? daysUntil(r.due_date) : null;
+            const overdue = days !== null && days < 0 && r.status !== "Completed";
+            const done = r.status === "Completed";
+            return (
+              <li key={r.id} className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox checked={done} onCheckedChange={(v) => toggleComplete(r, !!v)} className="mt-1 shrink-0" />
+                  <button className="flex-1 min-w-0 text-left" onClick={() => { setEditing(r); setModalOpen(true); }}>
+                    <div className="flex items-center gap-2 flex-wrap">
                       {r.clients?.name && (
-                        <Link to="/clients/$id" params={{ id: r.client }} className="hover:underline"
+                        <Link to="/clients/$id" params={{ id: r.client }}
+                          className="text-sm font-semibold hover:underline truncate"
                           onClick={(e) => e.stopPropagation()}>
                           {r.clients.name}
                         </Link>
                       )}
-                      {r.due_date && (
-                        <>
-                          <span>·</span>
-                          <span className={overdue ? "text-[hsl(var(--destructive))] font-medium" : ""}>
-                            Due {formatDate(r.due_date)}
-                            {days !== null && ` (${days}d)`}
-                          </span>
-                        </>
-                      )}
+                      <ActionStatusBadge status={r.status} />
+                    </div>
+                    <div className={`text-sm mt-1 ${done ? "line-through text-muted-foreground" : ""}`}>
+                      {r.action_description}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
+                      {r.due_date ? (
+                        <span className={overdue ? "text-destructive font-medium" : ""}>
+                          {formatDate(r.due_date)}{days !== null && ` · ${days >= 0 ? `${days}d` : `${Math.abs(days)}d overdue`}`}
+                        </span>
+                      ) : <span>No due date</span>}
                       <span>·</span>
                       <span>{r.waiting_period}</span>
                     </div>
                   </button>
-                  <ActionStatusBadge status={r.status} />
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <ActionModal
         open={modalOpen}

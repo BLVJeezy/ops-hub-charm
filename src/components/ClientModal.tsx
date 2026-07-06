@@ -100,7 +100,7 @@ export function ClientModal({ open, onOpenChange, initial, onSaved }: Props) {
     if (form.status === "Prospect" && (stage === "Converted" || stage === "Write-off")) stage = "Found";
 
     setSaving(true);
-    const payload = { ...form, pipeline_stage: stage };
+    const payload = { ...form, pipeline_stage: stage } as never;
     try {
       let id = form.id;
       if (id) {

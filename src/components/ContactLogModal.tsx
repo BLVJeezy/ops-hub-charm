@@ -31,7 +31,7 @@ export function ContactLogModal({ clientId, open, onOpenChange, onSaved }: Props
       const { data: u } = await supabase.auth.getUser();
       const { error } = await supabase.from("contact_log").insert({
         client: clientId, date, channel, direction, note, created_by: u.user?.id ?? null,
-      });
+      } as never);
       if (error) throw error;
       toast.success("Contact logged");
       setNote(""); setDate(todayISO()); setChannel("WhatsApp"); setDirection("Outreach");

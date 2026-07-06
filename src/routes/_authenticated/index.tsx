@@ -2,14 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency, formatDate, daysUntil, todayISO } from "@/lib/format";
+import { formatCurrency, formatDate, daysUntil } from "@/lib/format";
 import { clientMRR, clientRevenueForMonth, type FeeClient } from "@/lib/fees";
-import { StageBadge } from "@/components/StatusBadge";
 import { HealthDot } from "@/components/HealthDot";
 import { QuickAddProspect } from "@/components/QuickAddProspect";
 import { PIPELINE_STAGES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, TrendingUp, Wallet, Users, AlertTriangle, Plus, Trophy, Crown } from "lucide-react";
+import { CalendarDays, TrendingUp, BarChart3, Users, Heart, Plus, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Dashboard,
@@ -23,29 +22,23 @@ type Action = { id: string; client: string; action_description: string; due_date
 type Invoice = { id: string; invoice_number: number; client: string | null; client_name: string | null; total: number; status: string; date: string };
 type Expense = { id: string; monthly_cost: number; linked_client: string | null };
 
-function Card({ title, icon: Icon, children, className = "" }: { title: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode; className?: string }) {
+type Task = { key: string; clientId: string; label: string; detail: string; date: string; kind: "followup" | "action" | "renewal"; overdue: boolean; healthDotColor?: string };
+
+function SectionHeader({ icon: Icon, label, count }: { icon: React.ComponentType<{ className?: string }>; label: string; count?: number }) {
   return (
-    <div className={`rounded-xl border border-border bg-card p-4 ${className}`}>
-      <div className="flex items-center gap-2 mb-3">
-        {Icon && <Icon className="w-4 h-4 text-muted-foreground" />}
-        <h3 className="text-sm font-semibold text-muted-foreground">{title}</h3>
-      </div>
-      {children}
+    <div className="flex items-center gap-2 mb-3 mt-2">
+      <Icon className="w-4 h-4 text-muted-foreground" />
+      <span className="text-xs font-semibold tracking-[0.15em] text-muted-foreground uppercase">{label}</span>
+      {count !== undefined && count > 0 && (
+        <span className="text-[11px] font-medium rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{count}</span>
+      )}
     </div>
   );
 }
 
-function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div>
-      <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-      {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
-    </div>
-  );
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-2xl border border-border bg-card p-4 ${className}`}>{children}</div>;
 }
-
-type Task = { key: string; clientId: string; label: string; detail: string; date: string; kind: "followup" | "action" | "renewal"; overdue: boolean };
 
 function Dashboard() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -83,11 +76,9 @@ function Dashboard() {
   const clientById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c])), [clients]);
   const activeClients = useMemo(() => clients.filter((c) => c.status === "Active"), [clients]);
 
-  // ===== Financials =====
   const mrr = useMemo(() => activeClients.reduce((s, c) => s + clientMRR(c), 0), [activeClients]);
   const jrr = mrr * 12;
 
-  // §4.11 — business-wide expenses always count; client-linked only if client Active
   const totalMonthlyExpenses = useMemo(() => expenses.reduce((sum, e) => {
     if (e.linked_client) {
       const c = clientById[e.linked_client];
@@ -103,7 +94,6 @@ function Dashboard() {
     [invoices]
   );
 
-  // §4.14 — Pipeline Value
   const pipelineValue = useMemo(
     () => clients
       .filter((c) => c.status === "Prospect" && (c.pipeline_stage === "Proposal Sent" || c.pipeline_stage === "Negotiating"))
@@ -111,7 +101,6 @@ function Dashboard() {
     [clients]
   );
 
-  // §4.15 — Top Revenue (top 3 by paid invoices)
   const topRevenue = useMemo(() => {
     const paidByClient: Record<string, number> = {};
     invoices.filter((i) => i.status === "Paid" && i.client).forEach((i) => {
@@ -123,7 +112,6 @@ function Dashboard() {
       .slice(0, 3);
   }, [invoices, clientById]);
 
-  // ===== §4.16 Revenue Report (contract-based, This Year vs Last Year) =====
   const now = new Date();
   const year = now.getFullYear();
   const revenueReport = useMemo(() => {
@@ -144,12 +132,9 @@ function Dashboard() {
   const ytd = revenueReport.slice(0, now.getMonth() + 1).reduce((s, r) => s + r.thisYear, 0);
   const lastYearTotal = revenueReport.reduce((s, r) => s + r.lastYear, 0);
   const thisMonth = revenueReport[now.getMonth()].thisYear;
-  const lastMonth = now.getMonth() === 0
-    ? revenueReport[11].lastYear
-    : revenueReport[now.getMonth() - 1].thisYear;
+  const lastMonth = now.getMonth() === 0 ? revenueReport[11].thisYear : revenueReport[now.getMonth() - 1].thisYear;
   const momChange = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : null;
 
-  // ===== §4.18 This Week tasks =====
   const tasks = useMemo(() => {
     const list: Task[] = [];
     for (const c of clients) {
@@ -158,8 +143,10 @@ function Dashboard() {
         if (d !== null && d <= 7) {
           list.push({
             key: `f-${c.id}`, clientId: c.id, kind: "followup",
-            label: `Follow up: ${c.name}`, detail: d < 0 ? `${Math.abs(d)}d overdue` : d === 0 ? "today" : `in ${d}d`,
+            label: c.name,
+            detail: d < 0 ? `Follow-up overdue · ${formatDate(c.next_followup_date)}` : d === 0 ? `Follow-up today · ${formatDate(c.next_followup_date)}` : `Follow-up in ${d}d · ${formatDate(c.next_followup_date)}`,
             date: c.next_followup_date, overdue: d < 0,
+            healthDotColor: d < 0 ? "#EF4444" : d <= 2 ? "#F59E0B" : "#22C55E",
           });
         }
       }
@@ -168,7 +155,9 @@ function Dashboard() {
         if (d !== null && d >= 0 && d <= 30) {
           list.push({
             key: `r-${c.id}`, clientId: c.id, kind: "renewal",
-            label: `Renewal: ${c.name}`, detail: `in ${d}d`, date: c.renewal_date, overdue: false,
+            label: c.name, detail: `Renewal in ${d}d · ${formatDate(c.renewal_date)}`,
+            date: c.renewal_date, overdue: false,
+            healthDotColor: "#F59E0B",
           });
         }
       }
@@ -180,15 +169,15 @@ function Dashboard() {
         const c = clientById[a.client];
         list.push({
           key: `a-${a.id}`, clientId: a.client, kind: "action",
-          label: a.action_description, detail: `${c?.name ?? "—"} · ${Math.abs(d)}d overdue`,
+          label: c?.name ?? "—", detail: `${a.action_description} · ${Math.abs(d)}d overdue`,
           date: a.due_date, overdue: true,
+          healthDotColor: "#EF4444",
         });
       }
     }
     return list.sort((x, y) => x.date.localeCompare(y.date)).slice(0, 10);
   }, [clients, actions, clientById]);
 
-  // ===== Pipeline overview & health =====
   const pipelineCounts = useMemo(() => {
     const map: Record<string, number> = {};
     PIPELINE_STAGES.forEach((s) => { map[s] = 0; });
@@ -207,31 +196,87 @@ function Dashboard() {
     return counts;
   }, [activeClients]);
 
-  const atRisk = activeClients.filter((c) => c.health === "Red");
-
   if (loading) return <div className="p-6 text-muted-foreground">Loading dashboard…</div>;
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <Button onClick={() => setQuickAdd(true)} className="gap-2"><Plus className="w-4 h-4" /> New prospect</Button>
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-2">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <Button onClick={() => setQuickAdd(true)} variant="secondary" className="gap-2 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
+          <Plus className="w-4 h-4" /> New Prospect
+        </Button>
       </div>
 
-      {/* This Week */}
-      <Card title="This week" icon={CalendarDays}>
-        {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">All caught up 🎉</p>
+      {/* THIS WEEK */}
+      <SectionHeader icon={CalendarDays} label="This week" count={tasks.length} />
+      {tasks.length === 0 ? (
+        <Card><p className="text-sm text-muted-foreground">All caught up 🎉</p></Card>
+      ) : (
+        <div className="space-y-2">
+          {tasks.slice(0, 5).map((t) => (
+            <Link key={t.key} to="/clients/$id" params={{ id: t.clientId }}
+              className="block rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
+              <div className="flex items-center gap-3">
+                <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{t.label}</div>
+                  <div className={`text-xs mt-0.5 truncate ${t.overdue ? "text-destructive" : "text-muted-foreground"}`}>{t.detail}</div>
+                </div>
+                <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.healthDotColor }} />
+                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* FINANCIALS */}
+      <SectionHeader icon={TrendingUp} label="Financials" />
+
+      <Card className="bg-gradient-to-br from-white/[0.04] to-transparent">
+        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.15em] text-muted-foreground uppercase">
+          <TrendingUp className="w-3.5 h-3.5" /> Lifetime revenue
+        </div>
+        <div className="mt-1 text-4xl font-bold tracking-tight">{formatCurrency(lifetimeRevenue)}</div>
+        <div className="text-xs text-muted-foreground mt-1">Total received from paid invoices</div>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Card>
+          <div className="text-sm text-muted-foreground">Total MRR</div>
+          <div className="text-3xl font-bold mt-1">{formatCurrency(mrr)}</div>
+          <div className="text-xs text-muted-foreground mt-1">{activeClients.length} active clients</div>
+        </Card>
+        <Card className="ring-1 ring-white/10">
+          <div className="text-sm text-muted-foreground">Net Profit</div>
+          <div className="text-3xl font-bold mt-1">{formatCurrency(netProfit)}</div>
+          <div className="text-xs text-muted-foreground mt-1">MRR {formatCurrency(mrr)} − Costs {formatCurrency(totalMonthlyExpenses)}</div>
+        </Card>
+      </div>
+
+      <Card>
+        <div className="text-sm text-muted-foreground">Yearly (JRR)</div>
+        <div className="text-3xl font-bold mt-1">{formatCurrency(jrr)}</div>
+        <div className="text-xs text-muted-foreground mt-1">Annual recurring</div>
+      </Card>
+
+      <Card>
+        <div className="text-sm text-muted-foreground">Pipeline Value</div>
+        <div className="text-3xl font-bold mt-1">{formatCurrency(pipelineValue)}</div>
+        <div className="text-xs text-muted-foreground mt-1">Proposal/Negotiating</div>
+      </Card>
+
+      <Card>
+        <div className="text-sm mb-3">Top Revenue</div>
+        {topRevenue.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No paid invoices yet.</p>
         ) : (
           <ul className="space-y-2">
-            {tasks.map((t) => (
-              <li key={t.key}>
-                <Link to="/clients/$id" params={{ id: t.clientId }} className="flex items-center justify-between gap-3 text-sm hover:bg-accent/40 rounded px-2 py-1 -mx-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate">{t.label}</div>
-                    <div className="text-xs text-muted-foreground truncate">{formatDate(t.date)} · {t.kind}</div>
-                  </div>
-                  <span className={`text-xs whitespace-nowrap ${t.overdue ? "text-destructive" : "text-muted-foreground"}`}>{t.detail}</span>
+            {topRevenue.map((t, i) => (
+              <li key={t.id}>
+                <Link to="/clients/$id" params={{ id: t.id }} className="flex items-center justify-between text-sm hover:underline">
+                  <span>{i + 1}. {t.name}</span>
+                  <span className="tabular-nums text-muted-foreground">{formatCurrency(t.total)}</span>
                 </Link>
               </li>
             ))}
@@ -239,116 +284,87 @@ function Dashboard() {
         )}
       </Card>
 
-      {/* Lifetime revenue */}
-      <div className="rounded-xl border border-border p-5 bg-gradient-to-br from-primary/20 via-card to-card">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground"><Crown className="w-4 h-4 text-primary" /> Lifetime revenue</div>
-        <div className="mt-1 text-3xl font-bold text-primary">{formatCurrency(lifetimeRevenue)}</div>
-        <div className="text-xs text-muted-foreground mt-1">Sum of all paid invoices</div>
-      </div>
+      {/* REVENUE REPORT */}
+      <SectionHeader icon={BarChart3} label="Revenue report" />
 
-      {/* MRR + Net profit */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card title="Total MRR" icon={TrendingUp}>
-          <KPI label="Monthly recurring" value={formatCurrency(mrr)} sub={`${activeClients.length} active clients`} />
+      <div className="grid grid-cols-2 gap-2">
+        <Card>
+          <div className="text-sm text-muted-foreground">{year} (YTD)</div>
+          <div className="text-3xl font-bold mt-1">{formatCurrency(ytd)}</div>
         </Card>
-        <Card title="Net profit" icon={Wallet}>
-          <KPI label="MRR − expenses" value={formatCurrency(netProfit)} sub={`${formatCurrency(totalMonthlyExpenses)} monthly costs`} />
+        <Card>
+          <div className="text-sm text-muted-foreground">{year - 1} Total</div>
+          <div className="text-3xl font-bold mt-1">{formatCurrency(lastYearTotal)}</div>
+          <div className="text-xs text-muted-foreground mt-1">Full year</div>
         </Card>
-      </div>
-
-      {/* JRR / Pipeline value / Top revenue */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card title="JRR" icon={TrendingUp}>
-          <KPI label="Yearly run-rate" value={formatCurrency(jrr)} sub="MRR × 12" />
-        </Card>
-        <Card title="Pipeline value" icon={Users}>
-          <KPI label="Proposal + negotiating" value={formatCurrency(pipelineValue)} sub="Potential MRR" />
-        </Card>
-        <Card title="Top revenue" icon={Trophy}>
-          {topRevenue.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No paid invoices yet.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {topRevenue.map((t, i) => (
-                <li key={t.id} className="flex items-center justify-between text-sm">
-                  <Link to="/clients/$id" params={{ id: t.id }} className="truncate hover:underline">
-                    <span className="text-muted-foreground mr-1.5">{i + 1}.</span>{t.name}
-                  </Link>
-                  <span className="tabular-nums text-muted-foreground">{formatCurrency(t.total)}</span>
-                </li>
-              ))}
-            </ul>
+        <Card>
+          <div className="text-sm text-muted-foreground">This Month</div>
+          <div className="text-3xl font-bold mt-1">{formatCurrency(thisMonth)}</div>
+          {momChange !== null && (
+            <div className={`text-xs mt-1 ${momChange >= 0 ? "text-emerald-400" : "text-destructive"}`}>
+              {momChange >= 0 ? "▲" : "▼"} {Math.abs(momChange).toFixed(1)}% vs last month
+            </div>
           )}
         </Card>
+        <Card>
+          <div className="text-sm text-muted-foreground">Last Month</div>
+          <div className="text-3xl font-bold mt-1">{formatCurrency(lastMonth)}</div>
+          <div className="text-xs text-muted-foreground mt-1">Previous month</div>
+        </Card>
       </div>
 
-      {/* Revenue report §4.16 */}
-      <Card title={`Revenue report — ${year} vs ${year - 1}`} icon={TrendingUp}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <KPI label={`${year} YTD`} value={formatCurrency(ytd)} />
-          <KPI label={`${year - 1} total`} value={formatCurrency(lastYearTotal)} />
-          <KPI label="This month" value={formatCurrency(thisMonth)}
-            sub={momChange === null ? undefined : `${momChange >= 0 ? "▲" : "▼"} ${Math.abs(momChange).toFixed(0)}% vs last month`} />
-          <KPI label="Last month" value={formatCurrency(lastMonth)} />
-        </div>
-        <div className="h-64">
+      <Card>
+        <div className="h-64 -ml-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={revenueReport}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `€${v}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} axisLine={false} tickLine={false} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} width={45} />
               <Tooltip
                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 formatter={(v: number) => formatCurrency(v)}
+                cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
               />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar name={String(year - 1)} dataKey="lastYear" fill="#B7BCC2" radius={[4, 4, 0, 0]} />
-              <Bar name={String(year)} dataKey="thisYear" fill="#C9A24B" radius={[4, 4, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: 12 }} iconType="square" />
+              <Bar name="Last Year" dataKey="lastYear" fill="#4B5563" radius={[2, 2, 0, 0]} />
+              <Bar name="This Year" dataKey="thisYear" fill="#FFFFFF" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Pipeline overview */}
-        <Card title="Pipeline overview" icon={Users}>
-          <div className="grid grid-cols-2 gap-1.5">
-            {PIPELINE_STAGES.filter((s) => s !== "Converted").map((s) => (
-              <Link key={s} to="/pipeline" className="flex items-center justify-between text-sm hover:bg-accent/40 rounded px-2 py-1">
-                <StageBadge stage={s} />
-                <span className="tabular-nums text-muted-foreground">{pipelineCounts[s] || 0}</span>
-              </Link>
-            ))}
-          </div>
-        </Card>
-
-        {/* Client health */}
-        <Card title="Client health" icon={AlertTriangle}>
-          <div className="flex items-center gap-6 mb-3">
-            {(["Green", "Orange", "Red"] as const).map((h) => (
-              <div key={h} className="flex items-center gap-2 text-sm">
-                <HealthDot health={h} /><span className="tabular-nums font-semibold">{healthBreakdown[h]}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mb-2">At-risk (Red)</p>
-          {atRisk.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No at-risk clients.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {atRisk.map((c) => (
-                <li key={c.id}>
-                  <Link to="/clients/$id" params={{ id: c.id }} className="flex items-center gap-2 text-sm hover:underline">
-                    <HealthDot health={c.health} /><span className="truncate">{c.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+      {/* PIPELINE OVERVIEW */}
+      <SectionHeader icon={BarChart3} label="Pipeline overview" />
+      <div className="grid grid-cols-2 gap-2">
+        {PIPELINE_STAGES.filter((s) => s !== "Converted").map((s) => (
+          <Link key={s} to="/pipeline" className="rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
+            <div className="text-sm text-muted-foreground">{s}</div>
+            <div className="text-2xl font-bold mt-1 tabular-nums">{pipelineCounts[s] || 0}</div>
+          </Link>
+        ))}
       </div>
 
+      {/* CLIENT HEALTH */}
+      <SectionHeader icon={Heart} label="Client health" />
+      <Card>
+        <div className="grid grid-cols-3 gap-4">
+          {(["Green", "Orange", "Red"] as const).map((h) => (
+            <div key={h} className="flex flex-col items-start gap-1">
+              <div className="flex items-center gap-2">
+                <HealthDot health={h} />
+                <span className="text-2xl font-bold tabular-nums">{healthBreakdown[h]}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">{h}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div className="h-4" />
       <QuickAddProspect open={quickAdd} onOpenChange={setQuickAdd} />
     </div>
   );
 }
+
+// silence unused warning for Users icon import removal
+void Users;

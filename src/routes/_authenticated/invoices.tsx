@@ -145,22 +145,28 @@ function Invoices() {
                     <td className="px-4 py-2.5">{r.client_name}</td>
                     <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(Number(r.total || 0))}</td>
                     <td className="px-4 py-2.5">
-                      <select
-                        value={r.status}
-                        onChange={(e) => markStatus(r, e.target.value)}
-                        className="bg-transparent border border-border rounded px-2 py-1 text-xs"
-                      >
-                        {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      {isAdmin ? (
+                        <select
+                          value={r.status}
+                          onChange={(e) => markStatus(r, e.target.value)}
+                          className="bg-transparent border border-border rounded px-2 py-1 text-xs"
+                        >
+                          {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{r.status}</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="ghost" onClick={() => downloadPdf(r)} title="Download PDF">
                           <Download className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
-                          <Pencil className="w-4 h-4" />
-                        </Button>
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

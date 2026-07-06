@@ -135,12 +135,16 @@ function Expenses() {
                   <div className="text-right tabular-nums font-medium mr-2">
                     {formatCurrency(Number(r.monthly_cost || 0))}<span className="text-xs text-muted-foreground">/mo</span>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => del(r)} className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {isAdmin && (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => del(r)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </li>
               );
             })}

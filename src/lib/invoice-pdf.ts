@@ -94,9 +94,11 @@ export function generateInvoicePDF(inv: InvoicePDFInput): jsPDF {
   doc.setFontSize(11);
   doc.setTextColor(DARK);
   for (const item of inv.line_items) {
-    const desc = item.qty > 1 ? `${item.description} (x${item.qty})` : item.description;
+    const qty = Number(item.qty ?? 1);
+    const unit = Number(item.unit_price ?? item.price ?? 0);
+    const lineTotal = qty * unit;
+    const desc = qty > 1 ? `${item.description} (x${qty})` : item.description;
     const lines = doc.splitTextToSize(desc || "", 130);
-    const lineTotal = item.qty * item.unit_price;
     doc.text(lines, L + 3, y);
     doc.text(formatCurrency(lineTotal), R - 3, y, { align: "right" });
     y += lines.length * 5 + 2;

@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import logoAsset from "@/assets/solyn-logo.png.asset.json";
 import { COMPANY } from "./constants";
 import { formatCurrency, formatDate } from "./format";
 
@@ -18,7 +19,26 @@ export type InvoicePDFInput = {
 const DARK = 30;
 const MUTED = 120;
 
-export function generateInvoicePDF(inv: InvoicePDFInput): jsPDF {
+async function loadLogoDataUrl(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const response = await fetch(logoAsset.url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | null): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210;
   const L = 20;
@@ -26,14 +46,18 @@ export function generateInvoicePDF(inv: InvoicePDFInput): jsPDF {
   let y = 25;
 
   // ===== Header =====
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, "PNG", L, 14, 20, 27);
+  }
+
   doc.setTextColor(DARK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Solyn Global", L, y);
+  doc.text("Solyn Global", logoDataUrl ? L + 26 : L, y);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(MUTED);
-  doc.text("Ops & Invoicing", L, y + 6);
+  doc.text("Ops & Invoicing", logoDataUrl ? L + 26 : L, y + 6);
 
   doc.setTextColor(DARK);
   doc.setFont("helvetica", "bold");
@@ -155,7 +179,8 @@ export function generateInvoicePDF(inv: InvoicePDFInput): jsPDF {
   return doc;
 }
 
-export function downloadInvoicePDF(inv: InvoicePDFInput) {
-  const doc = generateInvoicePDF(inv);
+export async function downloadInvoicePDF(inv: InvoicePDFInput) {
+  const logoDataUrl = await loadLogoDataUrl();
+  const doc = generateInvoicePDF(inv, logoDataUrl);
   doc.save(`Factuur-${inv.invoice_number}.pdf`);
 }

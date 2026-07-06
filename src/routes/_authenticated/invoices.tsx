@@ -20,6 +20,8 @@ type Row = InvoiceRow & { id: string; invoice_number: number };
 type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null };
 
 function Invoices() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [rows, setRows] = useState<Row[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);

@@ -20,6 +20,8 @@ type Row = ExpenseRow & { id: string; clients?: { name: string } | null };
 type Client = { id: string; name: string };
 
 function Expenses() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [rows, setRows] = useState<Row[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);

@@ -120,7 +120,7 @@ export function ClientModal({ open, onOpenChange, initial, onSaved }: Props) {
           to_status: form.status,
           date: todayISO(),
           created_by: u.user?.id ?? null,
-        });
+        } as never);
       }
       toast.success(form.id ? "Client updated" : "Client created");
       onSaved?.(id!);

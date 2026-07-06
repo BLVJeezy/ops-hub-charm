@@ -10,6 +10,7 @@ import { ExpenseModal, type ExpenseRow } from "@/components/ExpenseModal";
 import { formatCurrency } from "@/lib/format";
 import { EXPENSE_CATEGORY_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
   component: Expenses,

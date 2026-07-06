@@ -10,6 +10,7 @@ import { ExpenseModal, type ExpenseRow } from "@/components/ExpenseModal";
 import { formatCurrency } from "@/lib/format";
 import { EXPENSE_CATEGORY_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
   component: Expenses,
@@ -19,6 +20,8 @@ type Row = ExpenseRow & { id: string; clients?: { name: string } | null };
 type Client = { id: string; name: string };
 
 function Expenses() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [rows, setRows] = useState<Row[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,9 +80,11 @@ function Expenses() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold">Expenses</h1>
-        <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> New expense
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> New expense
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -130,12 +135,16 @@ function Expenses() {
                   <div className="text-right tabular-nums font-medium mr-2">
                     {formatCurrency(Number(r.monthly_cost || 0))}<span className="text-xs text-muted-foreground">/mo</span>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => del(r)} className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {isAdmin && (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => del(r)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </li>
               );
             })}

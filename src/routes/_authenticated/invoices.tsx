@@ -10,6 +10,7 @@ import { InvoiceModal, type InvoiceRow } from "@/components/InvoiceModal";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,
@@ -19,6 +20,8 @@ type Row = InvoiceRow & { id: string; invoice_number: number };
 type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null };
 
 function Invoices() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [rows, setRows] = useState<Row[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,9 +93,11 @@ function Invoices() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold">Invoices</h1>
-        <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> New invoice
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> New invoice
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -140,22 +145,28 @@ function Invoices() {
                     <td className="px-4 py-2.5">{r.client_name}</td>
                     <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(Number(r.total || 0))}</td>
                     <td className="px-4 py-2.5">
-                      <select
-                        value={r.status}
-                        onChange={(e) => markStatus(r, e.target.value)}
-                        className="bg-transparent border border-border rounded px-2 py-1 text-xs"
-                      >
-                        {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      {isAdmin ? (
+                        <select
+                          value={r.status}
+                          onChange={(e) => markStatus(r, e.target.value)}
+                          className="bg-transparent border border-border rounded px-2 py-1 text-xs"
+                        >
+                          {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{r.status}</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="inline-flex gap-1">
                         <Button size="sm" variant="ghost" onClick={() => downloadPdf(r)} title="Download PDF">
                           <Download className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
-                          <Pencil className="w-4 h-4" />
-                        </Button>
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

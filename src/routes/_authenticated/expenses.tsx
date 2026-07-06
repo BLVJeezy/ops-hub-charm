@@ -80,9 +80,11 @@ function Expenses() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold">Expenses</h1>
-        <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> New expense
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> New expense
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">

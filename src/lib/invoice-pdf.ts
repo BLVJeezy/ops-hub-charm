@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import { COMPANY } from "./constants";
 import { formatCurrency, formatDate } from "./format";
 
-export type LineItem = { description: string; qty: number; unit_price: number };
+export type LineItem = { description: string; qty?: number; unit_price?: number; price?: number };
 
 export type InvoicePDFInput = {
   invoice_number: number;

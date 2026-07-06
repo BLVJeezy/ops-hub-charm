@@ -10,6 +10,7 @@ import { InvoiceModal, type InvoiceRow } from "@/components/InvoiceModal";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,

@@ -63,7 +63,7 @@ export function generateInvoicePDF(inv: InvoicePDFInput): jsPDF {
   y += 26;
 
   // Table header
-  doc.setFillColor(240);
+  doc.setFillColor(240, 240, 240);
   doc.rect(20, y, W - 40, 8, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);

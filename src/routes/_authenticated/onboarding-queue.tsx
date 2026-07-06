@@ -1,14 +1,30 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ClipboardList, CheckCircle2, XCircle, Phone, Mail, MapPin, Building2 } from "lucide-react";
+import { ClipboardList, CheckCircle2, XCircle, Phone, Mail, MapPin, Building2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { EmptyState } from "@/components/EmptyState";
 import { formatDate } from "@/lib/format";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/onboarding-queue")({
-  component: OnboardingQueue,
+  component: OnboardingQueueGate,
 });
+
+function OnboardingQueueGate() {
+  const { role, loading } = useAuth();
+  if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  if (role !== "admin") {
+    return (
+      <div className="p-6 max-w-lg mx-auto">
+        <div className="rounded-xl border border-border bg-card">
+          <EmptyState icon={Lock} title="Admin only" description="Only administrators can review onboarding submissions." />
+        </div>
+      </div>
+    );
+  }
+  return <OnboardingQueue />;
+}
 
 type Submission = {
   id: string;

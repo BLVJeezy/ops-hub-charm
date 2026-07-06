@@ -155,7 +155,7 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
                       <td className="p-1"><Input value={l.description} onChange={(e) => updateLine(i, { description: e.target.value })} /></td>
                       <td className="p-1"><Input type="number" value={l.qty} className="text-right" onChange={(e) => updateLine(i, { qty: Number(e.target.value) || 0 })} /></td>
                       <td className="p-1"><Input type="number" value={l.unit_price} className="text-right" onChange={(e) => updateLine(i, { unit_price: Number(e.target.value) || 0 })} /></td>
-                      <td className="p-1 text-right pr-2 tabular-nums">{formatCurrency(l.qty * l.unit_price)}</td>
+                      <td className="p-1 text-right pr-2 tabular-nums">{formatCurrency(Number(l.qty ?? 0) * Number(l.unit_price ?? 0))}</td>
                       <td className="p-1">
                         <button onClick={() => delLine(i)} className="p-1 text-muted-foreground hover:text-destructive" title="Remove">
                           <Trash2 className="w-4 h-4" />

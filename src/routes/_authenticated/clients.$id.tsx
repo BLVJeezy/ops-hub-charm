@@ -249,6 +249,30 @@ function ClientDetail() {
           </div>
         </TabsContent>
 
+        {/* ===== EXPENSES ===== */}
+        <TabsContent value="expenses" className="mt-4">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <Stat label="Monthly-billed fees" value={formatCurrency(monthlyFee)} />
+            <Stat label="Net margin /mo" value={formatCurrency(netMargin)} accent={netMargin < 0 ? "text-destructive" : undefined} />
+          </div>
+          <div className="rounded-xl border border-border bg-card divide-y divide-border">
+            {expenses.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground text-center">No expenses linked to this client.</div>
+            ) : expenses.map((e) => (
+              <div key={e.id} className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{e.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{e.category}</div>
+                </div>
+                <div className="text-sm font-semibold text-destructive shrink-0 tabular-nums">
+                  −{formatCurrency(e.monthly_cost)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+
+
         {/* ===== ACTIONS ===== */}
         <TabsContent value="actions" className="mt-4">
           <div className="flex justify-end mb-3">

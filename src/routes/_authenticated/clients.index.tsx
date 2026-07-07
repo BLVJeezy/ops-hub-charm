@@ -1,17 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search as SearchIcon, Users } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
 import { HealthDot } from "@/components/HealthDot";
-import { PhoneButtons } from "@/components/PhoneButtons";
 import { EmptyState } from "@/components/EmptyState";
 import { ClientModal, type ClientRow } from "@/components/ClientModal";
-import { formatCurrency, formatDate, daysUntil } from "@/lib/format";
-import { computeMRR } from "@/lib/fees";
+import { formatCurrency } from "@/lib/format";
+import { clientMRR, clientMonthlyFee } from "@/lib/fees";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/clients/")({
@@ -19,57 +17,63 @@ export const Route = createFileRoute("/_authenticated/clients/")({
 });
 
 type Row = ClientRow & { id: string };
+type Invoice = { client: string | null; total: number; status: string };
+type Expense = { linked_client: string | null; monthly_cost: number };
 
 function ClientsPage() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("Active");
-  const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
   async function load() {
-    setLoading(true);
-    const { data, error } = await supabase.from("clients").select("*").order("name");
-    if (error) toast.error(error.message);
-    setRows((data as unknown as Row[]) ?? []);
+    const [c, i, e] = await Promise.all([
+      supabase.from("clients").select("*").order("name"),
+      supabase.from("invoices").select("client,total,status"),
+      supabase.from("expenses").select("linked_client,monthly_cost"),
+    ]);
+    if (c.error) toast.error(c.error.message);
+    setRows((c.data as unknown as Row[]) ?? []);
+    setInvoices((i.data as unknown as Invoice[]) ?? []);
+    setExpenses((e.data as unknown as Expense[]) ?? []);
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
-
   useEffect(() => {
-    const ch = supabase
-      .channel("clients-list")
+    const ch = supabase.channel("clients-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "invoices" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const filtered = useMemo(() => {
-    let list = rows;
-    if (tab !== "All") list = list.filter((r) => r.status === tab);
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      list = list.filter((r) =>
-        r.name.toLowerCase().includes(s) ||
-        (r.contact_name || "").toLowerCase().includes(s) ||
-        (r.location || "").toLowerCase().includes(s) ||
-        (r.sector || "").toLowerCase().includes(s),
-      );
-    }
-    return list;
-  }, [rows, tab, q]);
+  const paidByClient = useMemo(() => {
+    const map: Record<string, number> = {};
+    invoices.filter((i) => i.status === "Paid" && i.client).forEach((i) => {
+      map[i.client!] = (map[i.client!] || 0) + Number(i.total || 0);
+    });
+    return map;
+  }, [invoices]);
 
-  const counts = useMemo(() => ({
-    All: rows.length,
-    Active: rows.filter((r) => r.status === "Active").length,
-    Paused: rows.filter((r) => r.status === "Paused").length,
-    Prospect: rows.filter((r) => r.status === "Prospect").length,
-    "Write-off": rows.filter((r) => r.status === "Write-off").length,
-  }), [rows]);
+  const costsByClient = useMemo(() => {
+    const map: Record<string, number> = {};
+    expenses.filter((e) => e.linked_client).forEach((e) => {
+      map[e.linked_client!] = (map[e.linked_client!] || 0) + Number(e.monthly_cost || 0);
+    });
+    return map;
+  }, [expenses]);
+
+  const filtered = useMemo(() => {
+    if (tab === "All") return rows.filter((r) => r.status === "Active" || r.status === "Paused");
+    return rows.filter((r) => r.status === tab);
+  }, [rows, tab]);
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto pb-24">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto pb-24">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-4">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Clients</h1>
         <Button onClick={() => setModalOpen(true)} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
@@ -77,70 +81,46 @@ function ClientsPage() {
         </Button>
       </div>
 
-      <div className="space-y-2 mb-4">
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-5">
-            {(["Active", "Paused", "Prospect", "Write-off", "All"] as const).map((t) => (
-              <TabsTrigger key={t} value={t} className="text-xs">
-                {t.replace("Write-off", "W/O")} <span className="ml-1 opacity-60">{counts[t]}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-        <div className="relative w-full">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-9" />
-        </div>
-      </div>
+      <Tabs value={tab} onValueChange={setTab} className="mb-4">
+        <TabsList>
+          {(["Active", "Paused", "All"] as const).map((t) => (
+            <TabsTrigger key={t} value={t}>{t}</TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {loading ? (
         <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Users} title="No clients"
-          description={q ? "No results for this search." : "Create your first client to get started."} />
+        <div className="rounded-xl border border-border bg-card">
+          <EmptyState icon={Users} title="No clients" description="Create your first client to get started." />
+        </div>
       ) : (
-        <ul className="space-y-2">
+        <div className="space-y-3">
           {filtered.map((r) => {
-            const mrr = computeMRR(r);
-            const days = daysUntil(r.renewal_date);
-            const warn = days !== null && days <= 30;
+            const total = paidByClient[r.id] || 0;
+            const mrr = clientMRR(r);
+            const net = clientMonthlyFee(r) - (costsByClient[r.id] || 0);
             return (
-              <li key={r.id} className="relative rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
-                <Link
-                  to="/clients/$id"
-                  params={{ id: r.id }}
-                  aria-label={`Open ${r.name}`}
-                  className="absolute inset-0 rounded-2xl z-0"
-                />
-                <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 pointer-events-none">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <HealthDot health={r.health} />
-                      <span className="font-semibold truncate">{r.name}</span>
-                    </div>
-                    {r.location && <div className="text-xs text-muted-foreground mt-0.5 truncate">{r.location}{r.sector ? ` · ${r.sector}` : ""}</div>}
-                    <div className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
-                      <span className="tabular-nums">MRR {formatCurrency(mrr)}</span>
-                      {r.setup_fee ? <><span>·</span><span className="tabular-nums">Setup {formatCurrency(r.setup_fee)}</span></> : null}
-                      {r.renewal_date && (
-                        <>
-                          <span>·</span>
-                          <span className={warn ? "text-destructive font-medium" : ""}>
-                            Renews {formatDate(r.renewal_date)}
-                          </span>
-                        </>
-                      )}
-                    </div>
+              <Link
+                key={r.id} to="/clients/$id" params={{ id: r.id }}
+                className="block rounded-xl border border-border bg-card p-4 hover:border-primary/40 transition"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <HealthDot health={r.health} />
+                    <span className="font-semibold text-lg truncate">{r.name}</span>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0 pointer-events-auto">
-                    <StatusBadge status={r.status} />
-                    <PhoneButtons phone={r.contact_phone} />
-                  </div>
+                  <StatusBadge status={r.status} />
                 </div>
-              </li>
+                {r.location && <div className="text-sm text-muted-foreground mt-1">{r.location}</div>}
+                <div className="text-sm text-muted-foreground mt-2">
+                  Total {total ? formatCurrency(total) : "—"} · MRR {mrr ? formatCurrency(mrr) : "—"} · Net {formatCurrency(net)}
+                </div>
+              </Link>
             );
           })}
-        </ul>
+        </div>
       )}
 
       <ClientModal open={modalOpen} onOpenChange={setModalOpen} onSaved={() => load()} />

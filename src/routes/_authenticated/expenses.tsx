@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Wallet, Pencil, Trash2 } from "lucide-react";
+import { Plus, Wallet, Info, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { EmptyState } from "@/components/EmptyState";
 import { ExpenseModal, type ExpenseRow } from "@/components/ExpenseModal";
@@ -17,29 +15,24 @@ export const Route = createFileRoute("/_authenticated/expenses")({
 });
 
 type Row = ExpenseRow & { id: string; clients?: { name: string } | null };
-type Client = { id: string; name: string };
 
 function Expenses() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
   const [rows, setRows] = useState<Row[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cat, setCat] = useState("all");
-  const [scope, setScope] = useState("all");
-  const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
 
   async function load() {
-    setLoading(true);
     const [e, c] = await Promise.all([
-      supabase.from("expenses").select("*, clients:linked_client(name)").order("monthly_cost", { ascending: false }),
+      supabase.from("expenses").select("*, clients:linked_client(name)").order("name"),
       supabase.from("clients").select("id,name").order("name"),
     ]);
     if (e.error) toast.error(e.error.message);
     setRows((e.data as unknown as Row[]) ?? []);
-    setClients((c.data as unknown as Client[]) ?? []);
+    setClients((c.data as unknown as { id: string; name: string }[]) ?? []);
     setLoading(false);
   }
 
@@ -51,112 +44,92 @@ function Expenses() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const filtered = useMemo(() => {
-    let list = rows;
-    if (cat !== "all") list = list.filter((r) => r.category === cat);
-    if (scope === "business") list = list.filter((r) => !r.linked_client);
-    else if (scope === "client") list = list.filter((r) => !!r.linked_client);
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      list = list.filter((r) => r.name.toLowerCase().includes(s) || (r.clients?.name || "").toLowerCase().includes(s));
-    }
-    return list;
-  }, [rows, cat, scope, q]);
-
-  const totals = useMemo(() => {
-    const monthly = rows.reduce((s, r) => s + Number(r.monthly_cost || 0), 0);
-    const business = rows.filter(r => !r.linked_client).reduce((s, r) => s + Number(r.monthly_cost || 0), 0);
-    const client = monthly - business;
-    return { monthly, business, client };
-  }, [rows]);
+  const total = useMemo(() => rows.reduce((s, r) => s + Number(r.monthly_cost || 0), 0), [rows]);
 
   async function del(r: Row) {
-    if (!confirm(`Delete "${r.name}"?`)) return;
+    if (!confirm(`Delete expense "${r.name}"?`)) return;
     const { error } = await supabase.from("expenses").delete().eq("id", r.id);
-    if (error) toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Expense deleted");
+    load();
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-4">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Expenses</h1>
-        {isAdmin && (
-          <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
-            <Plus className="w-4 h-4" /> New Expense
-          </Button>
-        )}
+    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <h1 className="text-2xl font-semibold">Expenses</h1>
+        <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
+          <Plus className="w-4 h-4" /> New Expense
+        </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <Stat label="Total /mo" value={formatCurrency(totals.monthly)} />
-        <Stat label="Business" value={formatCurrency(totals.business)} />
-        <Stat label="Client" value={formatCurrency(totals.client)} />
+      {/* Total fixed monthly costs */}
+      <div className="rounded-xl border border-border p-5 bg-gradient-to-br from-muted/60 via-card to-card mb-6">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Wallet className="w-4 h-4" /> Total fixed monthly costs
+        </div>
+        <div className="mt-1 text-4xl font-bold">{formatCurrency(total)}</div>
+        <div className="text-sm text-muted-foreground mt-1">
+          {rows.length} expense{rows.length === 1 ? "" : "s"} · business-wide + client-specific
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <Select value={cat} onValueChange={setCat}>
-          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {["Tool", "Directory/Citations", "Subscription", "Other"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={scope} onValueChange={setScope}>
-          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All scopes</SelectItem>
-            <SelectItem value="business">Business-wide</SelectItem>
-            <SelectItem value="client">Client-linked</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Reference cards */}
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+        <Info className="w-3.5 h-3.5" /> Reference (planning only — not included in totals)
       </div>
-      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full mb-4" />
+      <div className="space-y-3 mb-6">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-sm text-muted-foreground">Avg. Website Setup Cost</div>
+          <div className="text-2xl font-bold mt-1">€41 – €75</div>
+          <div className="text-sm text-muted-foreground mt-1">Domain €1-20 + build €30-45 + CookieYes setup €10</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-sm text-muted-foreground">Avg. SEO Setup Cost</div>
+          <div className="text-2xl font-bold mt-1">€20<span className="text-base font-normal text-muted-foreground">/month</span></div>
+          <div className="text-sm text-muted-foreground mt-1">Directory listing €20/month per client — remaining SEO work is manual, no additional tool cost</div>
+        </div>
+      </div>
 
+      {/* Expense cards */}
       {loading ? (
         <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
-      ) : filtered.length === 0 ? (
-        <EmptyState icon={Wallet} title="No expenses" description="Add your recurring monthly costs." />
+      ) : rows.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card">
+          <EmptyState icon={Wallet} title="No expenses" description="Add your recurring monthly costs." />
+        </div>
       ) : (
-        <ul className="space-y-2">
-          {filtered.map((r) => {
+        <div className="rounded-xl border border-border bg-card divide-y divide-border">
+          {rows.map((r) => {
             const color = EXPENSE_CATEGORY_COLORS[r.category] ?? "#B7BCC2";
             return (
-              <li key={r.id} className="rounded-2xl border border-border bg-card p-4">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{r.name}</div>
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className="inline-flex items-center gap-1 text-[11px] rounded-full px-2 py-0.5"
-                        style={{ backgroundColor: `${color}22`, color }}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
-                        {r.category}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {r.clients?.name ? `Linked: ${r.clients.name}` : "Business-wide"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <div className="text-lg font-bold tabular-nums">
-                      {formatCurrency(Number(r.monthly_cost || 0))}
-                      <span className="text-xs font-normal text-muted-foreground">/mo</span>
-                    </div>
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(r); setModalOpen(true); }}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => del(r)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+              <div key={r.id} className="p-4">
+                <div className="font-semibold">{r.name}</div>
+                {r.notes && <div className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{r.notes}</div>}
+                <span
+                  className="inline-block mt-2 px-2 py-0.5 rounded-md text-xs font-medium"
+                  style={{ backgroundColor: `${color}1A`, color }}
+                >
+                  {r.category}
+                </span>
+                <div className="font-semibold mt-2">{formatCurrency(Number(r.monthly_cost || 0))}</div>
+                <div className="text-sm text-muted-foreground mt-0.5">
+                  {r.clients?.name ?? "Business-wide"}
                 </div>
-              </li>
+                {isAdmin && (
+                  <div className="flex justify-end gap-1 mt-1">
+                    <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setModalOpen(true); }}>
+                      <Pencil className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => del(r)}>
+                      <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
 
       <ExpenseModal
@@ -166,15 +139,6 @@ function Expenses() {
         clients={clients}
         onSaved={() => load()}
       />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-3">
-      <div className="text-xs text-muted-foreground truncate">{label}</div>
-      <div className="mt-1 text-base md:text-lg font-bold tabular-nums truncate">{value}</div>
     </div>
   );
 }

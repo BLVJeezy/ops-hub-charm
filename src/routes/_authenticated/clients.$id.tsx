@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { ArrowLeft, Pencil, Phone, Mail, MessageSquarePlus, Plus, Download, Trash2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Pencil, Mail, MapPin, Phone, MessageSquare, Plus, FileText, Trash2, Globe, Search as SearchIcon, StickyNote, History, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge, StageBadge, ActionStatusBadge } from "@/components/StatusBadge";
 import { HealthDot } from "@/components/HealthDot";
@@ -12,9 +11,9 @@ import { ContactLogModal } from "@/components/ContactLogModal";
 import { ActionModal, type ActionRow } from "@/components/ActionModal";
 import { InvoiceModal, type InvoiceRow } from "@/components/InvoiceModal";
 import { formatCurrency, formatDate, daysUntil, daysBetween, durationLabel, todayISO } from "@/lib/format";
-import { clientMRR, clientMonthlyFee } from "@/lib/fees";
+import { clientMonthlyFee } from "@/lib/fees";
 import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
-import { canEditClient, canEditActions, isAdmin } from "@/lib/permissions";
+import { canEditClient, canEditActions, isAdmin as isAdminRole } from "@/lib/permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -22,11 +21,15 @@ export const Route = createFileRoute("/_authenticated/clients/$id")({
   component: ClientDetail,
 });
 
-type StatusLog = { id: string; from_status: string | null; to_status: string; date: string; created_at: string };
-type ContactLog = { id: string; date: string; channel: string; direction: string; note: string; created_at: string };
+type StatusLog = { id: string; from_status: string | null; to_status: string; date: string };
+type ContactLog = { id: string; date: string; channel: string; direction: string; note: string };
 type Action = ActionRow & { id: string };
 type Invoice = InvoiceRow & { id: string; invoice_number: number };
-type Expense = { id: string; name: string; category: string; monthly_cost: number; linked_client: string | null };
+type Expense = { id: string; name: string; monthly_cost: number };
+
+const CHANNEL_ICON: Record<string, string> = {
+  WhatsApp: "💬", Phone: "📞", Email: "✉️", "In person": "🤝", Other: "📝",
+};
 
 function ClientDetail() {
   const { id } = Route.useParams();
@@ -52,7 +55,7 @@ function ClientDetail() {
       supabase.from("contact_log").select("*").eq("client", id).order("date", { ascending: false }),
       supabase.from("actions").select("*").eq("client", id).order("due_date", { ascending: true, nullsFirst: false }),
       supabase.from("invoices").select("*").eq("client", id).order("invoice_number", { ascending: false }),
-      supabase.from("expenses").select("*").eq("linked_client", id),
+      supabase.from("expenses").select("id,name,monthly_cost").eq("linked_client", id),
     ]);
     if (c.error) toast.error(c.error.message);
     setClient((c.data as unknown as ClientRow & { id: string }) ?? null);
@@ -68,9 +71,8 @@ function ClientDetail() {
 
   const canEdit = canEditClient(role, client?.status);
   const canActions = canEditActions(role, client?.status);
-  const admin = isAdmin(role);
+  const admin = isAdminRole(role);
 
-  const mrr = client ? clientMRR(client) : 0;
   const monthlyFee = client ? clientMonthlyFee(client) : 0;
   const clientCosts = useMemo(() => expenses.reduce((s, e) => s + Number(e.monthly_cost || 0), 0), [expenses]);
   const netMargin = monthlyFee - clientCosts;
@@ -78,7 +80,6 @@ function ClientDetail() {
   const outstanding = useMemo(() => invoices.filter((i) => i.status !== "Paid").reduce((s, i) => s + Number(i.total || 0), 0), [invoices]);
   const paidTotal = useMemo(() => invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + Number(i.total || 0), 0), [invoices]);
 
-  // Status history durations (§4.19)
   const statusTimeline = useMemo(() => {
     const entries = statusLog.map((s, idx) => {
       const next = statusLog[idx + 1];
@@ -88,15 +89,21 @@ function ClientDetail() {
     return entries.reverse();
   }, [statusLog]);
 
+  const currentStatusDuration = useMemo(() => {
+    if (statusLog.length > 0) return durationLabel(statusTimeline[0]?.days ?? 0);
+    if (client?.contract_start_date) return durationLabel(daysBetween(client.contract_start_date, todayISO()));
+    return null;
+  }, [statusLog, statusTimeline, client]);
+
   async function markPaid(inv: Invoice) {
     const { error } = await supabase.from("invoices").update({ status: "Paid" } as never).eq("id", inv.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(`Invoice #${inv.invoice_number} marked paid`);
+    toast.success(`Invoice #${inv.invoice_number ?? ""} marked paid`);
     load();
   }
 
   async function deleteInvoice(inv: Invoice) {
-    if (!confirm(`Delete invoice #${inv.invoice_number}?`)) return;
+    if (!confirm(`Delete invoice #${inv.invoice_number ?? ""}?`)) return;
     const { error } = await supabase.from("invoices").delete().eq("id", inv.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Invoice deleted");
@@ -134,272 +141,133 @@ function ClientDetail() {
     );
   }
 
-  return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <Link to="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="w-4 h-4" /> Back to clients
-      </Link>
+  const hasWebsite = !!(client.website_setup_fee || client.website_monthly_fee || client.website_yearly_fee);
+  const hasSeo = client.seo_package && client.seo_package !== "None";
 
-      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
-        <div className="flex items-start gap-3">
-          <HealthDot health={client.health} size={14} />
-          <div>
-            <h1 className="text-2xl font-semibold">{client.name}</h1>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <StatusBadge status={client.status} />
-              {(client.status === "Prospect" || client.status === "Write-off") && <StageBadge stage={client.pipeline_stage} />}
-              <span className="text-xs text-muted-foreground">{client.sector}</span>
-              {client.location && <span className="text-xs text-muted-foreground">· {client.location}</span>}
-            </div>
-          </div>
-        </div>
+  return (
+    <div className="p-4 md:p-6 max-w-3xl mx-auto pb-12">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-4">
+        <Link to="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </Link>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setLogOpen(true)} className="gap-2">
-            <MessageSquarePlus className="w-4 h-4" /> Log contact
+          <Button variant="outline" size="sm" onClick={() => setLogOpen(true)} className="gap-1.5">
+            <MessageSquare className="w-3.5 h-3.5" /> Log Contact
           </Button>
           {canEdit && (
-            <Button onClick={() => setEditOpen(true)} className="gap-2">
-              <Pencil className="w-4 h-4" /> Edit
+            <Button size="sm" onClick={() => setEditOpen(true)} className="gap-1.5">
+              <Pencil className="w-3.5 h-3.5" /> Edit
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Stat label="MRR" value={formatCurrency(mrr)} />
-        <Stat label="Net margin /mo" value={formatCurrency(netMargin)} accent={netMargin < 0 ? "text-destructive" : undefined} />
-        <Stat label="Outstanding" value={formatCurrency(outstanding)} />
-        <Stat label="Paid total" value={formatCurrency(paidTotal)} />
+      {/* Identity */}
+      <div className="flex items-center gap-2 mb-1">
+        <HealthDot health={client.health} />
+        <h1 className="text-2xl font-bold">{client.name}</h1>
+      </div>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <StatusBadge status={client.status} />
+        {(client.status === "Prospect" || client.status === "Write-off") && <StageBadge stage={client.pipeline_stage} />}
+        <span className="text-sm text-muted-foreground">{client.sector}</span>
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices ({invoices.length})</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
-          <TabsTrigger value="actions">Actions ({actions.length})</TabsTrigger>
-          <TabsTrigger value="contact">Contact log ({contactLog.length})</TabsTrigger>
-          <TabsTrigger value="status">Status history ({statusLog.length})</TabsTrigger>
-        </TabsList>
-
-        {/* ===== OVERVIEW ===== */}
-        <TabsContent value="overview" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Panel title="Contact">
-              <Row k="Name" v={client.contact_name} />
-              <Row k="Phone" v={client.contact_phone ? (
-                <span className="flex items-center gap-2">{client.contact_phone}<PhoneButtons phone={client.contact_phone} /></span>
-              ) : null} />
-              <Row k="Email" v={client.contact_email ? (
-                <a href={`mailto:${client.contact_email}`} className="text-primary hover:underline inline-flex items-center gap-1">
-                  <Mail className="w-3 h-3" />{client.contact_email}
-                </a>
-              ) : null} />
-              <Row k="VAT" v={client.vat_number} />
-              <Row k="Billing address" v={client.billing_address} />
-            </Panel>
-
-            <Panel title="Monthly cost & margin">
-              <Row k="Monthly-billed fees" v={formatCurrency(monthlyFee)} />
-              {expenses.map((e) => (
-                <Row key={e.id} k={e.name} v={<span className="text-destructive">−{formatCurrency(e.monthly_cost)}</span>} />
-              ))}
-              {expenses.length === 0 && <Row k="Linked expenses" v={<span className="text-muted-foreground">none</span>} />}
-              <div className="border-t border-border pt-2 mt-2">
-                <Row k="Net margin" v={<span className={netMargin < 0 ? "text-destructive font-semibold" : "font-semibold"}>{formatCurrency(netMargin)}</span>} />
-              </div>
-            </Panel>
-
-            <Panel title="SEO package">
-              <Row k="Package" v={client.seo_package} />
-              <Row k="Billing" v={client.billing_frequency} />
-              <Row k="Monthly" v={client.monthly_fee ? formatCurrency(client.monthly_fee) : null} />
-              <Row k="Yearly" v={client.yearly_fee ? formatCurrency(client.yearly_fee) : null} />
-              <Row k="Setup" v={client.setup_fee ? formatCurrency(client.setup_fee) : null} />
-              <Row k="Start" v={formatDate(client.seo_start_date)} />
-              <Row k="End" v={formatDate(client.seo_end_date)} />
-            </Panel>
-
-            {client.website_needed && (
-              <Panel title="Website">
-                <Row k="Billing" v={client.website_billing_frequency} />
-                <Row k="Setup" v={client.website_setup_fee ? formatCurrency(client.website_setup_fee) : null} />
-                <Row k="Monthly" v={client.website_monthly_fee ? formatCurrency(client.website_monthly_fee) : null} />
-                <Row k="Yearly" v={client.website_yearly_fee ? formatCurrency(client.website_yearly_fee) : null} />
-              </Panel>
-            )}
-
-            <Panel title="Dates">
-              <Row k="Contract start" v={formatDate(client.contract_start_date)} />
-              <Row k="Renewal" v={formatDate(client.renewal_date)} />
-              <Row k="Next follow-up" v={formatDate(client.next_followup_date)} />
-            </Panel>
-
-            {client.writeoff_reason && (
-              <Panel title="Write-off reason" className="border-destructive/50">
-                <p className="text-sm text-destructive">{client.writeoff_reason}</p>
-              </Panel>
-            )}
-
-            {client.notes && (
-              <Panel title="Notes" className="md:col-span-2">
-                <p className="text-sm whitespace-pre-wrap">{client.notes}</p>
-              </Panel>
-            )}
+      {/* Contact card */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2.5 mb-4">
+        {client.contact_phone && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-sm"><Phone className="w-4 h-4 text-muted-foreground" /> {client.contact_phone}</span>
+            <PhoneButtons phone={client.contact_phone} />
           </div>
-        </TabsContent>
+        )}
+        {client.contact_name && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="w-4 text-center text-muted-foreground">👤</span> {client.contact_name}
+          </div>
+        )}
+        {client.contact_email && (
+          <a href={`mailto:${client.contact_email}`} className="flex items-center gap-2 text-sm hover:underline">
+            <Mail className="w-4 h-4 text-muted-foreground" /> {client.contact_email}
+          </a>
+        )}
+        {client.location && (
+          <div className="flex items-center gap-2 text-sm">
+            <MapPin className="w-4 h-4 text-muted-foreground" /> {client.location}
+          </div>
+        )}
+      </div>
 
-        {/* ===== EXPENSES ===== */}
-        <TabsContent value="expenses" className="mt-4">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <Stat label="Monthly-billed fees" value={formatCurrency(monthlyFee)} />
-            <Stat label="Net margin /mo" value={formatCurrency(netMargin)} accent={netMargin < 0 ? "text-destructive" : undefined} />
+      {/* Business details */}
+      <div className="rounded-xl border border-border bg-card p-4 mb-4 space-y-5">
+        {hasWebsite && (
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+              <Globe className="w-4 h-4 text-muted-foreground" /> Website
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <Field k="Billing" v={client.website_billing_frequency} />
+              <Field k="Setup Fee" v={client.website_setup_fee ? formatCurrency(client.website_setup_fee) : "—"} />
+              <Field k="Monthly Fee" v={client.website_monthly_fee ? formatCurrency(client.website_monthly_fee) : "—"} />
+              <Field k="Yearly Fee" v={client.website_yearly_fee ? formatCurrency(client.website_yearly_fee) : "—"} />
+            </div>
           </div>
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
-            {expenses.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground text-center">No expenses linked to this client.</div>
-            ) : expenses.map((e) => (
-              <div key={e.id} className="p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{e.name}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{e.category}</div>
-                </div>
-                <div className="text-sm font-semibold text-destructive shrink-0 tabular-nums">
-                  −{formatCurrency(e.monthly_cost)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
+        )}
 
+        {hasSeo && (
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+              <SearchIcon className="w-4 h-4 text-muted-foreground" /> SEO · {client.seo_package}
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <Field k="Billing" v={client.billing_frequency} />
+              <Field k="Setup Fee" v={client.setup_fee ? formatCurrency(client.setup_fee) : "—"} />
+              <Field k="Monthly Fee" v={client.monthly_fee ? formatCurrency(client.monthly_fee) : "—"} />
+              <Field k="Yearly Fee" v={client.yearly_fee ? formatCurrency(client.yearly_fee) : "—"} />
+              <Field k="SEO Start Date" v={client.seo_start_date ? formatDate(client.seo_start_date) : "—"} />
+              <Field k="SEO End Date" v={client.seo_end_date ? formatDate(client.seo_end_date) : "—"} />
+            </div>
+          </div>
+        )}
 
-        {/* ===== ACTIONS ===== */}
-        <TabsContent value="actions" className="mt-4">
-          <div className="flex justify-end mb-3">
-            {canActions && (
-              <Button size="sm" onClick={() => { setEditingAction(null); setActionOpen(true); }} className="gap-2">
-                <Plus className="w-4 h-4" /> New action
-              </Button>
-            )}
-          </div>
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
-            {actions.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground text-center">No actions yet.</div>
-            ) : actions.map((a) => {
-              const d = daysUntil(a.due_date);
-              const overdue = d !== null && d < 0 && a.status !== "Completed" && a.waiting_period !== "Ongoing";
-              return (
-                <div key={a.id} className="p-4 flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium">{a.action_description}</span>
-                      <ActionStatusBadge status={a.status} />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Due: <span className={overdue ? "text-destructive" : ""}>{formatDate(a.due_date)}{overdue ? ` (${Math.abs(d!)}d overdue)` : ""}</span>
-                      {a.result && <> · Result: <span className="text-foreground">{a.result}</span></>}
-                    </div>
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    {canActions && (
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingAction(a); setActionOpen(true); }}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                    )}
-                    {admin && (
-                      <Button variant="ghost" size="icon" onClick={() => deleteAction(a)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </TabsContent>
+        <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm border-t border-border pt-4">
+          <Field k="Contract Start" v={client.contract_start_date ? formatDate(client.contract_start_date) : "—"} />
+          <Field k="Renewal Date" v={client.renewal_date ? formatDate(client.renewal_date) : "—"} />
+          <Field k="Next Follow-up" v={client.next_followup_date ? formatDate(client.next_followup_date) : "—"} />
+        </div>
 
-        {/* ===== INVOICES ===== */}
-        <TabsContent value="invoices" className="mt-4">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <Stat label="Outstanding" value={formatCurrency(outstanding)} />
-            <Stat label="Paid" value={formatCurrency(paidTotal)} />
+        {client.notes && (
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center gap-2 text-sm font-semibold mb-1.5">
+              <StickyNote className="w-4 h-4 text-muted-foreground" /> Notes
+            </div>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{client.notes}</p>
           </div>
-          <div className="flex justify-end mb-3">
-            {canActions && (
-              <Button size="sm" onClick={() => { setEditingInvoice(null); setInvoiceOpen(true); }} className="gap-2">
-                <Plus className="w-4 h-4" /> New invoice
-              </Button>
-            )}
-          </div>
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
-            {invoices.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground text-center">No invoices yet.</div>
-            ) : invoices.map((inv) => (
-              <div key={inv.id} className="p-4 flex items-center justify-between gap-3 flex-wrap">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">#{inv.invoice_number} · {formatCurrency(inv.total)}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {formatDate(inv.date)} · <span className={
-                      inv.status === "Paid" ? "text-green-400" : inv.status === "Sent" ? "text-amber-400" : "text-muted-foreground"
-                    }>{inv.status}</span>
-                  </div>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" title="Download PDF" onClick={() => pdfFor(inv)}>
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  {canActions && inv.status !== "Paid" && (
-                    <Button variant="ghost" size="icon" title="Mark paid" onClick={() => markPaid(inv)}>
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    </Button>
-                  )}
-                  {canActions && (
-                    <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditingInvoice(inv); setInvoiceOpen(true); }}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                  )}
-                  {admin && (
-                    <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteInvoice(inv)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
+        )}
 
-        {/* ===== CONTACT LOG ===== */}
-        <TabsContent value="contact" className="mt-4">
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
-            {contactLog.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground text-center">No contact entries yet.</div>
-            ) : contactLog.map((c) => (
-              <div key={c.id} className="p-4">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                  <span>{formatDate(c.date)}</span>
-                  <span>·</span>
-                  <span>{c.direction}</span>
-                  <span>·</span>
-                  <span className="inline-flex items-center gap-1">
-                    {c.channel === "Phone" ? <Phone className="w-3 h-3" /> : null}
-                    {c.channel}
-                  </span>
-                </div>
-                <p className="text-sm whitespace-pre-wrap">{c.note}</p>
-              </div>
-            ))}
+        {client.writeoff_reason && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            Write-off reason: {client.writeoff_reason}
           </div>
-        </TabsContent>
+        )}
+      </div>
 
-        {/* ===== STATUS HISTORY ===== */}
-        <TabsContent value="status" className="mt-4">
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
-            {statusTimeline.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground text-center">No status changes yet.</div>
-            ) : statusTimeline.map((s) => (
-              <div key={s.id} className="p-4 flex items-center gap-3 text-sm flex-wrap">
-                <span className="text-xs text-muted-foreground w-24">{formatDate(s.date)}</span>
+      {/* Status history */}
+      <div className="rounded-xl border border-border bg-card p-4 mb-4">
+        <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+          <History className="w-4 h-4 text-muted-foreground" /> Status History
+        </div>
+        {statusTimeline.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No status changes recorded yet.
+            {client.status && currentStatusDuration && <> Currently <span className="text-foreground font-medium">{client.status}</span> for {currentStatusDuration}.</>}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {statusTimeline.map((s) => (
+              <div key={s.id} className="flex items-center gap-2 text-sm flex-wrap">
+                <span className="text-xs text-muted-foreground w-20">{formatDate(s.date)}</span>
                 {s.from_status && <><StatusBadge status={s.from_status} /><span className="text-muted-foreground">→</span></>}
                 <StatusBadge status={s.to_status} />
                 <span className="text-xs text-muted-foreground ml-auto">
@@ -408,8 +276,159 @@ function ClientDetail() {
               </div>
             ))}
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
+
+      {/* Monthly cost & margin */}
+      <div className="rounded-xl border border-border bg-card p-4 mb-6">
+        <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+          <Wallet className="w-4 h-4 text-muted-foreground" /> Monthly Cost & Margin
+        </div>
+        <div className="space-y-2 text-sm">
+          {expenses.map((e) => (
+            <div key={e.id} className="flex justify-between">
+              <span className="text-muted-foreground">{e.name}</span>
+              <span>{formatCurrency(e.monthly_cost)}/mo</span>
+            </div>
+          ))}
+          <div className="flex justify-between border-t border-border pt-2">
+            <span className="text-muted-foreground">Client-specific costs</span>
+            <span className="font-medium">{formatCurrency(clientCosts)}/month</span>
+          </div>
+          <div className="flex items-end justify-between border-t border-border pt-3">
+            <div>
+              <div className="text-muted-foreground">Net Margin</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{formatCurrency(monthlyFee)} fee − {formatCurrency(clientCosts)} costs</div>
+            </div>
+            <span className={`text-2xl font-bold ${netMargin < 0 ? "text-destructive" : ""}`}>{formatCurrency(netMargin)}<span className="text-sm font-normal text-muted-foreground">/mo</span></span>
+          </div>
+        </div>
+      </div>
+
+      {/* INVOICES */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoices</h2>
+        {canActions && (
+          <Button size="sm" variant="outline" onClick={() => { setEditingInvoice(null); setInvoiceOpen(true); }} className="gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Add
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="rounded-xl border border-border bg-card p-3.5">
+          <div className="text-sm text-muted-foreground">Outstanding</div>
+          <div className="text-xl font-bold text-amber-400 mt-0.5">{formatCurrency(outstanding)}</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3.5">
+          <div className="text-sm text-muted-foreground">Paid</div>
+          <div className="text-xl font-bold text-green-400 mt-0.5">{formatCurrency(paidTotal)}</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-border bg-card divide-y divide-border mb-6">
+        {invoices.length === 0 ? (
+          <div className="p-6 text-sm text-muted-foreground text-center">No invoices yet.</div>
+        ) : invoices.map((inv) => {
+          const firstItem = (inv.line_items as LineItem[] | null)?.[0];
+          return (
+            <div key={inv.id} className="p-4">
+              <div className="font-semibold">#{inv.invoice_number ?? "—"}</div>
+              <div className="text-sm text-muted-foreground mt-0.5">{formatDate(inv.date)}</div>
+              {firstItem?.description && <div className="text-sm mt-0.5">{firstItem.description}</div>}
+              <div className="font-semibold mt-1">{formatCurrency(Number(inv.total || 0))}</div>
+              <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs font-medium ${
+                inv.status === "Paid" ? "bg-green-500/15 text-green-400" : inv.status === "Sent" ? "bg-amber-500/15 text-amber-400" : "bg-muted text-muted-foreground"
+              }`}>{inv.status}</span>
+              <div className="flex justify-end items-center gap-1 mt-1">
+                <Button size="icon" variant="ghost" title="Download PDF" onClick={() => pdfFor(inv)}>
+                  <FileText className="w-4 h-4 text-muted-foreground" />
+                </Button>
+                {canActions && inv.status !== "Paid" && (
+                  <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => markPaid(inv)}>Paid</Button>
+                )}
+                {canActions && (
+                  <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingInvoice(inv); setInvoiceOpen(true); }}>
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                )}
+                {admin && (
+                  <Button size="icon" variant="ghost" title="Delete" onClick={() => deleteInvoice(inv)}>
+                    <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ACTIONS */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</h2>
+        {canActions && (
+          <Button size="sm" variant="outline" onClick={() => { setEditingAction(null); setActionOpen(true); }} className="gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Add
+          </Button>
+        )}
+      </div>
+      <div className="rounded-xl border border-border bg-card divide-y divide-border mb-6">
+        {actions.length === 0 ? (
+          <div className="p-6 text-sm text-muted-foreground text-center">No actions yet.</div>
+        ) : actions.map((a) => {
+          const d = daysUntil(a.due_date);
+          const overdue = d !== null && d < 0 && a.status !== "Completed" && a.waiting_period !== "Ongoing";
+          return (
+            <div key={a.id} className="p-4">
+              <div className="font-medium">{a.action_description}</div>
+              <div className="text-sm text-muted-foreground mt-0.5">
+                {a.start_date && <>Start: {formatDate(a.start_date)}<br /></>}
+                {a.waiting_period}
+              </div>
+              <div className="mt-1.5"><ActionStatusBadge status={a.status} /></div>
+              {a.due_date && (
+                <div className={`text-sm mt-1.5 ${overdue ? "text-destructive font-medium" : ""}`}>
+                  {formatDate(a.due_date)}{overdue ? ` (${Math.abs(d!)}d overdue)` : ""}
+                </div>
+              )}
+              <div className="text-sm text-muted-foreground mt-0.5">{a.result || "—"}</div>
+              <div className="flex justify-end gap-1">
+                {canActions && (
+                  <Button size="icon" variant="ghost" onClick={() => { setEditingAction(a); setActionOpen(true); }}>
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                )}
+                {admin && (
+                  <Button size="icon" variant="ghost" onClick={() => deleteAction(a)}>
+                    <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CONTACT LOG */}
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Contact Log</h2>
+      <div className="rounded-xl border border-border bg-card divide-y divide-border">
+        {contactLog.length === 0 ? (
+          <div className="p-8 text-center">
+            <MessageSquare className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+            <p className="font-medium">No contact logged</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Log your outreach and responses here.</p>
+          </div>
+        ) : contactLog.map((c) => (
+          <div key={c.id} className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <span>{CHANNEL_ICON[c.channel] ?? "📝"}</span>
+              <span>{c.channel}</span>
+              <span>·</span>
+              <span>{c.direction}</span>
+              <span className="ml-auto">{formatDate(c.date)}</span>
+            </div>
+            <p className="text-sm whitespace-pre-wrap">{c.note}</p>
+          </div>
+        ))}
+      </div>
 
       <ClientModal open={editOpen} onOpenChange={setEditOpen} initial={client} onSaved={() => load()} />
       <ContactLogModal clientId={id} open={logOpen} onOpenChange={setLogOpen} onSaved={() => load()} />
@@ -430,29 +449,11 @@ function ClientDetail() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function Field({ k, v }: { k: string; v: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
-      <div className={`mt-1 text-xl font-semibold ${accent ?? ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function Panel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-xl border border-border bg-card p-4 ${className ?? ""}`}>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground mb-3">{title}</div>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: React.ReactNode }) {
-  return (
-    <div className="flex justify-between gap-4 text-sm">
-      <span className="text-muted-foreground">{k}</span>
-      <span className="text-right">{v || <span className="text-muted-foreground">—</span>}</span>
+    <div>
+      <div className="text-xs text-muted-foreground">{k}</div>
+      <div className="mt-0.5">{v || "—"}</div>
     </div>
   );
 }

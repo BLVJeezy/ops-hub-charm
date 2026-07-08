@@ -24,6 +24,10 @@ type Row = InvoiceRow & {
   sent_at?: string | null;
   last_reminder_at?: string | null;
   reminder_count?: number | null;
+  email_status?: string | null;
+  delivered_at?: string | null;
+  opened_at?: string | null;
+  bounced_at?: string | null;
 };
 type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null };
 
@@ -196,12 +200,27 @@ function Invoices() {
                   </div>
                 </div>
               </div>
-              {(r.sent_at || (r.reminder_count ?? 0) > 0) && (
+              {(r.sent_at || (r.reminder_count ?? 0) > 0 || r.email_status) && (
                 <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-3 text-xs text-muted-foreground">
                   {r.sent_at && (
                     <span className="inline-flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       Verstuurd {formatDate(r.sent_at)}
+                    </span>
+                  )}
+                  {r.delivered_at && (
+                    <span className="inline-flex items-center gap-1 text-emerald-400">
+                      ✓ Afgeleverd {formatDate(r.delivered_at)}
+                    </span>
+                  )}
+                  {r.opened_at && (
+                    <span className="inline-flex items-center gap-1 text-sky-400">
+                      👁 Geopend {formatDate(r.opened_at)}
+                    </span>
+                  )}
+                  {r.bounced_at && (
+                    <span className="inline-flex items-center gap-1 text-red-400">
+                      ⚠ Bounced {formatDate(r.bounced_at)}
                     </span>
                   )}
                   {(r.reminder_count ?? 0) > 0 && (

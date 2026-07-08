@@ -95,29 +95,17 @@ function Invoices() {
     });
   }
 
+  const sendMailFn = useServerFn(sendInvoiceMail);
+
   async function sendInvoiceEmail(r: Row) {
     const client = clients.find((c) => c.id === r.client);
     const email = client?.contact_email?.trim();
     if (!email) { toast.error("Klant heeft geen e-mailadres"); return; }
     const t = toast.loading(`Versturen naar ${email}…`);
     try {
-      await sendTransactionalEmail({
-        templateName: "invoice-email",
-        recipientEmail: email,
-        idempotencyKey: `invoice-${r.id}-initial`,
-        templateData: {
-          clientName: r.client_name || client?.name || "klant",
-          invoiceNumber: r.invoice_number,
-          total: formatCurrency(Number(r.total || 0)),
-          date: r.date,
-          isReminder: false,
-        },
-      });
-      await supabase.from("invoices").update({
-        status: "Sent",
-        sent_at: new Date().toISOString(),
-      } as never).eq("id", r.id);
+      await sendMailFn({ data: { invoiceId: r.id, isReminder: false } });
       toast.success(`Factuur verstuurd naar ${email}`, { id: t });
+      load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Versturen mislukt", { id: t });
     }

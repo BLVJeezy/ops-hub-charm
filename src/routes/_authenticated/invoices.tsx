@@ -11,7 +11,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { sendTransactionalEmail } from "@/lib/email/send";
+import { useServerFn } from "@tanstack/react-start";
+import { sendInvoiceMail } from "@/lib/invoice-send.functions";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,
@@ -23,6 +24,10 @@ type Row = InvoiceRow & {
   sent_at?: string | null;
   last_reminder_at?: string | null;
   reminder_count?: number | null;
+  email_status?: string | null;
+  delivered_at?: string | null;
+  opened_at?: string | null;
+  bounced_at?: string | null;
 };
 type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null };
 
@@ -94,29 +99,17 @@ function Invoices() {
     });
   }
 
+  const sendMailFn = useServerFn(sendInvoiceMail);
+
   async function sendInvoiceEmail(r: Row) {
     const client = clients.find((c) => c.id === r.client);
     const email = client?.contact_email?.trim();
     if (!email) { toast.error("Klant heeft geen e-mailadres"); return; }
     const t = toast.loading(`Versturen naar ${email}…`);
     try {
-      await sendTransactionalEmail({
-        templateName: "invoice-email",
-        recipientEmail: email,
-        idempotencyKey: `invoice-${r.id}-initial`,
-        templateData: {
-          clientName: r.client_name || client?.name || "klant",
-          invoiceNumber: r.invoice_number,
-          total: formatCurrency(Number(r.total || 0)),
-          date: r.date,
-          isReminder: false,
-        },
-      });
-      await supabase.from("invoices").update({
-        status: "Sent",
-        sent_at: new Date().toISOString(),
-      } as never).eq("id", r.id);
+      await sendMailFn({ data: { invoiceId: r.id, isReminder: false } });
       toast.success(`Factuur verstuurd naar ${email}`, { id: t });
+      load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Versturen mislukt", { id: t });
     }
@@ -207,12 +200,27 @@ function Invoices() {
                   </div>
                 </div>
               </div>
-              {(r.sent_at || (r.reminder_count ?? 0) > 0) && (
+              {(r.sent_at || (r.reminder_count ?? 0) > 0 || r.email_status) && (
                 <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-3 text-xs text-muted-foreground">
                   {r.sent_at && (
                     <span className="inline-flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       Verstuurd {formatDate(r.sent_at)}
+                    </span>
+                  )}
+                  {r.delivered_at && (
+                    <span className="inline-flex items-center gap-1 text-emerald-400">
+                      ✓ Afgeleverd {formatDate(r.delivered_at)}
+                    </span>
+                  )}
+                  {r.opened_at && (
+                    <span className="inline-flex items-center gap-1 text-sky-400">
+                      👁 Geopend {formatDate(r.opened_at)}
+                    </span>
+                  )}
+                  {r.bounced_at && (
+                    <span className="inline-flex items-center gap-1 text-red-400">
+                      ⚠ Bounced {formatDate(r.bounced_at)}
                     </span>
                   )}
                   {(r.reminder_count ?? 0) > 0 && (

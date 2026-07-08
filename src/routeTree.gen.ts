@@ -29,6 +29,7 @@ import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authentica
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as ApiPublicHooksResendRouteImport } from './routes/api/public/hooks/resend'
 import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api/public/hooks/invoice-reminders'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -136,6 +137,11 @@ const LovableEmailQueueProcessRoute =
     path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksResendRoute = ApiPublicHooksResendRouteImport.update({
+  id: '/api/public/hooks/resend',
+  path: '/api/public/hooks/resend',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksInvoiceRemindersRoute =
   ApiPublicHooksInvoiceRemindersRouteImport.update({
     id: '/api/public/hooks/invoice-reminders',
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
+  '/api/public/hooks/resend': typeof ApiPublicHooksResendRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
+  '/api/public/hooks/resend': typeof ApiPublicHooksResendRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
+  '/api/public/hooks/resend': typeof ApiPublicHooksResendRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/clients/'
     | '/api/public/hooks/invoice-reminders'
+    | '/api/public/hooks/resend'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/clients'
     | '/api/public/hooks/invoice-reminders'
+    | '/api/public/hooks/resend'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/_authenticated/clients/'
     | '/api/public/hooks/invoice-reminders'
+    | '/api/public/hooks/resend'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -288,6 +300,7 @@ export interface RootRouteChildren {
   ApiPublicTestResendRoute: typeof ApiPublicTestResendRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicHooksInvoiceRemindersRoute: typeof ApiPublicHooksInvoiceRemindersRoute
+  ApiPublicHooksResendRoute: typeof ApiPublicHooksResendRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
@@ -435,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/resend': {
+      id: '/api/public/hooks/resend'
+      path: '/api/public/hooks/resend'
+      fullPath: '/api/public/hooks/resend'
+      preLoaderRoute: typeof ApiPublicHooksResendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/invoice-reminders': {
       id: '/api/public/hooks/invoice-reminders'
       path: '/api/public/hooks/invoice-reminders'
@@ -492,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTestResendRoute: ApiPublicTestResendRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicHooksInvoiceRemindersRoute: ApiPublicHooksInvoiceRemindersRoute,
+  ApiPublicHooksResendRoute: ApiPublicHooksResendRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,

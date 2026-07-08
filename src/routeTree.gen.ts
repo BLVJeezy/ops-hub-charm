@@ -24,6 +24,7 @@ import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedActionPlannerRouteImport } from './routes/_authenticated/action-planner'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicTestResendRouteImport } from './routes/api/public/test-resend'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -107,6 +108,11 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTestResendRoute = ApiPublicTestResendRouteImport.update({
+  id: '/api/public/test-resend',
+  path: '/api/public/test-resend',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedClientsIdRoute = AuthenticatedClientsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof AuthenticatedSearchRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
+  '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AuthenticatedIndexRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
+  '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
+  '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/email/unsubscribe'
     | '/clients/$id'
+    | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients/'
     | '/api/public/hooks/invoice-reminders'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/'
     | '/clients/$id'
+    | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients'
     | '/api/public/hooks/invoice-reminders'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/_authenticated/'
     | '/_authenticated/clients/$id'
+    | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/_authenticated/clients/'
     | '/api/public/hooks/invoice-reminders'
@@ -273,6 +285,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  ApiPublicTestResendRoute: typeof ApiPublicTestResendRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicHooksInvoiceRemindersRoute: typeof ApiPublicHooksInvoiceRemindersRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -387,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/test-resend': {
+      id: '/api/public/test-resend'
+      path: '/api/public/test-resend'
+      fullPath: '/api/public/test-resend'
+      preLoaderRoute: typeof ApiPublicTestResendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/clients/$id': {
       id: '/_authenticated/clients/$id'
       path: '/$id'
@@ -469,6 +489,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  ApiPublicTestResendRoute: ApiPublicTestResendRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicHooksInvoiceRemindersRoute: ApiPublicHooksInvoiceRemindersRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,

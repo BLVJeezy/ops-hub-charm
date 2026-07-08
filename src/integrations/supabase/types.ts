@@ -388,18 +388,24 @@ export type Database = {
       }
       invoices: {
         Row: {
+          bounced_at: string | null
           client: string | null
           client_address: string | null
           client_name: string | null
           client_vat_number: string | null
+          complained_at: string | null
           created_at: string
           created_by: string | null
           date: string
+          delivered_at: string | null
+          email_status: string | null
           id: string
           invoice_number: number | null
           last_reminder_at: string | null
           line_items: Json
+          opened_at: string | null
           reminder_count: number
+          resend_message_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           total: number
@@ -407,18 +413,24 @@ export type Database = {
           vat_note: string | null
         }
         Insert: {
+          bounced_at?: string | null
           client?: string | null
           client_address?: string | null
           client_name?: string | null
           client_vat_number?: string | null
+          complained_at?: string | null
           created_at?: string
           created_by?: string | null
           date: string
+          delivered_at?: string | null
+          email_status?: string | null
           id?: string
           invoice_number?: number | null
           last_reminder_at?: string | null
           line_items?: Json
+          opened_at?: string | null
           reminder_count?: number
+          resend_message_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number
@@ -426,18 +438,24 @@ export type Database = {
           vat_note?: string | null
         }
         Update: {
+          bounced_at?: string | null
           client?: string | null
           client_address?: string | null
           client_name?: string | null
           client_vat_number?: string | null
+          complained_at?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
+          delivered_at?: string | null
+          email_status?: string | null
           id?: string
           invoice_number?: number | null
           last_reminder_at?: string | null
           line_items?: Json
+          opened_at?: string | null
           reminder_count?: number
+          resend_message_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number

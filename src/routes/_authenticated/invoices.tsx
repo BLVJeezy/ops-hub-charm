@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Download, Pencil } from "lucide-react";
+import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,13 +11,20 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { sendTransactionalEmail } from "@/lib/email/send";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,
 });
 
-type Row = InvoiceRow & { id: string; invoice_number: number };
-type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null };
+type Row = InvoiceRow & {
+  id: string;
+  invoice_number: number;
+  sent_at?: string | null;
+  last_reminder_at?: string | null;
+  reminder_count?: number | null;
+};
+type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null };
 
 function Invoices() {
   const { role } = useAuth();
@@ -34,7 +41,7 @@ function Invoices() {
     setLoading(true);
     const [i, c] = await Promise.all([
       supabase.from("invoices").select("*").order("invoice_number", { ascending: false }),
-      supabase.from("clients").select("id,name,billing_address,vat_number").order("name"),
+      supabase.from("clients").select("id,name,billing_address,vat_number,contact_email").order("name"),
     ]);
     if (i.error) toast.error(i.error.message);
     setRows((i.data as unknown as Row[]) ?? []);
@@ -85,6 +92,34 @@ function Invoices() {
       vat_note: r.vat_note,
       total: Number(r.total || 0),
     });
+  }
+
+  async function sendInvoiceEmail(r: Row) {
+    const client = clients.find((c) => c.id === r.client);
+    const email = client?.contact_email?.trim();
+    if (!email) { toast.error("Klant heeft geen e-mailadres"); return; }
+    const t = toast.loading(`Versturen naar ${email}…`);
+    try {
+      await sendTransactionalEmail({
+        templateName: "invoice-email",
+        recipientEmail: email,
+        idempotencyKey: `invoice-${r.id}-initial`,
+        templateData: {
+          clientName: r.client_name || client?.name || "klant",
+          invoiceNumber: r.invoice_number,
+          total: formatCurrency(Number(r.total || 0)),
+          date: r.date,
+          isReminder: false,
+        },
+      });
+      await supabase.from("invoices").update({
+        status: "Sent",
+        sent_at: new Date().toISOString(),
+      } as never).eq("id", r.id);
+      toast.success(`Factuur verstuurd naar ${email}`, { id: t });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Versturen mislukt", { id: t });
+    }
   }
 
   const counts = { All: rows.length, Draft: rows.filter(r => r.status === "Draft").length, Sent: rows.filter(r => r.status === "Sent").length, Paid: rows.filter(r => r.status === "Paid").length };
@@ -156,6 +191,11 @@ function Invoices() {
                     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusColor[r.status] ?? "bg-muted"}`}>{r.status}</span>
                   )}
                   <div className="flex gap-1">
+                    {isAdmin && r.status !== "Paid" && (
+                      <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => sendInvoiceEmail(r)} title="Verstuur factuur per e-mail">
+                        <Send className="w-3.5 h-3.5" /> {r.sent_at ? "Opnieuw" : "Verstuur"}
+                      </Button>
+                    )}
                     <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => downloadPdf(r)} title="Download PDF">
                       <Download className="w-4 h-4" />
                     </Button>
@@ -167,6 +207,23 @@ function Invoices() {
                   </div>
                 </div>
               </div>
+              {(r.sent_at || (r.reminder_count ?? 0) > 0) && (
+                <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  {r.sent_at && (
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Verstuurd {formatDate(r.sent_at)}
+                    </span>
+                  )}
+                  {(r.reminder_count ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <Bell className="w-3.5 h-3.5 text-amber-400" />
+                      {r.reminder_count} herinnering{(r.reminder_count ?? 0) > 1 ? "en" : ""}
+                      {r.last_reminder_at && ` · laatst ${formatDate(r.last_reminder_at)}`}
+                    </span>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

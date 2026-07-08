@@ -11,7 +11,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { sendTransactionalEmail } from "@/lib/email/send";
+import { useServerFn } from "@tanstack/react-start";
+import { sendInvoiceMail } from "@/lib/invoice-send.functions";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,

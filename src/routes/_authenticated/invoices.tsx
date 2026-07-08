@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Download, Pencil } from "lucide-react";
+import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,13 +11,20 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { sendTransactionalEmail } from "@/lib/email/send";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,
 });
 
-type Row = InvoiceRow & { id: string; invoice_number: number };
-type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null };
+type Row = InvoiceRow & {
+  id: string;
+  invoice_number: number;
+  sent_at?: string | null;
+  last_reminder_at?: string | null;
+  reminder_count?: number | null;
+};
+type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null };
 
 function Invoices() {
   const { role } = useAuth();
@@ -34,7 +41,7 @@ function Invoices() {
     setLoading(true);
     const [i, c] = await Promise.all([
       supabase.from("invoices").select("*").order("invoice_number", { ascending: false }),
-      supabase.from("clients").select("id,name,billing_address,vat_number").order("name"),
+      supabase.from("clients").select("id,name,billing_address,vat_number,contact_email").order("name"),
     ]);
     if (i.error) toast.error(i.error.message);
     setRows((i.data as unknown as Row[]) ?? []);

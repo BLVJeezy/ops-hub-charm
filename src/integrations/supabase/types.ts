@@ -397,7 +397,10 @@ export type Database = {
           date: string
           id: string
           invoice_number: number | null
+          last_reminder_at: string | null
           line_items: Json
+          reminder_count: number
+          sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           total: number
           updated_at: string
@@ -413,7 +416,10 @@ export type Database = {
           date: string
           id?: string
           invoice_number?: number | null
+          last_reminder_at?: string | null
           line_items?: Json
+          reminder_count?: number
+          sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number
           updated_at?: string
@@ -429,7 +435,10 @@ export type Database = {
           date?: string
           id?: string
           invoice_number?: number | null
+          last_reminder_at?: string | null
           line_items?: Json
+          reminder_count?: number
+          sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number
           updated_at?: string

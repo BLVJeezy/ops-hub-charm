@@ -278,7 +278,8 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           payload: {
             message_id: messageId,
             to: effectiveRecipient,
-            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            from: `Solyn Global <jason@${FROM_DOMAIN}>`,
+            reply_to: `jason@${FROM_DOMAIN}`,
             sender_domain: SENDER_DOMAIN,
             subject: resolvedSubject,
             html,
@@ -290,6 +291,7 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
             queued_at: new Date().toISOString(),
           },
         })
+        void SITE_NAME;
 
         if (enqueueError) {
           console.error('Failed to enqueue email', {

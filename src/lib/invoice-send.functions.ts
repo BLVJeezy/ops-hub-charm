@@ -61,7 +61,7 @@ export const sendInvoiceMail = createServerFn({ method: 'POST' })
       clientName: inv.client_name || clientRow?.name || 'klant',
       clientCompany: clientRow?.name || inv.client_name || '',
       clientAddress: inv.client_address || clientRow?.billing_address || '',
-      invoiceNumber: inv.invoice_number,
+      invoiceNumber: inv.invoice_number ?? undefined,
       date: fmtDate(inv.date),
       vatNumber: inv.client_vat_number || clientRow?.vat_number || '',
       items,

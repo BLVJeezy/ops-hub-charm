@@ -36,6 +36,21 @@ interface Props {
 const DEFAULT_LOGO =
   'https://solyn22.lovable.app/__l5e/assets-v1/092540db-660e-4b68-a74f-63b871c46f1d/solyn-logo.png'
 
+function summarizeItems(items?: LineItem[] | Array<{ description?: string }>): string {
+  if (!Array.isArray(items) || items.length === 0) return ''
+  const parts = Array.from(
+    new Set(
+      items
+        .map((i) => (i?.description || '').trim())
+        .filter(Boolean)
+    )
+  )
+  if (parts.length === 0) return ''
+  let summary = parts.join(', ')
+  if (summary.length > 45) summary = summary.slice(0, 42).trimEnd() + '…'
+  return summary
+}
+
 const InvoiceEmail = ({
   clientName = 'klant',
   clientCompany = '',
@@ -161,10 +176,13 @@ const InvoiceEmail = ({
 
 export const template = {
   component: InvoiceEmail,
-  subject: (d: Record<string, any>) =>
-    d?.isReminder
-      ? `Herinnering: factuur #${d?.invoiceNumber ?? ''} — Solyn Global`
-      : `Factuur #${d?.invoiceNumber ?? ''} — Solyn Global`,
+  subject: (d: Record<string, any>) => {
+    const summary = summarizeItems(d?.items)
+    const suffix = summary ? ` — ${summary}` : ''
+    return d?.isReminder
+      ? `Herinnering: factuur #${d?.invoiceNumber ?? ''}${suffix} — Solyn Global`
+      : `Factuur #${d?.invoiceNumber ?? ''}${suffix} — Solyn Global`
+  },
   displayName: 'Invoice email',
   previewData: {
     clientName: 'Riory',

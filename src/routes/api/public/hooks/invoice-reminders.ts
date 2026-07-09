@@ -93,6 +93,15 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
               ? invoiceTemplate.subject(templateData)
               : invoiceTemplate.subject
 
+          const { buildInvoicePdfBase64, invoicePdfInputFromRow } = await import('@/lib/invoice-pdf.server')
+          const pdfBase64 = await buildInvoicePdfBase64(
+            invoicePdfInputFromRow(inv as never, {
+              name: client?.name,
+              billing_address: client?.billing_address,
+              vat_number: client?.vat_number,
+            }),
+          )
+
           const res = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -106,6 +115,12 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
               subject,
               html,
               text,
+              attachments: [
+                {
+                  filename: `Factuur-${inv.invoice_number}.pdf`,
+                  content: pdfBase64,
+                },
+              ],
               tags: [
                 { name: 'invoice_id', value: String(inv.id) },
                 { name: 'kind', value: 'reminder' },

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2 } from "lucide-react";
+import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -101,6 +101,14 @@ function Invoices() {
 
   const sendMailFn = useServerFn(sendInvoiceMail);
 
+  async function deleteInvoiceRow(r: Row) {
+    if (!confirm(`Delete invoice #${r.invoice_number ?? ""}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("invoices").delete().eq("id", r.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Invoice deleted");
+    load();
+  }
+
   async function sendInvoiceEmail(r: Row) {
     const client = clients.find((c) => c.id === r.client);
     const email = client?.contact_email?.trim();
@@ -195,6 +203,11 @@ function Invoices() {
                     {isAdmin && (
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
                         <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => deleteInvoiceRow(r)} title="Delete">
+                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
                       </Button>
                     )}
                   </div>

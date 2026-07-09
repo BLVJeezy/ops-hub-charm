@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { ArrowLeft, Pencil, Mail, MapPin, Phone, MessageSquare, Plus, FileText, Trash2, Globe, Search as SearchIcon, StickyNote, History, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ const CHANNEL_ICON: Record<string, string> = {
 function ClientDetail() {
   const { id } = Route.useParams();
   const { role } = useAuth();
+  const navigate = useNavigate();
   const [client, setClient] = useState<(ClientRow & { id: string }) | null>(null);
   const [statusLog, setStatusLog] = useState<StatusLog[]>([]);
   const [contactLog, setContactLog] = useState<ContactLog[]>([]);
@@ -102,6 +103,18 @@ function ClientDetail() {
     load();
   }
 
+  async function deleteClient() {
+    if (!client) return;
+    const ok = confirm(
+      `Delete ${client.name}? This permanently deletes their Actions and Contact Log history. Invoices and expenses linked to this client will remain but become unlinked. This cannot be undone.`
+    );
+    if (!ok) return;
+    const { error } = await supabase.from("clients").delete().eq("id", client.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${client.name} deleted`);
+    navigate({ to: "/clients" });
+  }
+
   async function deleteInvoice(inv: Invoice) {
     if (!confirm(`Delete invoice #${inv.invoice_number ?? ""}?`)) return;
     const { error } = await supabase.from("invoices").delete().eq("id", inv.id);
@@ -158,6 +171,11 @@ function ClientDetail() {
           {canEdit && (
             <Button size="sm" onClick={() => setEditOpen(true)} className="gap-1.5">
               <Pencil className="w-3.5 h-3.5" /> Edit
+            </Button>
+          )}
+          {admin && (
+            <Button size="sm" variant="outline" onClick={deleteClient} className="gap-1.5 text-destructive hover:bg-destructive/10">
+              <Trash2 className="w-3.5 h-3.5" /> Delete
             </Button>
           )}
         </div>

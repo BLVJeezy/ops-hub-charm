@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import logoAsset from "@/assets/solyn-logo.png.asset.json";
 import { COMPANY } from "./constants";
 import { formatCurrency, formatDate } from "./format";

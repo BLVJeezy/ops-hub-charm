@@ -26,6 +26,7 @@ type ContactLog = { id: string; date: string; channel: string; direction: string
 type Action = ActionRow & { id: string };
 type Invoice = InvoiceRow & { id: string; invoice_number: number };
 type Expense = { id: string; name: string; monthly_cost: number };
+type ClientDocument = { id: string; file_name: string; storage_path: string; file_size: number | null; content_type: string | null; created_at: string };
 
 const CHANNEL_ICON: Record<string, string> = {
   WhatsApp: "💬", Phone: "📞", Email: "✉️", "In person": "🤝", Other: "📝",
@@ -41,6 +42,8 @@ function ClientDetail() {
   const [actions, setActions] = useState<Action[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [documents, setDocuments] = useState<ClientDocument[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [actionOpen, setActionOpen] = useState(false);
@@ -50,13 +53,14 @@ function ClientDetail() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [c, s, l, a, i, e] = await Promise.all([
+    const [c, s, l, a, i, e, d] = await Promise.all([
       supabase.from("clients").select("*").eq("id", id).maybeSingle(),
       supabase.from("client_status_log").select("*").eq("client", id).order("date", { ascending: true }),
       supabase.from("contact_log").select("*").eq("client", id).order("date", { ascending: false }),
       supabase.from("actions").select("*").eq("client", id).order("due_date", { ascending: true, nullsFirst: false }),
       supabase.from("invoices").select("*").eq("client", id).order("invoice_number", { ascending: false }),
       supabase.from("expenses").select("id,name,monthly_cost").eq("linked_client", id),
+      supabase.from("client_documents").select("*").eq("client", id).order("created_at", { ascending: false }),
     ]);
     if (c.error) toast.error(c.error.message);
     setClient((c.data as unknown as ClientRow & { id: string }) ?? null);
@@ -65,6 +69,7 @@ function ClientDetail() {
     setActions((a.data as unknown as Action[]) ?? []);
     setInvoices((i.data as unknown as Invoice[]) ?? []);
     setExpenses((e.data as unknown as Expense[]) ?? []);
+    setDocuments((d.data as unknown as ClientDocument[]) ?? []);
     setLoading(false);
   }, [id]);
 
@@ -113,6 +118,43 @@ function ClientDetail() {
     if (error) { toast.error(error.message); return; }
     toast.success(`${client.name} deleted`);
     navigate({ to: "/clients" });
+  }
+
+  async function uploadDocument(files: FileList | null) {
+    if (!files || files.length === 0 || !client) return;
+    setUploading(true);
+    for (const file of Array.from(files)) {
+      const path = `${client.id}/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage.from("client-documents").upload(path, file);
+      if (upErr) { toast.error(`${file.name}: ${upErr.message}`); continue; }
+      const { error: dbErr } = await supabase.from("client_documents").insert({
+        client: client.id,
+        file_name: file.name,
+        storage_path: path,
+        file_size: file.size,
+        content_type: file.type || null,
+      });
+      if (dbErr) toast.error(dbErr.message);
+    }
+    setUploading(false);
+    toast.success("Document(en) geüpload");
+    load();
+  }
+
+  async function downloadDocument(doc: ClientDocument) {
+    const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(doc.storage_path, 60);
+    if (error || !data) { toast.error(error?.message ?? "Kon link niet aanmaken"); return; }
+    window.open(data.signedUrl, "_blank");
+  }
+
+  async function deleteDocument(doc: ClientDocument) {
+    if (!confirm(`"${doc.file_name}" verwijderen?`)) return;
+    const { error: sErr } = await supabase.storage.from("client-documents").remove([doc.storage_path]);
+    if (sErr) { toast.error(sErr.message); return; }
+    const { error: dErr } = await supabase.from("client_documents").delete().eq("id", doc.id);
+    if (dErr) { toast.error(dErr.message); return; }
+    toast.success("Document verwijderd");
+    load();
   }
 
   async function deleteInvoice(inv: Invoice) {
@@ -448,7 +490,48 @@ function ClientDetail() {
         ))}
       </div>
 
-      <ClientModal open={editOpen} onOpenChange={setEditOpen} initial={client} onSaved={() => load()} />
+      {/* REPORTS & DOCUMENTS */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reports &amp; Documents</h2>
+        <label className={`text-xs font-medium px-3 py-1.5 rounded-lg border border-border cursor-pointer hover:bg-accent ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+          {uploading ? "Uploading…" : "+ Upload"}
+          <input
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => uploadDocument(e.target.files)}
+            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.csv,.xlsx"
+          />
+        </label>
+      </div>
+      <div className="rounded-xl border border-border bg-card divide-y divide-border mb-6">
+        {documents.length === 0 ? (
+          <div className="p-8 text-center">
+            <FileText className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+            <p className="font-medium">No documents yet</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Upload SEO reports, PDFs, or screenshots for this client.</p>
+          </div>
+        ) : documents.map((doc) => (
+          <div key={doc.id} className="p-3.5 flex items-center gap-3">
+            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="min-w-0 flex-1">
+              <button onClick={() => downloadDocument(doc)} className="text-sm font-medium truncate hover:underline text-left block">
+                {doc.file_name}
+              </button>
+              <div className="text-xs text-muted-foreground">
+                {doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB · ` : ""}{formatDate(doc.created_at)}
+              </div>
+            </div>
+            {admin && (
+              <Button size="icon" variant="ghost" onClick={() => deleteDocument(doc)}>
+                <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+
+
       <ContactLogModal clientId={id} open={logOpen} onOpenChange={setLogOpen} onSaved={() => load()} />
       <ActionModal
         open={actionOpen} onOpenChange={setActionOpen}

@@ -123,10 +123,11 @@ function ClientDetail() {
   async function uploadDocument(files: FileList | null) {
     if (!files || files.length === 0 || !client) return;
     setUploading(true);
+    let successCount = 0;
     for (const file of Array.from(files)) {
       const path = `${client.id}/${Date.now()}-${file.name}`;
       const { error: upErr } = await supabase.storage.from("client-documents").upload(path, file);
-      if (upErr) { toast.error(`${file.name}: ${upErr.message}`); continue; }
+      if (upErr) { toast.error(`Upload mislukt (${file.name}): ${upErr.message}`); continue; }
       const { error: dbErr } = await supabase.from("client_documents").insert({
         client: client.id,
         file_name: file.name,
@@ -134,10 +135,15 @@ function ClientDetail() {
         file_size: file.size,
         content_type: file.type || null,
       });
-      if (dbErr) toast.error(dbErr.message);
+      if (dbErr) {
+        toast.error(`Opgeslagen bestand kon niet geregistreerd worden (${file.name}): ${dbErr.message}`);
+        await supabase.storage.from("client-documents").remove([path]);
+        continue;
+      }
+      successCount++;
     }
     setUploading(false);
-    toast.success("Document(en) geüpload");
+    if (successCount > 0) toast.success(`${successCount} document(en) geüpload`);
     load();
   }
 

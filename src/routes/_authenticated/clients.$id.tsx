@@ -625,12 +625,12 @@ function DocumentEditRow({
   const [title, setTitle] = useState(doc.title ?? doc.file_name);
   const [date, setDate] = useState(doc.document_date ?? "");
   return (
-    <div className="mt-3 pl-7 flex flex-col sm:flex-row gap-2 sm:items-center">
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel" className="h-8 text-sm flex-1" />
-      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 text-sm sm:w-40" />
+    <div className="mt-3 pl-0 sm:pl-7 flex flex-col gap-2">
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel" className="text-sm w-full" />
+      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="text-sm w-full" />
       <div className="flex gap-2">
-        <Button size="sm" className="h-8" onClick={() => onSave(doc.id, title, date)}>Save</Button>
-        <Button size="sm" variant="ghost" className="h-8" onClick={onCancel}>Cancel</Button>
+        <Button size="sm" onClick={() => onSave(doc.id, title, date)}>Save</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );

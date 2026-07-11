@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { ArrowLeft, Pencil, Mail, MapPin, Phone, MessageSquare, Plus, FileText, Trash2, Globe, Search as SearchIcon, StickyNote, History, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge, StageBadge, ActionStatusBadge } from "@/components/StatusBadge";
 import { HealthDot } from "@/components/HealthDot";
@@ -16,6 +18,7 @@ import { downloadInvoicePDF, type LineItem } from "@/lib/invoice-pdf";
 import { canEditClient, canEditActions, isAdmin as isAdminRole } from "@/lib/permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { sendClientDocument } from "@/lib/document-send.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$id")({
   component: ClientDetail,
@@ -26,7 +29,7 @@ type ContactLog = { id: string; date: string; channel: string; direction: string
 type Action = ActionRow & { id: string };
 type Invoice = InvoiceRow & { id: string; invoice_number: number };
 type Expense = { id: string; name: string; monthly_cost: number };
-type ClientDocument = { id: string; file_name: string; storage_path: string; file_size: number | null; content_type: string | null; created_at: string };
+type ClientDocument = { id: string; file_name: string; storage_path: string; file_size: number | null; content_type: string | null; created_at: string; title: string | null; document_date: string | null; last_sent_at: string | null; last_sent_to: string | null };
 
 const CHANNEL_ICON: Record<string, string> = {
   WhatsApp: "💬", Phone: "📞", Email: "✉️", "In person": "🤝", Other: "📝",
@@ -44,6 +47,9 @@ function ClientDetail() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [documents, setDocuments] = useState<ClientDocument[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<ClientDocument | null>(null);
+  const [sendingDocId, setSendingDocId] = useState<string | null>(null);
+  const sendDocFn = useServerFn(sendClientDocument);
   const [editOpen, setEditOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [actionOpen, setActionOpen] = useState(false);
@@ -151,6 +157,31 @@ function ClientDetail() {
     const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(doc.storage_path, 60);
     if (error || !data) { toast.error(error?.message ?? "Kon link niet aanmaken"); return; }
     window.open(data.signedUrl, "_blank");
+  }
+
+  async function saveDocumentEdit(docId: string, title: string, documentDate: string) {
+    const { error } = await supabase
+      .from("client_documents")
+      .update({ title: title.trim() || null, document_date: documentDate || null })
+      .eq("id", docId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Document bijgewerkt");
+    setEditingDoc(null);
+    load();
+  }
+
+  async function sendDocument(doc: ClientDocument) {
+    if (!confirm(`Dit document naar ${client?.name} mailen?`)) return;
+    setSendingDocId(doc.id);
+    try {
+      const res = await sendDocFn({ data: { documentId: doc.id } });
+      toast.success(`Verstuurd naar ${res.sentTo}`);
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Versturen mislukt");
+    } finally {
+      setSendingDocId(null);
+    }
   }
 
   async function deleteDocument(doc: ClientDocument) {
@@ -518,20 +549,37 @@ function ClientDetail() {
             <p className="text-sm text-muted-foreground mt-0.5">Upload SEO reports, PDFs, or screenshots for this client.</p>
           </div>
         ) : documents.map((doc) => (
-          <div key={doc.id} className="p-3.5 flex items-center gap-3">
-            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="min-w-0 flex-1">
-              <button onClick={() => downloadDocument(doc)} className="text-sm font-medium truncate hover:underline text-left block">
-                {doc.file_name}
-              </button>
-              <div className="text-xs text-muted-foreground">
-                {doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB · ` : ""}{formatDate(doc.created_at)}
+          <div key={doc.id} className="p-3.5">
+            <div className="flex items-center gap-3">
+              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0 flex-1">
+                <button onClick={() => downloadDocument(doc)} className="text-sm font-medium truncate hover:underline text-left block">
+                  {doc.title || doc.file_name}
+                </button>
+                <div className="text-xs text-muted-foreground">
+                  {doc.document_date ? formatDate(doc.document_date) : formatDate(doc.created_at)}
+                  {doc.file_size ? ` · ${(doc.file_size / 1024).toFixed(0)} KB` : ""}
+                  {doc.last_sent_at ? ` · Sent to ${doc.last_sent_to} on ${formatDate(doc.last_sent_at)}` : ""}
+                </div>
               </div>
-            </div>
-            {admin && (
-              <Button size="icon" variant="ghost" onClick={() => deleteDocument(doc)}>
-                <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+              <Button
+                size="sm" variant="outline" className="h-8 gap-1 text-xs shrink-0"
+                disabled={sendingDocId === doc.id}
+                onClick={() => sendDocument(doc)}
+              >
+                <Mail className="w-3.5 h-3.5" /> {sendingDocId === doc.id ? "..." : "Send"}
               </Button>
+              <Button size="icon" variant="ghost" className="shrink-0" onClick={() => setEditingDoc(doc)}>
+                <Pencil className="w-4 h-4 text-muted-foreground" />
+              </Button>
+              {admin && (
+                <Button size="icon" variant="ghost" className="shrink-0" onClick={() => deleteDocument(doc)}>
+                  <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                </Button>
+              )}
+            </div>
+            {editingDoc?.id === doc.id && (
+              <DocumentEditRow doc={doc} onCancel={() => setEditingDoc(null)} onSave={saveDocumentEdit} />
             )}
           </div>
         ))}
@@ -561,6 +609,29 @@ function Field({ k, v }: { k: string; v: React.ReactNode }) {
     <div>
       <div className="text-xs text-muted-foreground">{k}</div>
       <div className="mt-0.5">{v || "—"}</div>
+    </div>
+  );
+}
+
+function DocumentEditRow({
+  doc,
+  onCancel,
+  onSave,
+}: {
+  doc: { id: string; title: string | null; file_name: string; document_date: string | null };
+  onCancel: () => void;
+  onSave: (id: string, title: string, date: string) => void;
+}) {
+  const [title, setTitle] = useState(doc.title ?? doc.file_name);
+  const [date, setDate] = useState(doc.document_date ?? "");
+  return (
+    <div className="mt-3 pl-7 flex flex-col sm:flex-row gap-2 sm:items-center">
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel" className="h-8 text-sm flex-1" />
+      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 text-sm sm:w-40" />
+      <div className="flex gap-2">
+        <Button size="sm" className="h-8" onClick={() => onSave(doc.id, title, date)}>Save</Button>
+        <Button size="sm" variant="ghost" className="h-8" onClick={onCancel}>Cancel</Button>
+      </div>
     </div>
   );
 }

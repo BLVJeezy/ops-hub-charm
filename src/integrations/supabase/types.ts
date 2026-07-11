@@ -72,30 +72,42 @@ export type Database = {
           client: string
           content_type: string | null
           created_at: string
+          document_date: string | null
           file_name: string
           file_size: number | null
           id: string
+          last_sent_at: string | null
+          last_sent_to: string | null
           storage_path: string
+          title: string | null
           uploaded_by: string | null
         }
         Insert: {
           client: string
           content_type?: string | null
           created_at?: string
+          document_date?: string | null
           file_name: string
           file_size?: number | null
           id?: string
+          last_sent_at?: string | null
+          last_sent_to?: string | null
           storage_path: string
+          title?: string | null
           uploaded_by?: string | null
         }
         Update: {
           client?: string
           content_type?: string | null
           created_at?: string
+          document_date?: string | null
           file_name?: string
           file_size?: number | null
           id?: string
+          last_sent_at?: string | null
+          last_sent_to?: string | null
           storage_path?: string
+          title?: string | null
           uploaded_by?: string | null
         }
         Relationships: [

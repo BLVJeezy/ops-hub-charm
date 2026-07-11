@@ -28,7 +28,16 @@ create policy "Client documents delete admin"
   on public.client_documents for delete to authenticated
   using (public.has_role(auth.uid(), 'admin'));
 
--- Storage policies: any authenticated user can read/upload, only admin can delete
+-- Editable display title and document date, plus send-log tracking
+alter table public.client_documents add column if not exists title text;
+alter table public.client_documents add column if not exists document_date date;
+alter table public.client_documents add column if not exists last_sent_at timestamptz;
+alter table public.client_documents add column if not exists last_sent_to text;
+
+-- Allow authenticated users to update their own uploaded documents (title/date/send tracking)
+create policy "Client documents update authed"
+  on public.client_documents for update to authenticated using (true) with check (true);
+
 create policy "client-documents read authed"
   on storage.objects for select to authenticated
   using (bucket_id = 'client-documents');

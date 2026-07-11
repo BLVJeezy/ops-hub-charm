@@ -39,7 +39,7 @@ export const sendClientDocument = createServerFn({ method: 'POST' })
 
     const { data: signed, error: signErr } = await supabase.storage
       .from('client-documents')
-      .createSignedUrl(doc.storage_path, 60 * 60 * 24 * 7) // 7 days
+      .createSignedUrl(doc.storage_path, 60 * 60 * 24 * 365 * 10) // ~10 years — effectively permanent
     if (signErr || !signed) throw new Error(signErr?.message ?? 'Kon downloadlink niet aanmaken')
 
     const displayTitle = doc.title || doc.file_name
@@ -55,7 +55,6 @@ export const sendClientDocument = createServerFn({ method: 'POST' })
           <span style="color:#6b6b6b;font-size:13px;">${displayDate}</span>
         </p>
         <p><a href="${signed.signedUrl}" style="background:#C9A24B;color:#1B222C;font-weight:bold;padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block;">Document bekijken</a></p>
-        <p style="font-size:12px;color:#8b8b8b;">Deze link is 7 dagen geldig.</p>
         <p>Met vriendelijke groet,<br>Jason — Solyn Global</p>
       </div>
     `

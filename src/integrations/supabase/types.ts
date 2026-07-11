@@ -67,47 +67,6 @@ export type Database = {
           },
         ]
       }
-      client_documents: {
-        Row: {
-          client: string
-          content_type: string | null
-          created_at: string
-          file_name: string
-          file_size: number | null
-          id: string
-          storage_path: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          client: string
-          content_type?: string | null
-          created_at?: string
-          file_name: string
-          file_size?: number | null
-          id?: string
-          storage_path: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          client?: string
-          content_type?: string | null
-          created_at?: string
-          file_name?: string
-          file_size?: number | null
-          id?: string
-          storage_path?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_documents_client_fkey"
-            columns: ["client"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       client_status_log: {
         Row: {
           client: string

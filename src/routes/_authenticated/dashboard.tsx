@@ -10,7 +10,7 @@ import { PIPELINE_STAGES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, TrendingUp, BarChart3, Heart, Plus, ArrowRight } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 

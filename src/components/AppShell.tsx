@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/action-planner", label: "Actions", icon: ListChecks },
@@ -18,7 +18,7 @@ const NAV_ITEMS = [
 ] as const;
 
 const MOBILE_NAV = [
-  { to: "/", label: "Home", icon: LayoutDashboard, exact: true },
+  { to: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true },
   { to: "/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/expenses", label: "Costs", icon: Wallet },

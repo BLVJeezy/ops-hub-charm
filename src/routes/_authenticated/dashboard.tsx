@@ -267,7 +267,7 @@ function Dashboard() {
       </Card>
 
       <Card>
-        <div className="text-sm mb-3">Top Revenue</div>
+        <div className="text-sm mb-3">Revenue per client (paid invoices)</div>
         {topRevenue.length === 0 ? (
           <p className="text-sm text-muted-foreground">No paid invoices yet.</p>
         ) : (

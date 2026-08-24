@@ -27,11 +27,29 @@ export function PinGate({ children }: { children: React.ReactNode }) {
     }
   }, [entered]);
 
+  const press = (n: string) => setEntered((prev) => (prev.length < 6 ? prev + n : prev));
+  const back = () => setEntered((prev) => prev.slice(0, -1));
+
+  useEffect(() => {
+    if (!mounted || unlocked) return;
+    function onKey(e: KeyboardEvent) {
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        setEntered((prev) => (prev.length < 6 ? prev + e.key : prev));
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        setEntered((prev) => prev.slice(0, -1));
+      } else if (e.key === "Escape") {
+        setEntered("");
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mounted, unlocked]);
+
   if (!mounted) return null;
   if (unlocked) return <>{children}</>;
 
-  const press = (n: string) => setEntered((prev) => (prev.length < 6 ? prev + n : prev));
-  const back = () => setEntered((prev) => prev.slice(0, -1));
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">

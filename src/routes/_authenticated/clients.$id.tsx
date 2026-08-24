@@ -586,7 +586,14 @@ function ClientDetail() {
       </div>
 
 
+      <ClientModal
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        initial={client as unknown as Partial<ClientRow> & { id?: string }}
+        onSaved={() => load()}
+      />
       <ContactLogModal clientId={id} open={logOpen} onOpenChange={setLogOpen} onSaved={() => load()} />
+
       <ActionModal
         open={actionOpen} onOpenChange={setActionOpen}
         initial={editingAction ?? undefined}

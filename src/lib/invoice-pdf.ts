@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from "./format";
 export type LineItem = { description: string; qty?: number; unit_price?: number; price?: number };
 
 export type InvoicePDFInput = {
-  invoice_number: number;
+  invoice_number: string;
   date: string;
   client_name: string;
   client_address?: string | null;
@@ -92,7 +92,7 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(MUTED);
-  doc.text(`#${inv.invoice_number}`, R, y + 7, { align: "right" });
+  doc.text(inv.invoice_number, R, y + 7, { align: "right" });
 
   y += 20;
 

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/search")({
 });
 
 type ClientHit = { id: string; name: string; city: string | null; phone: string | null; status: string | null; health: string | null };
-type InvoiceHit = { id: string; invoice_number: number; amount: number; status: string; issue_date: string;
+type InvoiceHit = { id: string; invoice_number: string; amount: number; status: string; issue_date: string;
   clients: { name: string } | null };
 type ActionHit = { id: string; action_description: string; due_date: string | null; status: string | null;
   clients: { id: string; name: string } | null };
@@ -133,7 +133,7 @@ function SearchPage() {
                 {invoices.map((inv) => (
                   <li key={inv.id} className="flex items-center justify-between gap-3 p-3">
                     <div className="min-w-0">
-                      <div className="truncate">#{inv.invoice_number} · {inv.clients?.name || "—"}</div>
+                      <div className="truncate">{inv.invoice_number} · {inv.clients?.name || "—"}</div>
                       <div className="text-xs text-muted-foreground">{formatDate(inv.issue_date)} · {inv.status}</div>
                     </div>
                     <span className="tabular-nums">{formatCurrency(inv.amount)}</span>

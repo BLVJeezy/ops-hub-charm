@@ -14,7 +14,7 @@ export const Route = createFileRoute('/api/public/test-resend')({
           clientName: 'Riory',
           clientCompany: 'Riory BV',
           clientAddress: 'Natveld 47, 3740 Bilzen',
-          invoiceNumber: 26,
+          invoiceNumber: 'XIZ37M8',
           date: '05-07-2026',
           vatNumber: 'BE 0840.931.404',
           items: [
@@ -37,7 +37,7 @@ export const Route = createFileRoute('/api/public/test-resend')({
             from: 'Solyn Global <Factuur@solynglobal.be>',
             to: ['jasonbalongo@gmail.com'],
             reply_to: 'jason@solynglobal.be',
-            subject: 'Factuur #26 — Solyn Global',
+            subject: 'Factuur XIZ37M8 — Solyn Global',
             html,
             text,
           }),

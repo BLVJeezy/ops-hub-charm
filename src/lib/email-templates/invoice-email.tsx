@@ -23,7 +23,7 @@ interface Props {
   clientName?: string
   clientCompany?: string
   clientAddress?: string
-  invoiceNumber?: number | string
+  invoiceNumber?: string
   date?: string
   vatNumber?: string
   items?: LineItem[]
@@ -65,8 +65,8 @@ const InvoiceEmail = ({
   logoUrl = DEFAULT_LOGO,
 }: Props) => {
   const preview = isReminder
-    ? `Herinnering factuur #${invoiceNumber} — ${total}`
-    : `Factuur #${invoiceNumber} — ${total}`
+    ? `Herinnering factuur ${invoiceNumber} — ${total}`
+    : `Factuur ${invoiceNumber} — ${total}`
 
   return (
     <Html lang="nl" dir="ltr">
@@ -102,7 +102,7 @@ const InvoiceEmail = ({
               </Column>
               <Column style={{ width: '40%', textAlign: 'right', verticalAlign: 'top' }}>
                 <Text style={factuurTitle}>FACTUUR</Text>
-                <Text style={factuurNumber}>#{invoiceNumber}</Text>
+                <Text style={factuurNumber}>{invoiceNumber}</Text>
               </Column>
             </Row>
           </Section>
@@ -180,15 +180,15 @@ export const template = {
     const summary = summarizeItems(d?.items)
     const suffix = summary ? ` — ${summary}` : ''
     return d?.isReminder
-      ? `Herinnering: factuur #${d?.invoiceNumber ?? ''}${suffix} — Solyn Global`
-      : `Factuur #${d?.invoiceNumber ?? ''}${suffix} — Solyn Global`
+      ? `Herinnering: factuur ${d?.invoiceNumber ?? ''}${suffix} — Solyn Global`
+      : `Factuur ${d?.invoiceNumber ?? ''}${suffix} — Solyn Global`
   },
   displayName: 'Invoice email',
   previewData: {
     clientName: 'Riory',
     clientCompany: 'Riory BV',
     clientAddress: 'Natveld 47, 3740 Bilzen',
-    invoiceNumber: 26,
+    invoiceNumber: 'XIZ37M8',
     date: '05-07-2026',
     vatNumber: 'BE 0840.931.404',
     items: [{ description: 'SEO July 2026', price: '€500', note: 'BTW (0% - Reverse Charge)' }],

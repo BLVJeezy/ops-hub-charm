@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/invoices")({
 
 type Row = InvoiceRow & {
   id: string;
-  invoice_number: number;
+  invoice_number: string;
   sent_at?: string | null;
   last_reminder_at?: string | null;
   reminder_count?: number | null;
@@ -45,7 +45,7 @@ function Invoices() {
   async function load() {
     setLoading(true);
     const [i, c] = await Promise.all([
-      supabase.from("invoices").select("*").order("invoice_number", { ascending: false }),
+      supabase.from("invoices").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("id,name,billing_address,vat_number,contact_email").order("name"),
     ]);
     if (i.error) toast.error(i.error.message);
@@ -102,7 +102,7 @@ function Invoices() {
   const sendMailFn = useServerFn(sendInvoiceMail);
 
   async function deleteInvoiceRow(r: Row) {
-    if (!confirm(`Delete invoice #${r.invoice_number ?? ""}? This cannot be undone.`)) return;
+    if (!confirm(`Delete invoice ${r.invoice_number ?? ""}? This cannot be undone.`)) return;
     const { error } = await supabase.from("invoices").delete().eq("id", r.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Invoice deleted");
@@ -172,7 +172,7 @@ function Invoices() {
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-mono">#{r.invoice_number}</span>
+                    <span className="font-mono">{r.invoice_number}</span>
                     <span>·</span>
                     <span>{formatDate(r.date)}</span>
                   </div>

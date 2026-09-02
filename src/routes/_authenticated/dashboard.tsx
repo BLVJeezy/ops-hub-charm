@@ -19,7 +19,7 @@ type Client = FeeClient & {
   health: string | null; renewal_date: string | null; next_followup_date: string | null;
 };
 type Action = { id: string; client: string; action_description: string; due_date: string | null; status: string | null; waiting_period: string | null };
-type Invoice = { id: string; invoice_number: number; client: string | null; client_name: string | null; total: number; status: string; date: string };
+type Invoice = { id: string; invoice_number: string; client: string | null; client_name: string | null; total: number; status: string; date: string };
 type Expense = { id: string; monthly_cost: number; linked_client: string | null };
 
 type Task = { key: string; clientId: string; label: string; detail: string; date: string; kind: "followup" | "action" | "renewal"; overdue: boolean; healthDotColor?: string };

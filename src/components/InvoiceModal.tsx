@@ -16,7 +16,7 @@ type Client = { id: string; name: string; billing_address?: string | null; vat_n
 
 export type InvoiceRow = {
   id?: string;
-  invoice_number?: number | null;
+  invoice_number?: string | null;
   client?: string | null;
   client_name?: string | null;
   client_address?: string | null;
@@ -108,7 +108,7 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {form.id ? `Edit invoice #${form.invoice_number ?? ""}` : "New invoice"}
+            {form.id ? `Edit invoice ${form.invoice_number ?? ""}` : "New invoice"}
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

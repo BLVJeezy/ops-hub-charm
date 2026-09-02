@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceMail } from "@/lib/invoice-send.functions";
+import { formatInvoiceNumber } from "@/lib/invoice-code";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/invoices")({
 
 type Row = InvoiceRow & {
   id: string;
-  invoice_number: string;
+  invoice_number: number;
   sent_at?: string | null;
   last_reminder_at?: string | null;
   reminder_count?: number | null;
@@ -69,7 +70,7 @@ function Invoices() {
       const s = q.toLowerCase();
       list = list.filter((r) =>
         (r.client_name || "").toLowerCase().includes(s) ||
-        String(r.invoice_number).includes(s),
+        formatInvoiceNumber(r.invoice_number).toLowerCase().includes(s),
       );
     }
     return list;
@@ -102,7 +103,7 @@ function Invoices() {
   const sendMailFn = useServerFn(sendInvoiceMail);
 
   async function deleteInvoiceRow(r: Row) {
-    if (!confirm(`Delete invoice ${r.invoice_number ?? ""}? This cannot be undone.`)) return;
+    if (!confirm(`Delete invoice ${formatInvoiceNumber(r.invoice_number)}? This cannot be undone.`)) return;
     const { error } = await supabase.from("invoices").delete().eq("id", r.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Invoice deleted");
@@ -172,7 +173,7 @@ function Invoices() {
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-mono">{r.invoice_number}</span>
+                    <span className="font-mono">{formatInvoiceNumber(r.invoice_number)}</span>
                     <span>·</span>
                     <span>{formatDate(r.date)}</span>
                   </div>

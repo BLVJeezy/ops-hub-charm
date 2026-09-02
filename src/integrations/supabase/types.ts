@@ -453,7 +453,7 @@ export type Database = {
           delivered_at: string | null
           email_status: string | null
           id: string
-          invoice_number: string | null
+          invoice_number: number | null
           last_reminder_at: string | null
           line_items: Json
           opened_at: string | null
@@ -478,7 +478,7 @@ export type Database = {
           delivered_at?: string | null
           email_status?: string | null
           id?: string
-          invoice_number?: string | null
+          invoice_number?: number | null
           last_reminder_at?: string | null
           line_items?: Json
           opened_at?: string | null
@@ -503,7 +503,7 @@ export type Database = {
           delivered_at?: string | null
           email_status?: string | null
           id?: string
-          invoice_number?: string | null
+          invoice_number?: number | null
           last_reminder_at?: string | null
           line_items?: Json
           opened_at?: string | null

@@ -2,11 +2,12 @@ import { jsPDF } from "jspdf";
 import logoAsset from "@/assets/solyn-logo.png.asset.json";
 import { COMPANY } from "./constants";
 import { formatCurrency, formatDate } from "./format";
+import { formatInvoiceNumber } from "./invoice-code";
 
 export type LineItem = { description: string; qty?: number; unit_price?: number; price?: number };
 
 export type InvoicePDFInput = {
-  invoice_number: string;
+  invoice_number: string | number;
   date: string;
   client_name: string;
   client_address?: string | null;
@@ -92,7 +93,7 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(MUTED);
-  doc.text(inv.invoice_number, R, y + 7, { align: "right" });
+  doc.text(formatInvoiceNumber(inv.invoice_number), R, y + 7, { align: "right" });
 
   y += 20;
 
@@ -208,5 +209,5 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
 export async function downloadInvoicePDF(inv: InvoicePDFInput) {
   const logoDataUrl = await loadLogoDataUrl();
   const doc = generateInvoicePDF(inv, logoDataUrl);
-  doc.save(`Factuur-${inv.invoice_number}.pdf`);
+  doc.save(`Factuur-${formatInvoiceNumber(inv.invoice_number)}.pdf`);
 }

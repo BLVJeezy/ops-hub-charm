@@ -19,6 +19,7 @@ import { canEditClient, canEditActions, isAdmin as isAdminRole } from "@/lib/per
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { sendClientDocument } from "@/lib/document-send.functions";
+import { formatInvoiceNumber } from "@/lib/invoice-code";
 
 export const Route = createFileRoute("/_authenticated/clients/$id")({
   component: ClientDetail,
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/clients/$id")({
 type StatusLog = { id: string; from_status: string | null; to_status: string; date: string };
 type ContactLog = { id: string; date: string; channel: string; direction: string; note: string };
 type Action = ActionRow & { id: string };
-type Invoice = InvoiceRow & { id: string; invoice_number: string };
+type Invoice = InvoiceRow & { id: string; invoice_number: number };
 type Expense = { id: string; name: string; monthly_cost: number };
 type ClientDocument = { id: string; file_name: string; storage_path: string; file_size: number | null; content_type: string | null; created_at: string; title: string | null; document_date: string | null; last_sent_at: string | null; last_sent_to: string | null };
 
@@ -110,7 +111,7 @@ function ClientDetail() {
   async function markPaid(inv: Invoice) {
     const { error } = await supabase.from("invoices").update({ status: "Paid" } as never).eq("id", inv.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(`Invoice ${inv.invoice_number ?? ""} marked paid`);
+    toast.success(`Invoice ${formatInvoiceNumber(inv.invoice_number)} marked paid`);
     load();
   }
 
@@ -195,7 +196,7 @@ function ClientDetail() {
   }
 
   async function deleteInvoice(inv: Invoice) {
-    if (!confirm(`Delete invoice ${inv.invoice_number ?? ""}?`)) return;
+    if (!confirm(`Delete invoice ${formatInvoiceNumber(inv.invoice_number)}?`)) return;
     const { error } = await supabase.from("invoices").delete().eq("id", inv.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Invoice deleted");
@@ -428,7 +429,7 @@ function ClientDetail() {
           const firstItem = (inv.line_items as LineItem[] | null)?.[0];
           return (
             <div key={inv.id} className="p-4">
-              <div className="font-semibold">{inv.invoice_number ?? "—"}</div>
+              <div className="font-semibold">{formatInvoiceNumber(inv.invoice_number)}</div>
               <div className="text-sm text-muted-foreground mt-0.5">{formatDate(inv.date)}</div>
               {firstItem?.description && <div className="text-sm mt-0.5">{firstItem.description}</div>}
               <div className="font-semibold mt-1">{formatCurrency(Number(inv.total || 0))}</div>

@@ -3,6 +3,7 @@ import * as React from 'react'
 import { render } from '@react-email/render'
 import { createClient } from '@supabase/supabase-js'
 import { template as invoiceTemplate } from '@/lib/email-templates/invoice-email'
+import { formatInvoiceNumber } from '@/lib/invoice-code'
 
 // Weekly reminders after the initial send, forever, until an admin marks Paid.
 const REMINDER_INTERVAL_DAYS = 7
@@ -72,11 +73,12 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
             : []
 
           const reminderCount = (inv.reminder_count || 0) + 1
+          const publicInvoiceNumber = formatInvoiceNumber(inv.invoice_number)
           const templateData = {
             clientName: inv.client_name || client?.name || 'klant',
             clientCompany: client?.name || inv.client_name || '',
             clientAddress: inv.client_address || client?.billing_address || '',
-            invoiceNumber: inv.invoice_number,
+            invoiceNumber: publicInvoiceNumber,
             date: fmtDate(inv.date),
             vatNumber: inv.client_vat_number || client?.vat_number || '',
             items,
@@ -117,7 +119,7 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
               text,
               attachments: [
                 {
-                  filename: `Factuur-${inv.invoice_number}.pdf`,
+                  filename: `Factuur-${publicInvoiceNumber}.pdf`,
                   content: pdfBase64,
                 },
               ],

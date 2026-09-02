@@ -36,7 +36,7 @@ export async function buildInvoicePdfBase64(input: InvoicePDFInput): Promise<str
 }
 
 export function invoicePdfInputFromRow(inv: {
-  invoice_number: string
+  invoice_number: number
   date: string
   client_name?: string | null
   client_address?: string | null

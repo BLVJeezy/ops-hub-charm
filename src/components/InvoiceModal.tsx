@@ -11,12 +11,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { INVOICE_STATUSES } from "@/lib/constants";
 import { formatCurrency, todayISO } from "@/lib/format";
 import type { LineItem } from "@/lib/invoice-pdf";
+import { formatInvoiceNumber } from "@/lib/invoice-code";
 
 type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null };
 
 export type InvoiceRow = {
   id?: string;
-  invoice_number?: string | null;
+  invoice_number?: number | null;
   client?: string | null;
   client_name?: string | null;
   client_address?: string | null;
@@ -108,7 +109,7 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {form.id ? `Edit invoice ${form.invoice_number ?? ""}` : "New invoice"}
+            {form.id ? `Edit invoice ${formatInvoiceNumber(form.invoice_number)}` : "New invoice"}
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -3,6 +3,7 @@ import * as React from 'react'
 import { render } from '@react-email/render'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { template as invoiceTemplate } from '@/lib/email-templates/invoice-email'
+import { formatInvoiceNumber } from '@/lib/invoice-code'
 
 function fmtEUR(n: number) {
   return new Intl.NumberFormat('nl-BE', { style: 'currency', currency: 'EUR' }).format(n || 0)
@@ -57,11 +58,12 @@ export const sendInvoiceMail = createServerFn({ method: 'POST' })
       : []
 
     const reminderCount = (inv.reminder_count || 0) + (data.isReminder ? 1 : 0)
+    const publicInvoiceNumber = formatInvoiceNumber(inv.invoice_number)
     const templateData = {
       clientName: inv.client_name || clientRow?.name || 'klant',
       clientCompany: clientRow?.name || inv.client_name || '',
       clientAddress: inv.client_address || clientRow?.billing_address || '',
-      invoiceNumber: inv.invoice_number ?? undefined,
+      invoiceNumber: publicInvoiceNumber,
       date: fmtDate(inv.date),
       vatNumber: inv.client_vat_number || clientRow?.vat_number || '',
       items,
@@ -102,7 +104,7 @@ export const sendInvoiceMail = createServerFn({ method: 'POST' })
         text,
         attachments: [
           {
-            filename: `Factuur-${inv.invoice_number}.pdf`,
+            filename: `Factuur-${publicInvoiceNumber}.pdf`,
             content: pdfBase64,
           },
         ],

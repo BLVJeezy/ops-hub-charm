@@ -10,14 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
-import { Route as AuthenticatedOnboardingQueueRouteImport } from './routes/_authenticated/onboarding-queue'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -36,11 +34,6 @@ import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -72,12 +65,6 @@ const AuthenticatedPipelineRoute = AuthenticatedPipelineRouteImport.update({
   path: '/pipeline',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedOnboardingQueueRoute =
-  AuthenticatedOnboardingQueueRouteImport.update({
-    id: '/onboarding-queue',
-    path: '/onboarding-queue',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedInvoicesRoute = AuthenticatedInvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
@@ -158,14 +145,12 @@ const ApiPublicHooksInvoiceRemindersRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/onboarding': typeof OnboardingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/action-planner': typeof AuthenticatedActionPlannerRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
-  '/onboarding-queue': typeof AuthenticatedOnboardingQueueRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -182,13 +167,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/onboarding': typeof OnboardingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/action-planner': typeof AuthenticatedActionPlannerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
-  '/onboarding-queue': typeof AuthenticatedOnboardingQueueRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -207,14 +190,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/onboarding': typeof OnboardingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/action-planner': typeof AuthenticatedActionPlannerRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
-  '/_authenticated/onboarding-queue': typeof AuthenticatedOnboardingQueueRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -233,14 +214,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/onboarding'
     | '/unsubscribe'
     | '/action-planner'
     | '/clients'
     | '/dashboard'
     | '/expenses'
     | '/invoices'
-    | '/onboarding-queue'
     | '/pipeline'
     | '/search'
     | '/email/unsubscribe'
@@ -257,13 +236,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/onboarding'
     | '/unsubscribe'
     | '/action-planner'
     | '/dashboard'
     | '/expenses'
     | '/invoices'
-    | '/onboarding-queue'
     | '/pipeline'
     | '/search'
     | '/email/unsubscribe'
@@ -281,14 +258,12 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/onboarding'
     | '/unsubscribe'
     | '/_authenticated/action-planner'
     | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/expenses'
     | '/_authenticated/invoices'
-    | '/_authenticated/onboarding-queue'
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
     | '/email/unsubscribe'
@@ -307,7 +282,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  OnboardingRoute: typeof OnboardingRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ApiPublicTestResendRoute: typeof ApiPublicTestResendRoute
@@ -326,13 +300,6 @@ declare module '@tanstack/react-router' {
       path: '/unsubscribe'
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -375,13 +342,6 @@ declare module '@tanstack/react-router' {
       path: '/pipeline'
       fullPath: '/pipeline'
       preLoaderRoute: typeof AuthenticatedPipelineRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/onboarding-queue': {
-      id: '/_authenticated/onboarding-queue'
-      path: '/onboarding-queue'
-      fullPath: '/onboarding-queue'
-      preLoaderRoute: typeof AuthenticatedOnboardingQueueRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/invoices': {
@@ -504,7 +464,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
-  AuthenticatedOnboardingQueueRoute: typeof AuthenticatedOnboardingQueueRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
 }
@@ -515,7 +474,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
-  AuthenticatedOnboardingQueueRoute: AuthenticatedOnboardingQueueRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
 }
@@ -527,7 +485,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  OnboardingRoute: OnboardingRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ApiPublicTestResendRoute: ApiPublicTestResendRoute,

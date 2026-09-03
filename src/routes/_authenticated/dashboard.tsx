@@ -1,3 +1,4 @@
+import { CurrencyToggle, useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
@@ -38,6 +39,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 function Dashboard() {
+  useCurrency();
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -169,9 +171,12 @@ function Dashboard() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-2">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <Button onClick={() => setQuickAdd(true)} variant="secondary" className="gap-2 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
-          <Plus className="w-4 h-4" /> New Prospect
-        </Button>
+        <div className="flex items-center gap-2">
+          <CurrencyToggle />
+          <Button onClick={() => setQuickAdd(true)} variant="secondary" className="gap-2 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
+            <Plus className="w-4 h-4" /> New Prospect
+          </Button>
+        </div>
       </div>
 
       {/* FINANCIALS */}

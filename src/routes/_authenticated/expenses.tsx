@@ -1,3 +1,4 @@
+import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Wallet, Info, Pencil, Trash2 } from "lucide-react";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/expenses")({
 type Row = ExpenseRow & { id: string; clients?: { name: string } | null };
 
 function Expenses() {
+  useCurrency();
   const { role } = useAuth();
   const isAdmin = role === "admin";
   const [rows, setRows] = useState<Row[]>([]);

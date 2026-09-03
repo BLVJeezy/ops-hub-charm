@@ -1,3 +1,4 @@
+import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -37,6 +38,7 @@ const CHANNEL_ICON: Record<string, string> = {
 };
 
 function ClientDetail() {
+  useCurrency();
   const { id } = Route.useParams();
   const { role } = useAuth();
   const navigate = useNavigate();

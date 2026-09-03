@@ -1,3 +1,4 @@
+import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { useEffect, useMemo, useState } from "react";
@@ -22,6 +23,7 @@ type ActionHit = { id: string; action_description: string; due_date: string | nu
   clients: { id: string; name: string } | null };
 
 function SearchPage() {
+  useCurrency();
   const { q } = Route.useSearch();
   const navigate = useNavigate();
   const [term, setTerm] = useState(q || "");

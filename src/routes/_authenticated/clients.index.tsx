@@ -1,3 +1,4 @@
+import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Users } from "lucide-react";
@@ -21,6 +22,7 @@ type Invoice = { client: string | null; total: number; status: string };
 type Expense = { linked_client: string | null; monthly_cost: number };
 
 function ClientsPage() {
+  useCurrency();
   const [rows, setRows] = useState<Row[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);

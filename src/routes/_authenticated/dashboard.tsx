@@ -1,3 +1,4 @@
+import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
@@ -38,6 +39,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 function Dashboard() {
+  useCurrency();
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);

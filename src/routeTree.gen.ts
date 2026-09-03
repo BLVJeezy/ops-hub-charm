@@ -20,7 +20,6 @@ import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
-import { Route as AuthenticatedActionPlannerRouteImport } from './routes/_authenticated/action-planner'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicTestResendRouteImport } from './routes/api/public/test-resend'
@@ -85,12 +84,6 @@ const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedActionPlannerRoute =
-  AuthenticatedActionPlannerRouteImport.update({
-    id: '/action-planner',
-    path: '/action-planner',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedClientsIndexRoute =
   AuthenticatedClientsIndexRouteImport.update({
     id: '/',
@@ -146,7 +139,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/action-planner': typeof AuthenticatedActionPlannerRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
@@ -168,7 +160,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/action-planner': typeof AuthenticatedActionPlannerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
@@ -191,7 +182,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/_authenticated/action-planner': typeof AuthenticatedActionPlannerRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
@@ -215,7 +205,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/unsubscribe'
-    | '/action-planner'
     | '/clients'
     | '/dashboard'
     | '/expenses'
@@ -237,7 +226,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/unsubscribe'
-    | '/action-planner'
     | '/dashboard'
     | '/expenses'
     | '/invoices'
@@ -259,7 +247,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/unsubscribe'
-    | '/_authenticated/action-planner'
     | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/expenses'
@@ -372,13 +359,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/action-planner': {
-      id: '/_authenticated/action-planner'
-      path: '/action-planner'
-      fullPath: '/action-planner'
-      preLoaderRoute: typeof AuthenticatedActionPlannerRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/clients/': {
       id: '/_authenticated/clients/'
       path: '/'
@@ -459,7 +439,6 @@ const AuthenticatedClientsRouteWithChildren =
   AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedActionPlannerRoute: typeof AuthenticatedActionPlannerRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
@@ -469,7 +448,6 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedActionPlannerRoute: AuthenticatedActionPlannerRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,

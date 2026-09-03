@@ -52,7 +52,7 @@ function NavLink({ to, label, icon: Icon, exact, onClick }: {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 

@@ -1,12 +1,11 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet, ListChecks,
-  FileText, ClipboardList, Search as SearchIcon, LogOut,
+  FileText, Search as SearchIcon, LogOut,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -55,25 +54,7 @@ function NavLink({ to, label, icon: Icon, exact, onClick }: {
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
-  const [pendingCount, setPendingCount] = useState(0);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (role !== "admin") return;
-    async function load() {
-      const { count } = await supabase
-        .from("onboarding_submissions")
-        .select("id", { count: "exact", head: true })
-        .eq("review_status", "Pending");
-      setPendingCount(count || 0);
-    }
-    load();
-    const channel = supabase
-      .channel("onboarding-count")
-      .on("postgres_changes", { event: "*", schema: "public", table: "onboarding_submissions" }, load)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [role]);
 
   const initial = (user?.email || "?").charAt(0).toUpperCase();
 

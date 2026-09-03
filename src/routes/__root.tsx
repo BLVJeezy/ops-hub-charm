@@ -103,13 +103,13 @@ function RootComponent() {
   );
 }
 
-// Skip PIN gate for the public onboarding route and unsubscribe page.
+// Skip PIN gate for the public unsubscribe page.
 function RootGate() {
   const [pathname, setPathname] = useState<string>("");
   useEffect(() => {
     if (typeof window !== "undefined") setPathname(window.location.pathname);
   }, []);
-  const isPublic = pathname === "/onboarding" || pathname === "/unsubscribe";
+  const isPublic = pathname === "/unsubscribe";
   if (isPublic) return <Outlet />;
   return <PinGate><Outlet /></PinGate>;
 }

@@ -95,9 +95,9 @@ export function ClientModal({ open, onOpenChange, initial, onSaved }: Props) {
     }
     // Sync stage ↔ status
     let stage = form.pipeline_stage;
-    if (form.status === "Active" && stage !== "Signed") stage = "Signed";
+    if (form.status === "Active" && stage !== "Converted") stage = "Converted";
     if (form.status === "Write-off") stage = "Write-off";
-    if (form.status === "Prospect" && (stage === "Signed" || stage === "Write-off")) stage = "Found";
+    if (form.status === "Prospect" && (stage === "Converted" || stage === "Write-off")) stage = "Found";
 
     setSaving(true);
     const payload = { ...form, pipeline_stage: stage } as never;

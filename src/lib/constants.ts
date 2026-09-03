@@ -1,7 +1,7 @@
 export const CLIENT_STATUSES = ["Prospect", "Active", "Paused", "Write-off"] as const;
 export const PIPELINE_STAGES = [
   "Found", "Contacted", "Interested", "Meeting Booked",
-  "Meeting Done", "Proposal Sent", "Negotiating", "Signed", "Write-off",
+  "Meeting Done", "Proposal Sent", "Negotiating", "Converted", "Write-off",
 ] as const;
 export const CLIENT_SECTORS = [
   "Plumber", "Electrician", "HVAC", "Construction",
@@ -30,7 +30,7 @@ export const STAGE_COLORS: Record<string, string> = {
   Found: "#B7BCC2", Contacted: "#94A3B8", Interested: "#60A5FA",
   "Meeting Booked": "#60A5FA", "Meeting Done": "#A78BFA",
   "Proposal Sent": "#C9A24B", Negotiating: "#C9A24B",
-  Signed: "#22C55E", "Write-off": "#EF4444",
+  Converted: "#22C55E", "Write-off": "#EF4444",
 };
 export const HEALTH_COLORS: Record<string, string> = {
   "Not set": "#6E747C", Green: "#22C55E", Orange: "#F59E0B", Red: "#EF4444",

@@ -299,7 +299,7 @@ function Dashboard() {
       {/* PIPELINE OVERVIEW */}
       <SectionHeader icon={BarChart3} label="Pipeline overview" />
       <div className="grid grid-cols-2 gap-2">
-        {PIPELINE_STAGES.filter((s) => s !== "Signed").map((s) => (
+        {PIPELINE_STAGES.filter((s) => s !== "Converted").map((s) => (
           <Link key={s} to="/pipeline" className="rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
             <div className="text-sm text-muted-foreground">{s}</div>
             <div className="text-2xl font-bold mt-1 tabular-nums">{pipelineCounts[s] || 0}</div>

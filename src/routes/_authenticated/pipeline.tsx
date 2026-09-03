@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { ClientRow } from "@/components/ClientModal";
 import { QuickAddProspect } from "@/components/QuickAddProspect";
 import { Button } from "@/components/ui/button";
+import { CurrencyToggle } from "@/components/CurrencyToggle";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, GripVertical, MapPin } from "lucide-react";
 
@@ -90,7 +91,10 @@ function Pipeline() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto lg:max-w-none">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">Pipeline</h1>
-        <Button onClick={() => setQuickAdd(true)} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4"><Plus className="w-4 h-4" /> New Prospect</Button>
+        <div className="flex items-center gap-2">
+          <CurrencyToggle />
+          <Button onClick={() => setQuickAdd(true)} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4"><Plus className="w-4 h-4" /> New Prospect</Button>
+        </div>
       </div>
       {loading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>

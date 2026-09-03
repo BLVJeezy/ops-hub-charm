@@ -1,4 +1,4 @@
-import { useCurrency } from "@/components/CurrencyToggle";
+import { CurrencyToggle, useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";

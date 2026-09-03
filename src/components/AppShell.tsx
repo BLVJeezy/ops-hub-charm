@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/clients", label: "Clients", icon: Users },
-  { to: "/action-planner", label: "Actions", icon: ListChecks },
   { to: "/invoices", label: "Invoices", icon: FileText },
   { to: "/expenses", label: "Expenses", icon: Wallet },
 ] as const;
@@ -21,7 +20,6 @@ const MOBILE_NAV = [
   { to: "/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/expenses", label: "Costs", icon: Wallet },
-  { to: "/action-planner", label: "Actions", icon: ListChecks },
   { to: "/invoices", label: "Invoices", icon: FileText },
 ] as const;
 

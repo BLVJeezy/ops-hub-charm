@@ -98,23 +98,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((it) => <NavLink key={it.to} {...it} />)}
-          {role === "admin" && (
-            <Link
-              to="/onboarding-queue"
-              className="flex items-center justify-between px-3 py-2 rounded-md text-sm hover:bg-[hsl(var(--sidebar-accent))]"
-              style={{ color: "hsl(var(--sidebar-foreground))" }}
-            >
-              <span className="flex items-center gap-3">
-                <ClipboardList className="w-4 h-4" />
-                Onboarding
-              </span>
-              {pendingCount > 0 && (
-                <span className="text-xs rounded-full px-2 py-0.5" style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}>
-                  {pendingCount}
-                </span>
-              )}
-            </Link>
-          )}
         </nav>
         <div className="p-3 border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
           <div className="flex items-center gap-2 mb-2">
@@ -159,15 +142,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         style={{
           backgroundColor: "hsl(var(--sidebar-background))",
           borderColor: "hsl(var(--sidebar-border))",
-          gridTemplateColumns: role === "admin" ? "repeat(7, 1fr)" : "repeat(6, 1fr)",
+          gridTemplateColumns: "repeat(6, 1fr)",
         }}
       >
         {MOBILE_NAV.map((it) => (
           <MobileNavLink key={it.to} {...it} />
         ))}
-        {role === "admin" && (
-          <MobileNavLink to="/onboarding-queue" label="Signup" icon={ClipboardList} badge={pendingCount} />
-        )}
       </nav>
     </div>
   );

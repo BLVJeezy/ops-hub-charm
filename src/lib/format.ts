@@ -12,9 +12,16 @@ export function formatDate(dateStr?: string | null): string {
   return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
 }
 
-export function formatCurrency(amount?: number | null): string {
+export function formatEUR(amount?: number | null): string {
   const n = Math.round(Number(amount || 0));
   return `€${new Intl.NumberFormat("nl-BE").format(n)}`;
+}
+
+// Display formatter: follows the app-wide currency toggle (EUR/USD).
+// Amounts are stored in EUR in the database.
+export function formatCurrency(amount?: number | null): string {
+  const n = Math.round(convertFromEur(Number(amount || 0)));
+  return `${currencySymbol()}${new Intl.NumberFormat("nl-BE").format(n)}`;
 }
 
 export function daysUntil(dateStr?: string | null): number | null {

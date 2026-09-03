@@ -748,7 +748,7 @@ export type Database = {
         | "Meeting Done"
         | "Proposal Sent"
         | "Negotiating"
-        | "Converted"
+        | "Signed"
         | "Write-off"
       review_status: "Pending" | "Approved" | "Rejected"
       seo_package: "None" | "Basic" | "Premium" | "Custom" | "Pilot"
@@ -918,7 +918,7 @@ export const Constants = {
         "Meeting Done",
         "Proposal Sent",
         "Negotiating",
-        "Converted",
+        "Signed",
         "Write-off",
       ],
       review_status: ["Pending", "Approved", "Rejected"],

@@ -2,13 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency, formatDate, daysUntil } from "@/lib/format";
-import { clientMRR, clientRevenueForMonth, type FeeClient } from "@/lib/fees";
+import { formatCurrency } from "@/lib/format";
+import { clientAnnualProjection, clientMRR, clientRevenueForMonth, type FeeClient } from "@/lib/fees";
 import { HealthDot } from "@/components/HealthDot";
 import { QuickAddProspect } from "@/components/QuickAddProspect";
 import { PIPELINE_STAGES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, TrendingUp, BarChart3, Heart, Plus, ArrowRight } from "lucide-react";
+import { TrendingUp, BarChart3, Heart, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -18,11 +18,8 @@ type Client = FeeClient & {
   id: string; name: string; status: string | null; pipeline_stage: string | null;
   health: string | null; renewal_date: string | null; next_followup_date: string | null;
 };
-type Action = { id: string; client: string; action_description: string; due_date: string | null; status: string | null; waiting_period: string | null };
 type Invoice = { id: string; invoice_number: number; client: string | null; client_name: string | null; total: number; status: string; date: string };
 type Expense = { id: string; monthly_cost: number; linked_client: string | null };
-
-type Task = { key: string; clientId: string; label: string; detail: string; date: string; kind: "followup" | "action" | "renewal"; overdue: boolean; healthDotColor?: string };
 
 function SectionHeader({ icon: Icon, label, count }: { icon: React.ComponentType<{ className?: string }>; label: string; count?: number }) {
   return (
@@ -42,21 +39,18 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function Dashboard() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [actions, setActions] = useState<Action[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickAdd, setQuickAdd] = useState(false);
 
   async function load() {
-    const [c, a, i, e] = await Promise.all([
+    const [c, i, e] = await Promise.all([
       supabase.from("clients").select("*"),
-      supabase.from("actions").select("id,client,action_description,due_date,status,waiting_period"),
       supabase.from("invoices").select("id,invoice_number,client,client_name,total,status,date"),
       supabase.from("expenses").select("id,monthly_cost,linked_client"),
     ]);
     setClients((c.data as unknown as Client[]) ?? []);
-    setActions((a.data as unknown as Action[]) ?? []);
     setInvoices((i.data as unknown as Invoice[]) ?? []);
     setExpenses((e.data as unknown as Expense[]) ?? []);
     setLoading(false);
@@ -67,7 +61,6 @@ function Dashboard() {
     const ch = supabase.channel("dashboard")
       .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "invoices" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "actions" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -101,16 +94,33 @@ function Dashboard() {
     [clients]
   );
 
-  const topRevenue = useMemo(() => {
+  const revenuePerClient = useMemo(() => {
     const paidByClient: Record<string, number> = {};
-    invoices.filter((i) => i.status === "Paid" && i.client).forEach((i) => {
-      paidByClient[i.client!] = (paidByClient[i.client!] || 0) + Number(i.total || 0);
+    const idByName = new Map(
+      clients.map((client) => [client.name.trim().toLocaleLowerCase(), client.id])
+    );
+    invoices.filter((i) => i.status === "Paid").forEach((i) => {
+      const clientId = i.client || (i.client_name ? idByName.get(i.client_name.trim().toLocaleLowerCase()) : undefined);
+      if (!clientId) return;
+      paidByClient[clientId] = (paidByClient[clientId] || 0) + Number(i.total || 0);
     });
     return Object.entries(paidByClient)
       .map(([id, total]) => ({ id, total, name: clientById[id]?.name ?? "Unknown" }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 3);
-  }, [invoices, clientById]);
+      .filter((row) => row.name !== "Unknown")
+      .sort((a, b) => b.total - a.total);
+  }, [invoices, clients, clientById]);
+
+  const annualProjectionPerClient = useMemo(
+    () => activeClients
+      .map((client) => ({
+        id: client.id,
+        name: client.name,
+        total: clientAnnualProjection(client),
+      }))
+      .filter((row) => row.total > 0)
+      .sort((a, b) => b.total - a.total),
+    [activeClients]
+  );
 
   const now = new Date();
   const year = now.getFullYear();
@@ -134,49 +144,6 @@ function Dashboard() {
   const thisMonth = revenueReport[now.getMonth()].thisYear;
   const lastMonth = now.getMonth() === 0 ? revenueReport[11].thisYear : revenueReport[now.getMonth() - 1].thisYear;
   const momChange = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : null;
-
-  const tasks = useMemo(() => {
-    const list: Task[] = [];
-    for (const c of clients) {
-      if (c.status !== "Write-off" && c.next_followup_date) {
-        const d = daysUntil(c.next_followup_date);
-        if (d !== null && d <= 7) {
-          list.push({
-            key: `f-${c.id}`, clientId: c.id, kind: "followup",
-            label: c.name,
-            detail: d < 0 ? `Follow-up overdue · ${formatDate(c.next_followup_date)}` : d === 0 ? `Follow-up today · ${formatDate(c.next_followup_date)}` : `Follow-up in ${d}d · ${formatDate(c.next_followup_date)}`,
-            date: c.next_followup_date, overdue: d < 0,
-            healthDotColor: d < 0 ? "#EF4444" : d <= 2 ? "#F59E0B" : "#22C55E",
-          });
-        }
-      }
-      if (c.status === "Active" && c.renewal_date) {
-        const d = daysUntil(c.renewal_date);
-        if (d !== null && d >= 0 && d <= 30) {
-          list.push({
-            key: `r-${c.id}`, clientId: c.id, kind: "renewal",
-            label: c.name, detail: `Renewal in ${d}d · ${formatDate(c.renewal_date)}`,
-            date: c.renewal_date, overdue: false,
-            healthDotColor: "#F59E0B",
-          });
-        }
-      }
-    }
-    for (const a of actions) {
-      if (a.status === "Completed" || a.waiting_period === "Ongoing" || !a.due_date) continue;
-      const d = daysUntil(a.due_date);
-      if (d !== null && d < 0) {
-        const c = clientById[a.client];
-        list.push({
-          key: `a-${a.id}`, clientId: a.client, kind: "action",
-          label: c?.name ?? "—", detail: `${a.action_description} · ${Math.abs(d)}d overdue`,
-          date: a.due_date, overdue: true,
-          healthDotColor: "#EF4444",
-        });
-      }
-    }
-    return list.sort((x, y) => x.date.localeCompare(y.date)).slice(0, 10);
-  }, [clients, actions, clientById]);
 
   const pipelineCounts = useMemo(() => {
     const map: Record<string, number> = {};
@@ -206,29 +173,6 @@ function Dashboard() {
           <Plus className="w-4 h-4" /> New Prospect
         </Button>
       </div>
-
-      {/* THIS WEEK */}
-      <SectionHeader icon={CalendarDays} label="This week" count={tasks.length} />
-      {tasks.length === 0 ? (
-        <Card><p className="text-sm text-muted-foreground">All caught up 🎉</p></Card>
-      ) : (
-        <div className="space-y-2">
-          {tasks.slice(0, 5).map((t) => (
-            <Link key={t.key} to="/clients/$id" params={{ id: t.clientId }}
-              className="block rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
-              <div className="flex items-center gap-3">
-                <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate">{t.label}</div>
-                  <div className={`text-xs mt-0.5 truncate ${t.overdue ? "text-destructive" : "text-muted-foreground"}`}>{t.detail}</div>
-                </div>
-                <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.healthDotColor }} />
-                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* FINANCIALS */}
       <SectionHeader icon={TrendingUp} label="Financials" />
@@ -267,16 +211,35 @@ function Dashboard() {
       </Card>
 
       <Card>
-        <div className="text-sm mb-3">Revenue per client (paid invoices)</div>
-        {topRevenue.length === 0 ? (
+        <div className="text-sm mb-3">Revenue per client (all paid invoices)</div>
+        {revenuePerClient.length === 0 ? (
           <p className="text-sm text-muted-foreground">No paid invoices yet.</p>
         ) : (
           <ul className="space-y-2">
-            {topRevenue.map((t, i) => (
+            {revenuePerClient.map((t, i) => (
               <li key={t.id}>
                 <Link to="/clients/$id" params={{ id: t.id }} className="flex items-center justify-between text-sm hover:underline">
                   <span>{i + 1}. {t.name}</span>
                   <span className="tabular-nums text-muted-foreground">{formatCurrency(t.total)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card>
+        <div className="text-sm mb-1">Client annual projection</div>
+        <div className="text-xs text-muted-foreground mb-3">Recurring SEO and website payments annualised</div>
+        {annualProjectionPerClient.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recurring client revenue yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {annualProjectionPerClient.map((client, index) => (
+              <li key={client.id}>
+                <Link to="/clients/$id" params={{ id: client.id }} className="flex items-center justify-between text-sm hover:underline">
+                  <span>{index + 1}. {client.name}</span>
+                  <span className="tabular-nums text-muted-foreground">{formatCurrency(client.total)}</span>
                 </Link>
               </li>
             ))}
@@ -336,7 +299,7 @@ function Dashboard() {
       {/* PIPELINE OVERVIEW */}
       <SectionHeader icon={BarChart3} label="Pipeline overview" />
       <div className="grid grid-cols-2 gap-2">
-        {PIPELINE_STAGES.filter((s) => s !== "Converted").map((s) => (
+        {PIPELINE_STAGES.filter((s) => s !== "Signed").map((s) => (
           <Link key={s} to="/pipeline" className="rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
             <div className="text-sm text-muted-foreground">{s}</div>
             <div className="text-2xl font-bold mt-1 tabular-nums">{pipelineCounts[s] || 0}</div>

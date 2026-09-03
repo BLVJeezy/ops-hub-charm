@@ -51,7 +51,7 @@ function Pipeline() {
     if (newStage === client.pipeline_stage) return;
 
     let newStatus = client.status;
-    if (newStage === "Converted") newStatus = "Active";
+    if (newStage === "Signed") newStatus = "Active";
     else if (newStage === "Write-off") newStatus = "Write-off";
     else if (client.status === "Active" || client.status === "Write-off") newStatus = "Prospect";
 
@@ -84,7 +84,7 @@ function Pipeline() {
     if (client) moveClient(client, destination.droppableId);
   }
 
-  const BOARD_STAGES = PIPELINE_STAGES.filter((s) => s !== "Converted");
+  const BOARD_STAGES = PIPELINE_STAGES.filter((s) => s !== "Signed");
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto lg:max-w-none">

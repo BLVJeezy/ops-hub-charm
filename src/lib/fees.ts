@@ -67,6 +67,11 @@ export function clientMRR(c: FeeClient): number {
   return mrr;
 }
 
+/** Recurring yearly projection: all active SEO and website fees annualised. */
+export function clientAnnualProjection(c: FeeClient): number {
+  return clientMRR(c) * 12;
+}
+
 /** §4.9 — only Monthly-billed fees (for margin calcs) */
 export function clientMonthlyFee(c: FeeClient): number {
   let fee = 0;

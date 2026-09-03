@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import logoAsset from "@/assets/solyn-logo.png.asset.json";
 import { COMPANY } from "./constants";
-import { formatCurrency, formatDate } from "./format";
+import { formatEUR as formatCurrency, formatDate } from "./format";
 import { formatInvoiceNumber } from "./invoice-code";
 
 export type LineItem = { description: string; qty?: number; unit_price?: number; price?: number };

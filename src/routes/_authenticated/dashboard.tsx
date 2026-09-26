@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
-import { clientAnnualProjection, clientMRR, clientRevenueForMonth, type FeeClient } from "@/lib/fees";
+import { clientAnnualProjection, clientMRR, type FeeClient } from "@/lib/fees";
 import { HealthDot } from "@/components/HealthDot";
 import { QuickAddProspect } from "@/components/QuickAddProspect";
 import { PIPELINE_STAGES } from "@/lib/constants";
@@ -98,11 +98,10 @@ function Dashboard() {
 
   const revenuePerClient = useMemo(() => {
     const paidByClient: Record<string, number> = {};
-    const idByName = new Map(
-      clients.map((client) => [client.name.trim().toLocaleLowerCase(), client.id])
-    );
+    const norm = (name: string) => name.toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+    const idByName = new Map(clients.map((client) => [norm(client.name), client.id]));
     invoices.filter((i) => i.status === "Paid").forEach((i) => {
-      const clientId = i.client || (i.client_name ? idByName.get(i.client_name.trim().toLocaleLowerCase()) : undefined);
+      const clientId = i.client || (i.client_name ? idByName.get(norm(i.client_name)) : undefined);
       if (!clientId) return;
       paidByClient[clientId] = (paidByClient[clientId] || 0) + Number(i.total || 0);
     });
@@ -126,20 +125,22 @@ function Dashboard() {
 
   const now = new Date();
   const year = now.getFullYear();
+  // Revenue report is based on paid invoices (by invoice date), same source as lifetime revenue.
   const revenueReport = useMemo(() => {
     const rows = Array.from({ length: 12 }, (_, m) => ({
       label: new Date(year, m, 1).toLocaleDateString("en", { month: "short" }),
       thisYear: 0,
       lastYear: 0,
     }));
-    for (const c of clients) {
-      for (let m = 0; m < 12; m++) {
-        rows[m].thisYear += clientRevenueForMonth(c, year, m);
-        rows[m].lastYear += clientRevenueForMonth(c, year - 1, m);
-      }
+    for (const inv of invoices) {
+      if (inv.status !== "Paid" || !inv.date) continue;
+      const [y, m] = inv.date.split("-").map(Number);
+      if (!y || !m) continue;
+      if (y === year) rows[m - 1].thisYear += Number(inv.total || 0);
+      else if (y === year - 1) rows[m - 1].lastYear += Number(inv.total || 0);
     }
     return rows;
-  }, [clients, year]);
+  }, [invoices, year]);
 
   const ytd = revenueReport.slice(0, now.getMonth() + 1).reduce((s, r) => s + r.thisYear, 0);
   const lastYearTotal = revenueReport.reduce((s, r) => s + r.lastYear, 0);
@@ -287,7 +288,7 @@ function Dashboard() {
             <BarChart data={revenueReport}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} axisLine={false} tickLine={false} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} width={45} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => formatCurrency(v)} axisLine={false} tickLine={false} width={60} />
               <Tooltip
                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 formatter={(v: number) => formatCurrency(v)}

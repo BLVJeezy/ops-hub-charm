@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import logoAsset from "@/assets/solyn-logo.png.asset.json";
 import { COMPANY } from "./constants";
-import { formatEUR as formatCurrency, formatDate } from "./format";
+import { formatEUR as formatCurrency, formatDate, formatDueDate } from "./format";
 import { formatInvoiceNumber } from "./invoice-code";
 
 export type LineItem = { description: string; qty?: number; unit_price?: number; price?: number };
@@ -110,6 +110,15 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.text(inv.client_name, L, y + 6);
   doc.text(formatDate(inv.date), R, y + 6, { align: "right" });
 
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(MUTED);
+  doc.text("TE BETALEN VÓÓR:", R, y + 14, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(DARK);
+  doc.text(formatDueDate(inv.date), R, y + 20, { align: "right" });
+
   let by = y + 12;
   if (inv.client_address) {
     const lines = doc.splitTextToSize(inv.client_address, 100);
@@ -121,14 +130,14 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(MUTED);
-    doc.text("BEDRIJFSNUMMER:", R, y + 14, { align: "right" });
+    doc.text("BEDRIJFSNUMMER:", R, y + 28, { align: "right" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(DARK);
-    doc.text(inv.client_vat_number, R, y + 20, { align: "right" });
+    doc.text(inv.client_vat_number, R, y + 34, { align: "right" });
   }
 
-  y = Math.max(by, y + 26) + 10;
+  y = Math.max(by, y + (inv.client_vat_number ? 40 : 26)) + 10;
 
   // ===== Table header =====
   doc.setFillColor(245, 245, 245);
@@ -178,12 +187,16 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.text(formatCurrency(inv.total), R - 3, y + 3, { align: "right" });
 
   // ===== Footer: pay to =====
-  let fy = 228;
+  let fy = 222;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(MUTED);
   doc.text("BETAAL AAN:", L, fy);
   fy += 6;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(DARK);
+  doc.text(`Betaaltermijn: 7 dagen - te betalen vóór ${formatDueDate(inv.date)}`, L, fy); fy += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(DARK);

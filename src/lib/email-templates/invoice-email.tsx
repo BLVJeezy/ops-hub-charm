@@ -13,6 +13,15 @@ import {
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
 
+// Invoice date (dd-mm-yyyy) + 7 days, formatted dd-mm-yyyy.
+function formatDueDate(date: string): string {
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(date)
+  if (!m) return ''
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]) + 7)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`
+}
+
 interface LineItem {
   description: string
   price: string
@@ -117,6 +126,8 @@ const InvoiceEmail = ({
               <Column style={{ width: '40%', textAlign: 'right', verticalAlign: 'top' }}>
                 <Text style={metaLabel}>DATUM:</Text>
                 <Text style={metaValue}>{date}</Text>
+                <Text style={{ ...metaLabel, marginTop: '12px' }}>TE BETALEN VÓÓR:</Text>
+                <Text style={metaValue}>{formatDueDate(date)}</Text>
                 <Text style={{ ...metaLabel, marginTop: '12px' }}>BEDRIJFSNUMMER:</Text>
                 <Text style={metaValue}>{vatNumber}</Text>
               </Column>
@@ -154,6 +165,9 @@ const InvoiceEmail = ({
           {/* Payment info */}
           <Section style={{ marginTop: '56px' }}>
             <Text style={metaLabel}>BETAAL AAN:</Text>
+            <Text style={{ ...payLine, fontWeight: 'bold' }}>
+              Betaaltermijn: 7 dagen - te betalen vóór {formatDueDate(date)}
+            </Text>
             <Text style={payLine}>Bedrijfsnaam: Solyn Global LTD</Text>
             <Text style={payLine}>
               71-75 Shelton Street, Covent Garden, London, WC2H 9JQ, United Kingdom

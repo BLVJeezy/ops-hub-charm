@@ -178,7 +178,7 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.text(formatCurrency(inv.total), R - 3, y + 3, { align: "right" });
 
   // ===== Footer: pay to =====
-  let fy = 240;
+  let fy = 228;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(MUTED);
@@ -192,7 +192,9 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.text(addrLines, L, fy); fy += addrLines.length * 5;
   doc.text(`Bedrijfsnummer: ${COMPANY.companyNumber}`, L, fy); fy += 5;
   doc.text(`Rekeningnummer: ${COMPANY.iban}`, L, fy); fy += 5;
-  doc.text(`BIC: ${COMPANY.bic}`, L, fy); fy += 8;
+  doc.text(`BIC: ${COMPANY.bic}`, L, fy); fy += 7;
+  doc.text(`Belgische rekening: ${COMPANY.beIban} (${COMPANY.beBank}) - ${COMPANY.beName}`, L, fy); fy += 5;
+  doc.text(`BIC: ${COMPANY.beBic}`, L, fy); fy += 8;
 
   if (inv.vat_note) {
     doc.setFont("helvetica", "italic");

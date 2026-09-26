@@ -49,6 +49,10 @@ export const COMPANY = {
   companyNumber: "16876148",
   iban: "GB50REVO23012053167437",
   bic: "REVOGB21",
+  beName: "Solyn Global",
+  beBank: "KBC Bank",
+  beIban: "BE48 7390 2803 5627",
+  beBic: "KREDBEBB",
 };
 
 export const PIN_CODE = "943528";

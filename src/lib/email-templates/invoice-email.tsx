@@ -161,6 +161,10 @@ const InvoiceEmail = ({
             <Text style={payLine}>Bedrijfsnummer: 16876148</Text>
             <Text style={payLine}>Rekeningnummer: GB50REVO23012053167437</Text>
             <Text style={payLine}>BIC: REVOGB21</Text>
+            <Text style={{ ...payLine, marginTop: '8px' }}>
+              Belgische rekening: BE48 7390 2803 5627 (KBC Bank) - Solyn Global
+            </Text>
+            <Text style={payLine}>BIC: KREDBEBB</Text>
             <Text style={btwNote}>
               <em>
                 Btw verlegd: De medecontractant is gehouden tot voldoening van de belasting

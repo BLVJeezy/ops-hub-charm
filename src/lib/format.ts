@@ -14,6 +14,18 @@ export function formatDate(dateStr?: string | null): string {
   return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
 }
 
+// Due date: invoice date + `days` (default 7), formatted dd-mm-yyyy.
+// Accepts ISO (yyyy-mm-dd) or already-formatted dd-mm-yyyy strings.
+export function formatDueDate(dateStr?: string | null, days = 7): string {
+  if (!dateStr) return "—";
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(dateStr);
+  const d = m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : new Date(dateStr);
+  if (isNaN(d.getTime())) return "—";
+  d.setDate(d.getDate() + days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+}
+
 export function formatEUR(amount?: number | null): string {
   const n = Math.round(Number(amount || 0));
   return `€${new Intl.NumberFormat("nl-BE").format(n)}`;

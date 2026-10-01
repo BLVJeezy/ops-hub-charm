@@ -124,7 +124,7 @@ const InvoiceEmail = ({
                 {clientAddress ? <Text style={metaValue}>{clientAddress}</Text> : null}
               </Column>
               <Column style={{ width: '40%', textAlign: 'right', verticalAlign: 'top' }}>
-                <Text style={metaLabel}>DATUM:</Text>
+                <Text style={metaLabel}>OPMAAKDATUM:</Text>
                 <Text style={metaValue}>{date}</Text>
                 <Text style={{ ...metaLabel, marginTop: '12px' }}>TE BETALEN VÓÓR:</Text>
                 <Text style={metaValue}>{formatDueDate(date)}</Text>

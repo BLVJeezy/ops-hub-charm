@@ -102,7 +102,7 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.setFontSize(9);
   doc.setTextColor(MUTED);
   doc.text("GEFACTUREERD AAN:", L, y);
-  doc.text("DATUM:", R, y, { align: "right" });
+  doc.text("OPMAAKDATUM:", R, y, { align: "right" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);

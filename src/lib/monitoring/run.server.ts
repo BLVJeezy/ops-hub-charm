@@ -123,7 +123,7 @@ async function checkSite(db: Db, site: Site): Promise<{ opened: number; resolved
 
   // 4. Latest production deployment (Vercel, optional token)
   let deploy: { state?: string; url?: string; created?: number } | null = null;
-  if (site.vercel_project_id && process.env.VERCEL_TOKEN) {
+  if (site.vercel_project_id && (process.env.VERCEL_TOKEN || process.env.VERCEL_API_TOKEN)) {
     tasks.push(
       fetchLatestDeployment(site.vercel_project_id).then((d) => {
         deploy = d;
@@ -262,7 +262,7 @@ async function fetchLatestDeployment(
   params.set("teamId", process.env.VERCEL_TEAM_ID || "team_LMDAIL57CfPMVXgRrEHeVIzi");
   try {
     const res = await fetch(`https://api.vercel.com/v6/deployments?${params}`, {
-      headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
+      headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN || process.env.VERCEL_API_TOKEN}` },
     });
     if (!res.ok) return null;
     const body = (await res.json()) as {

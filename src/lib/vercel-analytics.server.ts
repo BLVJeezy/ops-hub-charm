@@ -48,7 +48,7 @@ export async function syncVercelAnalytics(opts: {
   breakdownDays?: number;
   siteId?: string;
 }): Promise<{ results: VercelSyncResult[] }> {
-  const token = process.env.VERCEL_TOKEN;
+  const token = process.env.VERCEL_TOKEN || process.env.VERCEL_API_TOKEN;
   if (!token) throw new Error("VERCEL_TOKEN ontbreekt");
   const teamId = process.env.VERCEL_TEAM_ID || undefined;
   const db = await admin();

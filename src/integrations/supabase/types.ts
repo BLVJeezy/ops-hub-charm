@@ -308,6 +308,30 @@ export type Database = {
           },
         ]
       }
+      email_events: {
+        Row: {
+          created_at: string
+          email_id: string | null
+          from_domain: string | null
+          id: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          email_id?: string | null
+          from_domain?: string | null
+          id?: never
+          type: string
+        }
+        Update: {
+          created_at?: string
+          email_id?: string | null
+          from_domain?: string | null
+          id?: never
+          type?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -439,6 +463,103 @@ export type Database = {
           },
         ]
       }
+      health_checks: {
+        Row: {
+          checked_at: string
+          error: string | null
+          id: number
+          kind: string
+          ok: boolean
+          response_ms: number | null
+          site_id: string
+          status_code: number | null
+          target: string | null
+        }
+        Insert: {
+          checked_at?: string
+          error?: string | null
+          id?: never
+          kind: string
+          ok: boolean
+          response_ms?: number | null
+          site_id: string
+          status_code?: number | null
+          target?: string | null
+        }
+        Update: {
+          checked_at?: string
+          error?: string | null
+          id?: never
+          kind?: string
+          ok?: boolean
+          response_ms?: number | null
+          site_id?: string
+          status_code?: number | null
+          target?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_checks_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incidents: {
+        Row: {
+          detail: string | null
+          id: string
+          kind: string
+          last_notified_at: string | null
+          notify_count: number
+          opened_at: string
+          resolution_note: string | null
+          resolved_at: string | null
+          severity: string
+          site_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          detail?: string | null
+          id?: string
+          kind: string
+          last_notified_at?: string | null
+          notify_count?: number
+          opened_at?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          severity: string
+          site_id: string
+          status?: string
+          title: string
+        }
+        Update: {
+          detail?: string | null
+          id?: string
+          kind?: string
+          last_notified_at?: string | null
+          notify_count?: number
+          opened_at?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          severity?: string
+          site_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           bounced_at: string | null
@@ -519,6 +640,119 @@ export type Database = {
           {
             foreignKeyName: "invoices_client_fkey"
             columns: ["client"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monitored_sites: {
+        Row: {
+          api_endpoints: Json
+          api_status: string | null
+          check_interval_minutes: number
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          db_health_apikey: string | null
+          db_health_url: string | null
+          db_provider: string
+          db_status: string | null
+          email_domain: string | null
+          email_status: string | null
+          enabled: boolean
+          hosting_provider: string
+          id: string
+          is_critical: boolean
+          last_backup_at: string | null
+          last_checked_at: string | null
+          last_deploy_at: string | null
+          last_deploy_state: string | null
+          last_deploy_url: string | null
+          last_error: string | null
+          last_http_status: number | null
+          last_response_ms: number | null
+          last_status: string
+          name: string
+          notes: string | null
+          repo: string | null
+          ssl_ok: boolean | null
+          updated_at: string
+          url: string
+          vercel_project_id: string | null
+        }
+        Insert: {
+          api_endpoints?: Json
+          api_status?: string | null
+          check_interval_minutes?: number
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          db_health_apikey?: string | null
+          db_health_url?: string | null
+          db_provider?: string
+          db_status?: string | null
+          email_domain?: string | null
+          email_status?: string | null
+          enabled?: boolean
+          hosting_provider?: string
+          id?: string
+          is_critical?: boolean
+          last_backup_at?: string | null
+          last_checked_at?: string | null
+          last_deploy_at?: string | null
+          last_deploy_state?: string | null
+          last_deploy_url?: string | null
+          last_error?: string | null
+          last_http_status?: number | null
+          last_response_ms?: number | null
+          last_status?: string
+          name: string
+          notes?: string | null
+          repo?: string | null
+          ssl_ok?: boolean | null
+          updated_at?: string
+          url: string
+          vercel_project_id?: string | null
+        }
+        Update: {
+          api_endpoints?: Json
+          api_status?: string | null
+          check_interval_minutes?: number
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          db_health_apikey?: string | null
+          db_health_url?: string | null
+          db_provider?: string
+          db_status?: string | null
+          email_domain?: string | null
+          email_status?: string | null
+          enabled?: boolean
+          hosting_provider?: string
+          id?: string
+          is_critical?: boolean
+          last_backup_at?: string | null
+          last_checked_at?: string | null
+          last_deploy_at?: string | null
+          last_deploy_state?: string | null
+          last_deploy_url?: string | null
+          last_error?: string | null
+          last_http_status?: number | null
+          last_response_ms?: number | null
+          last_status?: string
+          name?: string
+          notes?: string | null
+          repo?: string | null
+          ssl_ok?: boolean | null
+          updated_at?: string
+          url?: string
+          vercel_project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitored_sites_client_id_fkey"
+            columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]

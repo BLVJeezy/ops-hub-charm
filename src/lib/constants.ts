@@ -55,5 +55,4 @@ export const COMPANY = {
   beBic: "KREDBEBB",
 };
 
-export const PIN_CODE = "943528";
 export const PIN_STORAGE_KEY = "solyn_pin_unlocked";

@@ -577,9 +577,16 @@ export type Database = {
           invoice_number: number | null
           last_reminder_at: string | null
           line_items: Json
+          next_repeat_on: string | null
           opened_at: string | null
           reminder_count: number
+          repeat_day: number | null
+          repeat_monthly: boolean
+          repeat_parent: string | null
           resend_message_id: string | null
+          schedule_error: string | null
+          schedule_locked_at: string | null
+          scheduled_send_at: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           total: number
@@ -602,9 +609,16 @@ export type Database = {
           invoice_number?: number | null
           last_reminder_at?: string | null
           line_items?: Json
+          next_repeat_on?: string | null
           opened_at?: string | null
           reminder_count?: number
+          repeat_day?: number | null
+          repeat_monthly?: boolean
+          repeat_parent?: string | null
           resend_message_id?: string | null
+          schedule_error?: string | null
+          schedule_locked_at?: string | null
+          scheduled_send_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number
@@ -627,9 +641,16 @@ export type Database = {
           invoice_number?: number | null
           last_reminder_at?: string | null
           line_items?: Json
+          next_repeat_on?: string | null
           opened_at?: string | null
           reminder_count?: number
+          repeat_day?: number | null
+          repeat_monthly?: boolean
+          repeat_parent?: string | null
           resend_message_id?: string | null
+          schedule_error?: string | null
+          schedule_locked_at?: string | null
+          scheduled_send_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number
@@ -642,6 +663,13 @@ export type Database = {
             columns: ["client"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_repeat_parent_fkey"
+            columns: ["repeat_parent"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]

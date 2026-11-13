@@ -55,6 +55,20 @@ export const Route = createFileRoute('/api/public/hooks/resend')({
 
         const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
 
+        // Status Hub: log the event (type + sending domain only — no recipients or subjects).
+        // Best-effort: never blocks the invoice update below.
+        try {
+          const { fromDomain } = await import('@/lib/monitoring/checks')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- new table not in generated types yet
+          await (supabaseAdmin as any).from('email_events').insert({
+            email_id: emailId,
+            type,
+            from_domain: fromDomain(evt?.data?.from),
+          })
+        } catch (e) {
+          console.error('email_events insert failed', e)
+        }
+
         const patch: Record<string, unknown> = {}
         const now = new Date().toISOString()
 

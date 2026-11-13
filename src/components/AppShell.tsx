@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet,
-  FileText, Search as SearchIcon, LogOut,
+  FileText, Search as SearchIcon, LogOut, Activity,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/invoices", label: "Invoices", icon: FileText },
   { to: "/expenses", label: "Expenses", icon: Wallet },
+  { to: "/status", label: "Status", icon: Activity },
 ] as const;
 
 const MOBILE_NAV = [
@@ -21,6 +22,7 @@ const MOBILE_NAV = [
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/expenses", label: "Costs", icon: Wallet },
   { to: "/invoices", label: "Invoices", icon: FileText },
+  { to: "/status", label: "Status", icon: Activity },
 ] as const;
 
 function useIsActive(path: string, exact = false) {

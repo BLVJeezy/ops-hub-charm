@@ -17,7 +17,11 @@ Doel: Hub OS wordt de plek waar elke euro van Solyn Global binnenkomt en buiteng
 
 ## Fases
 
-### Fase A — Grootboek (basis, eerst bouwen)
+### Fase A — Grootboek ✅ gebouwd (13/11/2026, pagina Boekhouding)
+
+Gebouwd: rekeningschema (aanpasbaar), dagboek met dubbele boekingen (database weigert boekingen die niet in evenwicht zijn), automatische boekingen uit facturen (verstuurd → omzet/debiteur, betaald → bank) en maandelijkse kosten (elke nacht 02:15 + knop), manuele boekingen, periodes afsluiten (database blokkeert wijzigingen), audit log, resultatenrekening met vergelijking vorige periode en vorig jaar, proefbalans, CSV-exports (dagboek, saldibalans). Nog open: munt/koersen en het definitieve rekeningschema van de boekhouder.
+
+Oorspronkelijk plan:
 - Tabellen: `ledger_accounts` (rekeningschema: omzet, kosten per categorie, bank, debiteuren, crediteuren, btw), `journal_entries` + `journal_lines` (dubbel boekhouden: elke boeking debet = credit).
 - Automatisch boeken: factuur **verstuurd** → omzet + debiteur; factuur **betaald** → bank + debiteur af; kost → kostenrekening + crediteur/bank.
 - Btw-codes per regel: 0 % verlegd (art. 44, nu standaard op facturen), plus de codes die de boekhouder bevestigt.

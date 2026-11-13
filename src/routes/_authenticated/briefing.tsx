@@ -18,7 +18,7 @@ type Row = {
 };
 
 export const Route = createFileRoute("/_authenticated/briefing")({
-  validateSearch: (s: Record<string, unknown>) => ({ day: typeof s.day === "string" ? s.day : undefined }),
+  validateSearch: (s: Record<string, unknown>): { day?: string } => (typeof s.day === "string" ? { day: s.day } : {}),
   component: BriefingPage,
 });
 

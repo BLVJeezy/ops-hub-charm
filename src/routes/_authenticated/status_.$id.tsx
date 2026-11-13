@@ -561,23 +561,197 @@ function Pages({ siteId }: { siteId: string }) {
 }
 
 // ---------- Data ----------
+type SiteRecord = {
+  id: string;
+  kind: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: string | null;
+  title: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  message: string | null;
+  amount: number | null;
+  source: string | null;
+  extra: Record<string, unknown> | null;
+  synced_at: string;
+};
+
+const RECORD_LABEL: Record<string, string> = {
+  afspraak: "Afspraken",
+  reservatie: "Reservaties",
+  aanvraag: "Aanvragen",
+  blokkade: "Geblokkeerd",
+  lead: "Leads",
+};
+
+const STATUS_STYLE: Record<string, string> = {
+  completed: "bg-emerald-500/15 text-emerald-500",
+  confirmed: "bg-emerald-500/15 text-emerald-500",
+  scheduled: "bg-sky-500/15 text-sky-500",
+  pending: "bg-amber-500/15 text-amber-500",
+  nieuw: "bg-amber-500/15 text-amber-500",
+  new: "bg-amber-500/15 text-amber-500",
+  qualified: "bg-sky-500/15 text-sky-500",
+  cancelled: "bg-red-500/15 text-red-500",
+  canceled: "bg-red-500/15 text-red-500",
+};
+
+function fmtWhen(r: SiteRecord) {
+  if (!r.starts_at) return "—";
+  const d = new Date(r.starts_at);
+  const dateOnly = r.kind === "reservatie" || r.kind === "aanvraag" || r.kind === "blokkade";
+  const opts: Intl.DateTimeFormatOptions = dateOnly
+    ? { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }
+    : { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" };
+  let s = d.toLocaleString("nl-BE", opts);
+  if (dateOnly && r.ends_at && r.kind !== "blokkade") {
+    s += ` → ${new Date(r.ends_at).toLocaleDateString("nl-BE", { day: "numeric", month: "short", timeZone: "UTC" })}`;
+  }
+  return s;
+}
+
 function DataSources({ site }: { site: Site }) {
-  return (
-    <>
+  const [rows, setRows] = useState<SiteRecord[] | null>(null);
+  const [denied, setDenied] = useState(false);
+  const [kind, setKind] = useState<string>("");
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    db.from("site_records")
+      .select("id,kind,starts_at,ends_at,status,title,customer_name,customer_email,customer_phone,message,amount,source,extra,synced_at")
+      .eq("site_id", site.id)
+      .order("starts_at", { ascending: false })
+      .limit(1000)
+      .then(({ data, error }: { data: SiteRecord[] | null; error: unknown }) => {
+        if (error) setDenied(true);
+        setRows(data ?? []);
+      });
+  }, [site.id]);
+
+  const kinds = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows ?? []) m.set(r.kind, (m.get(r.kind) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [rows]);
+
+  useEffect(() => {
+    if (!kind && kinds.length) setKind(kinds.find(([k]) => k !== "blokkade")?.[0] ?? kinds[0][0]);
+  }, [kinds, kind]);
+
+  const now = Date.now();
+  const upcoming = (rows ?? []).filter(
+    (r) => r.kind !== "lead" && r.kind !== "blokkade" && r.starts_at && new Date(r.starts_at).getTime() >= now && !/cancel/i.test(r.status ?? ""),
+  ).length;
+  const last30 = (rows ?? []).filter(
+    (r) => r.starts_at && now - new Date(r.starts_at).getTime() <= 30 * 86400e3 && new Date(r.starts_at).getTime() <= now,
+  ).length;
+  const cancelled = (rows ?? []).filter((r) => /cancel/i.test(r.status ?? "")).length;
+  const lastSync = (rows ?? []).reduce<string | null>((a, r) => (!a || r.synced_at > a ? r.synced_at : a), null);
+
+  const needle = q.trim().toLowerCase();
+  const shown = (rows ?? [])
+    .filter((r) => !kind || r.kind === kind)
+    .filter(
+      (r) =>
+        !needle ||
+        [r.customer_name, r.customer_email, r.customer_phone, r.title, r.message]
+          .some((v) => (v ?? "").toLowerCase().includes(needle)),
+    );
+
+  const exportCsv = () => {
+    const head = ["soort", "datum", "einde", "status", "onderwerp", "naam", "e-mail", "telefoon", "bericht", "bron"];
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [head.join(";")].concat(
+      shown.map((r) =>
+        [r.kind, r.starts_at, r.ends_at, r.status, r.title, r.customer_name, r.customer_email, r.customer_phone, r.message, r.source]
+          .map(esc)
+          .join(";"),
+      ),
+    );
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${site.name}-${kind || "data"}.csv`.replace(/\s+/g, "-").toLowerCase();
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  if (rows === null) return <Card title="Gegevens"><p className="text-sm text-muted-foreground">Laden…</p></Card>;
+
+  if (!rows.length) {
+    return (
       <Card title="Gegevens van deze website" icon={<Database className="w-3.5 h-3.5" />}>
         <p className="text-sm text-muted-foreground">
-          Boekingen, formulieren, klanten en andere gegevens staan in de eigen database van deze website
-          ({DB_PROVIDERS[site.db_provider] ?? site.db_provider}). Om die hier te tonen moet de website ze veilig delen met de Hub.
-          Dat is nog niet gekoppeld.
+          {denied
+            ? "Alleen admins kunnen afspraken en contactgegevens zien."
+            : `Nog geen afspraken, reservaties of leads gekoppeld voor deze website (${DB_PROVIDERS[site.db_provider] ?? site.db_provider}).`}
         </p>
       </Card>
-      <Card title="Wat hier komt">
-        <ul className="text-sm space-y-1.5 list-disc pl-5 text-muted-foreground">
-          <li>Aantal aanvragen, boekingen en formulieren per dag/week</li>
-          <li>Laatste inzendingen (alleen lezen)</li>
-          <li>Aantal records per tabel en groei</li>
-          <li>Export voor de klant of de boekhouding</li>
-        </ul>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+        <Kpi label="Totaal" value={String(rows.length)} />
+        <Kpi label="Komend" value={String(upcoming)} color="#0ea5e9" />
+        <Kpi label="Laatste 30 dagen" value={String(last30)} />
+        <Kpi label="Geannuleerd" value={String(cancelled)} color={cancelled ? "#ef4444" : undefined} />
+      </div>
+
+      <Card title="Afspraken, reservaties en leads" icon={<Database className="w-3.5 h-3.5" />}>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {kinds.map(([k, n]) => (
+            <button
+              key={k}
+              onClick={() => setKind(k)}
+              className={`text-xs px-2.5 py-1 rounded-full border ${kind === k ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}
+            >
+              {RECORD_LABEL[k] ?? k} · {n}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-3">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Zoek op naam, e-mail, telefoon…"
+            className="flex-1 h-8 rounded-md border border-border bg-transparent px-2 text-sm"
+          />
+          <Button size="sm" variant="outline" onClick={exportCsv}>CSV</Button>
+        </div>
+
+        <div className="divide-y divide-border">
+          {shown.map((r) => (
+            <div key={r.id} className="py-2.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">{fmtWhen(r)}</span>
+                {r.status && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${STATUS_STYLE[r.status.toLowerCase()] ?? "bg-muted text-muted-foreground"}`}>
+                    {r.status}
+                  </span>
+                )}
+              </div>
+              {(r.title || r.customer_name) && (
+                <div className="text-muted-foreground">
+                  {[r.customer_name, r.title].filter(Boolean).join(" · ")}
+                  {r.amount != null && ` · ${formatCurrency(Number(r.amount))}`}
+                </div>
+              )}
+              {(r.customer_email || r.customer_phone) && (
+                <div className="flex flex-wrap gap-x-3 text-xs">
+                  {r.customer_email && <a className="text-primary" href={`mailto:${r.customer_email}`}>{r.customer_email}</a>}
+                  {r.customer_phone && <a className="text-primary" href={`tel:${r.customer_phone.replace(/\s/g, "")}`}>{r.customer_phone}</a>}
+                </div>
+              )}
+              {r.message && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{r.message}</div>}
+            </div>
+          ))}
+          {!shown.length && <p className="text-sm text-muted-foreground py-2">Niets gevonden.</p>}
+        </div>
+        {lastSync && <p className="text-[11px] text-muted-foreground mt-2">Bijgewerkt {ago(lastSync)} · alleen lezen, kopie uit de database van de website</p>}
       </Card>
     </>
   );

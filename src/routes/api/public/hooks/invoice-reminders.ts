@@ -30,12 +30,17 @@ function fmtDate(d: string) {
 export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
         const supabaseUrl = process.env.SUPABASE_URL
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
         const resendKey = process.env.RESEND_API_KEY
         if (!supabaseUrl || !serviceKey || !resendKey) {
           return Response.json({ error: 'server misconfigured' }, { status: 500 })
+        }
+        const auth = request.headers.get('authorization') ?? ''
+        const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+        if (!bearer || bearer !== serviceKey) {
+          return new Response('unauthorized', { status: 401 })
         }
         const supabase = createClient(supabaseUrl, serviceKey)
 

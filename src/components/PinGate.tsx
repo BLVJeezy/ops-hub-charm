@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { PIN_CODE, PIN_STORAGE_KEY } from "@/lib/constants";
+import { PIN_STORAGE_KEY } from "@/lib/constants";
+import { verifyPin } from "@/lib/pin.functions";
 import { SolynLogo } from "./SolynLogo";
 
 export function PinGate({ children }: { children: React.ReactNode }) {
@@ -17,13 +18,21 @@ export function PinGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (entered.length === 6) {
-      if (entered === PIN_CODE) {
-        sessionStorage.setItem(PIN_STORAGE_KEY, "true");
-        setUnlocked(true);
-      } else {
-        setShake(true);
-        setTimeout(() => { setShake(false); setEntered(""); }, 600);
-      }
+      let cancelled = false;
+      verifyPin({ data: { pin: entered } })
+        .then((r) => r.ok)
+        .catch(() => false)
+        .then((ok) => {
+          if (cancelled) return;
+          if (ok) {
+            sessionStorage.setItem(PIN_STORAGE_KEY, "true");
+            setUnlocked(true);
+          } else {
+            setShake(true);
+            setTimeout(() => { setShake(false); setEntered(""); }, 600);
+          }
+        });
+      return () => { cancelled = true; };
     }
   }, [entered]);
 

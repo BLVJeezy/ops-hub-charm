@@ -1,6 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 
+function esc(v: string) {
+  return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
 function fmtDate(d: string) {
   try {
     const date = new Date(d)
@@ -39,7 +43,7 @@ export const sendClientDocument = createServerFn({ method: 'POST' })
 
     const { data: signed, error: signErr } = await supabase.storage
       .from('client-documents')
-      .createSignedUrl(doc.storage_path, 60 * 60 * 24 * 365 * 10) // ~10 years — effectively permanent
+      .createSignedUrl(doc.storage_path, 60 * 60 * 24 * 7) // 7 days
     if (signErr || !signed) throw new Error(signErr?.message ?? 'Kon downloadlink niet aanmaken')
 
     const displayTitle = doc.title || doc.file_name
@@ -48,13 +52,13 @@ export const sendClientDocument = createServerFn({ method: 'POST' })
 
     const html = `
       <div style="font-family:Arial,sans-serif;color:#1B222C;max-width:520px;margin:0 auto;">
-        <p>Hoi ${clientName},</p>
+        <p>Hoi ${esc(clientName)},</p>
         <p>Hierbij het volgende document van Solyn Global:</p>
         <p style="background:#f5f5f3;border-left:4px solid #C9A24B;padding:12px 16px;margin:16px 0;">
-          <strong>${displayTitle}</strong><br>
-          <span style="color:#6b6b6b;font-size:13px;">${displayDate}</span>
+          <strong>${esc(displayTitle)}</strong><br>
+          <span style="color:#6b6b6b;font-size:13px;">${esc(displayDate)}</span>
         </p>
-        <p><a href="${signed.signedUrl}" style="background:#C9A24B;color:#1B222C;font-weight:bold;padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block;">Document bekijken</a></p>
+        <p><a href="${esc(signed.signedUrl)}" style="background:#C9A24B;color:#1B222C;font-weight:bold;padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block;">Document bekijken</a></p>
         <p>Met vriendelijke groet,<br>Jason — Solyn Global</p>
       </div>
     `
@@ -66,7 +70,7 @@ export const sendClientDocument = createServerFn({ method: 'POST' })
         from: 'Solyn Global <jason@solynglobal.be>',
         to: [toEmail],
         reply_to: 'jason@solynglobal.be',
-        subject: `${displayTitle} — Solyn Global`,
+        subject: `${displayTitle.replace(/[\r\n]+/g, ' ')} — Solyn Global`,
         html,
       }),
     })

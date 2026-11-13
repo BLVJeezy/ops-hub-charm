@@ -15,6 +15,13 @@
       "when": 1794582060472,
       "tag": "0001_no_auto_role_on_signup",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794582145067,
+      "tag": "0002_status_hub",
+      "breakpoints": true
     }
   ]
 }

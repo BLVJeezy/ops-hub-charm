@@ -1,4 +1,4 @@
--- Seed: first monitored sites for the Status Hub (Riory, Belgomed, Villa Amano).
+-- Seed: monitored sites for the Status Hub (Riory, Belgomed, Villa Amano, GiGi L Coiffure, Horsey Valley).
 -- Run AFTER the status_hub migration. Safe to re-run: existing sites (matched by URL) are updated, not duplicated.
 -- The db_health_apikey values are the PUBLIC anon keys already shipped in each site's frontend code.
 -- Client links are matched by name; if no matching client row exists the site is added unlinked.
@@ -25,7 +25,17 @@ FROM (VALUES
    'https://hotel-bilzen.vercel.app/api/ops?a=status', NULL,
    '[{"label":"Availability","url":"https://hotel-bilzen.vercel.app/api/availability"}]',
    NULL, true, 10,
-   'Booking system. Data lives in a private Vercel Blob store; the status endpoint reports store:false if Blob is disconnected. Update the URL when the custom domain goes live.')
+   'Booking system. Data lives in a private Vercel Blob store; the status endpoint reports store:false if Blob is disconnected. Update the URL when the custom domain goes live.'),
+  ('GiGi%', 'GiGi L Coiffure', 'https://gigilcoiffure.be', 'Vercel', 'BLVJeezy/gigi-l-salon-suite', 'lovable_cloud',
+   'https://hoorwcmbayuxuseupyju.supabase.co/auth/v1/health',
+   'sb_publishable_s5HAPYV0mqBVY-0zEEE1HA_To6jARLV',
+   '[]', NULL, true, 15,
+   'Salon with online booking form, so marked critical. Emails go via Lovable email, not Resend.'),
+  ('Horse%', 'Horsey Valley', 'https://horseyvalley.be', 'Lovable', 'BLVJeezy/horse-valley-retreat', 'lovable_cloud',
+   'https://hoaginjyaachoickqkno.supabase.co/auth/v1/health',
+   'sb_publishable_mGTUHdEYQzEj_SGWrKEuqA_93o5uukC',
+   '[]', NULL, true, 15,
+   'Vacation rental with booking requests, availability and iCal feeds, so marked critical.')
 ) AS v(client_name, name, url, hosting, repo, db_provider, db_health_url, db_health_apikey,
        api_endpoints, email_domain, is_critical, interval_min, notes)
 WHERE NOT EXISTS (SELECT 1 FROM public.monitored_sites s WHERE s.url = v.url);

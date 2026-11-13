@@ -1,0 +1,20 @@
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.monitored_sites TO authenticated;
+GRANT SELECT ON public.health_checks TO authenticated;
+GRANT SELECT, UPDATE ON public.incidents TO authenticated;
+GRANT SELECT ON public.email_events TO authenticated;
+GRANT ALL ON public.monitored_sites, public.health_checks, public.incidents, public.email_events TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+DROP POLICY IF EXISTS "Sites read authed" ON public.monitored_sites;
+CREATE POLICY "Sites read staff" ON public.monitored_sites FOR SELECT TO authenticated USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "Sites update admin" ON public.monitored_sites;
+CREATE POLICY "Sites update admin" ON public.monitored_sites FOR UPDATE TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS "Checks read authed" ON public.health_checks;
+CREATE POLICY "Checks read staff" ON public.health_checks FOR SELECT TO authenticated USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "Incidents read authed" ON public.incidents;
+CREATE POLICY "Incidents read staff" ON public.incidents FOR SELECT TO authenticated USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "Incidents update admin" ON public.incidents;
+CREATE POLICY "Incidents update admin" ON public.incidents FOR UPDATE TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS "Email events read authed" ON public.email_events;
+CREATE POLICY "Email events read staff" ON public.email_events FOR SELECT TO authenticated USING (public.is_staff(auth.uid()));
+NOTIFY pgrst, 'reload schema';

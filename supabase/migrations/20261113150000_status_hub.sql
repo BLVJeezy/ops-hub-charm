@@ -52,9 +52,13 @@ CREATE TRIGGER monitored_sites_updated_at BEFORE UPDATE ON public.monitored_site
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 ALTER TABLE public.monitored_sites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Sites read authed" ON public.monitored_sites;
 CREATE POLICY "Sites read authed" ON public.monitored_sites FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Sites insert admin" ON public.monitored_sites;
 CREATE POLICY "Sites insert admin" ON public.monitored_sites FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS "Sites update admin" ON public.monitored_sites;
 CREATE POLICY "Sites update admin" ON public.monitored_sites FOR UPDATE TO authenticated USING (public.has_role(auth.uid(),'admin'));
+DROP POLICY IF EXISTS "Sites delete admin" ON public.monitored_sites;
 CREATE POLICY "Sites delete admin" ON public.monitored_sites FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin'));
 
 -- 2. Check history -------------------------------------------------------------
@@ -72,6 +76,7 @@ CREATE TABLE IF NOT EXISTS public.health_checks (
 CREATE INDEX IF NOT EXISTS health_checks_site_time_idx ON public.health_checks(site_id, checked_at DESC);
 
 ALTER TABLE public.health_checks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Checks read authed" ON public.health_checks;
 CREATE POLICY "Checks read authed" ON public.health_checks FOR SELECT TO authenticated USING (true);
 -- Writes happen only server-side with the service role.
 
@@ -95,7 +100,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS incidents_one_open_per_kind
 CREATE INDEX IF NOT EXISTS incidents_opened_idx ON public.incidents(opened_at DESC);
 
 ALTER TABLE public.incidents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Incidents read authed" ON public.incidents;
 CREATE POLICY "Incidents read authed" ON public.incidents FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Incidents update admin" ON public.incidents;
 CREATE POLICY "Incidents update admin" ON public.incidents FOR UPDATE TO authenticated USING (public.has_role(auth.uid(),'admin'));
 
 -- 4. Resend delivery events (no recipient addresses or subjects stored) ---------
@@ -109,8 +116,19 @@ CREATE TABLE IF NOT EXISTS public.email_events (
 CREATE INDEX IF NOT EXISTS email_events_domain_time_idx ON public.email_events(from_domain, created_at DESC);
 
 ALTER TABLE public.email_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Email events read authed" ON public.email_events;
 CREATE POLICY "Email events read authed" ON public.email_events FOR SELECT TO authenticated USING (true);
 
 -- Realtime for the Status page
-ALTER PUBLICATION supabase_realtime ADD TABLE public.monitored_sites;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.incidents;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'monitored_sites') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.monitored_sites;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'incidents') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.incidents;
+  END IF;
+END $$;
+
+-- Make the new tables visible to the API immediately.
+NOTIFY pgrst, 'reload schema';

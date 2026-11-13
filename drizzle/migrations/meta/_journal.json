@@ -36,6 +36,13 @@
       "when": 1794582282556,
       "tag": "0004_status_hub_tighten_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794583391646,
+      "tag": "0005_lock_down_email_queue_and_roles",
+      "breakpoints": true
     }
   ]
 }

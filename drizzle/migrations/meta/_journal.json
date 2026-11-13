@@ -8,6 +8,13 @@
       "when": 1794582019816,
       "tag": "0000_harden_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794582060472,
+      "tag": "0001_no_auto_role_on_signup",
+      "breakpoints": true
     }
   ]
 }

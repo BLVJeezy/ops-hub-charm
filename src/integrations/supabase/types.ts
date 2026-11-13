@@ -581,12 +581,14 @@ export type Database = {
           opened_at: string | null
           reminder_count: number
           repeat_day: number | null
+          repeat_hour: number | null
           repeat_monthly: boolean
           repeat_parent: string | null
           resend_message_id: string | null
           schedule_error: string | null
           schedule_locked_at: string | null
           scheduled_send_at: string | null
+          scheduled_send_hour: number | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           total: number
@@ -613,12 +615,14 @@ export type Database = {
           opened_at?: string | null
           reminder_count?: number
           repeat_day?: number | null
+          repeat_hour?: number | null
           repeat_monthly?: boolean
           repeat_parent?: string | null
           resend_message_id?: string | null
           schedule_error?: string | null
           schedule_locked_at?: string | null
           scheduled_send_at?: string | null
+          scheduled_send_hour?: number | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number
@@ -645,12 +649,14 @@ export type Database = {
           opened_at?: string | null
           reminder_count?: number
           repeat_day?: number | null
+          repeat_hour?: number | null
           repeat_monthly?: boolean
           repeat_parent?: string | null
           resend_message_id?: string | null
           schedule_error?: string | null
           schedule_locked_at?: string | null
           scheduled_send_at?: string | null
+          scheduled_send_hour?: number | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total?: number
@@ -676,6 +682,8 @@ export type Database = {
       }
       monitored_sites: {
         Row: {
+          analytics_provider: string
+          analytics_synced_at: string | null
           api_endpoints: Json
           api_status: string | null
           check_interval_minutes: number
@@ -701,15 +709,19 @@ export type Database = {
           last_http_status: number | null
           last_response_ms: number | null
           last_status: string
+          lovable_project_id: string | null
           name: string
           notes: string | null
           repo: string | null
           ssl_ok: boolean | null
+          tracking_id: string
           updated_at: string
           url: string
           vercel_project_id: string | null
         }
         Insert: {
+          analytics_provider?: string
+          analytics_synced_at?: string | null
           api_endpoints?: Json
           api_status?: string | null
           check_interval_minutes?: number
@@ -735,15 +747,19 @@ export type Database = {
           last_http_status?: number | null
           last_response_ms?: number | null
           last_status?: string
+          lovable_project_id?: string | null
           name: string
           notes?: string | null
           repo?: string | null
           ssl_ok?: boolean | null
+          tracking_id?: string
           updated_at?: string
           url: string
           vercel_project_id?: string | null
         }
         Update: {
+          analytics_provider?: string
+          analytics_synced_at?: string | null
           api_endpoints?: Json
           api_status?: string | null
           check_interval_minutes?: number
@@ -769,10 +785,12 @@ export type Database = {
           last_http_status?: number | null
           last_response_ms?: number | null
           last_status?: string
+          lovable_project_id?: string | null
           name?: string
           notes?: string | null
           repo?: string | null
           ssl_ok?: boolean | null
+          tracking_id?: string
           updated_at?: string
           url?: string
           vercel_project_id?: string | null
@@ -891,6 +909,160 @@ export type Database = {
         }
         Relationships: []
       }
+      site_breakdown_daily: {
+        Row: {
+          day: string
+          dim: string
+          label: string
+          site_id: string
+          value: number
+        }
+        Insert: {
+          day: string
+          dim: string
+          label: string
+          site_id: string
+          value?: number
+        }
+        Update: {
+          day?: string
+          dim?: string
+          label?: string
+          site_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_breakdown_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_pages_daily: {
+        Row: {
+          day: string
+          path: string
+          site_id: string
+          views: number
+        }
+        Insert: {
+          day: string
+          path: string
+          site_id: string
+          views?: number
+        }
+        Update: {
+          day?: string
+          path?: string
+          site_id?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_pages_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_sources_daily: {
+        Row: {
+          day: string
+          site_id: string
+          source: string
+          views: number
+        }
+        Insert: {
+          day: string
+          site_id: string
+          source: string
+          views?: number
+        }
+        Update: {
+          day?: string
+          site_id?: string
+          source?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_sources_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_visitor_hashes: {
+        Row: {
+          day: string
+          hash: string
+          site_id: string
+        }
+        Insert: {
+          day: string
+          hash: string
+          site_id: string
+        }
+        Update: {
+          day?: string
+          hash?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_visitor_hashes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_visits_daily: {
+        Row: {
+          bounce_rate: number | null
+          day: string
+          pageviews: number
+          session_seconds: number | null
+          site_id: string
+          source: string
+          visitors: number
+        }
+        Insert: {
+          bounce_rate?: number | null
+          day: string
+          pageviews?: number
+          session_seconds?: number | null
+          site_id: string
+          source?: string
+          visitors?: number
+        }
+        Update: {
+          bounce_rate?: number | null
+          day?: string
+          pageviews?: number
+          session_seconds?: number | null
+          site_id?: string
+          source?: string
+          visitors?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_visits_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -978,6 +1150,27 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      site_daily_stats: {
+        Args: { _days?: number; _site: string }
+        Returns: {
+          avg_ms: number
+          checks: number
+          day: string
+          kind: string
+          ok: number
+          p95_ms: number
+        }[]
+      }
+      track_pageview: {
+        Args: {
+          _day: string
+          _hash: string
+          _path: string
+          _source: string
+          _tracking_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

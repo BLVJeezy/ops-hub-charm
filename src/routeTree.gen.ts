@@ -31,6 +31,7 @@ import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api
 import { Route as ApiPublicHooksInvoiceScheduleRouteImport } from './routes/api/public/hooks/invoice-schedule'
 import { Route as ApiPublicHooksMonitorRunRouteImport } from './routes/api/public/hooks/monitor-run'
 import { Route as ApiPublicHooksResendRouteImport } from './routes/api/public/hooks/resend'
+import { Route as ApiPublicHooksSiteRecordsRouteImport } from './routes/api/public/hooks/site-records'
 import { Route as ApiPublicHooksVercelAnalyticsRouteImport } from './routes/api/public/hooks/vercel-analytics'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -149,6 +150,12 @@ const ApiPublicHooksResendRoute = ApiPublicHooksResendRouteImport.update({
   path: '/api/public/hooks/resend',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksSiteRecordsRoute =
+  ApiPublicHooksSiteRecordsRouteImport.update({
+    id: '/api/public/hooks/site-records',
+    path: '/api/public/hooks/site-records',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksVercelAnalyticsRoute =
   ApiPublicHooksVercelAnalyticsRouteImport.update({
     id: '/api/public/hooks/vercel-analytics',
@@ -196,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
   '/api/public/hooks/resend': typeof ApiPublicHooksResendRoute
+  '/api/public/hooks/site-records': typeof ApiPublicHooksSiteRecordsRoute
   '/api/public/hooks/vercel-analytics': typeof ApiPublicHooksVercelAnalyticsRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
   '/api/public/hooks/resend': typeof ApiPublicHooksResendRoute
+  '/api/public/hooks/site-records': typeof ApiPublicHooksSiteRecordsRoute
   '/api/public/hooks/vercel-analytics': typeof ApiPublicHooksVercelAnalyticsRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -251,6 +260,7 @@ export interface FileRoutesById {
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
   '/api/public/hooks/resend': typeof ApiPublicHooksResendRoute
+  '/api/public/hooks/site-records': typeof ApiPublicHooksSiteRecordsRoute
   '/api/public/hooks/vercel-analytics': typeof ApiPublicHooksVercelAnalyticsRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
     | '/api/public/hooks/resend'
+    | '/api/public/hooks/site-records'
     | '/api/public/hooks/vercel-analytics'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
     | '/api/public/hooks/resend'
+    | '/api/public/hooks/site-records'
     | '/api/public/hooks/vercel-analytics'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -334,6 +346,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
     | '/api/public/hooks/resend'
+    | '/api/public/hooks/site-records'
     | '/api/public/hooks/vercel-analytics'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -353,6 +366,7 @@ export interface RootRouteChildren {
   ApiPublicHooksInvoiceScheduleRoute: typeof ApiPublicHooksInvoiceScheduleRoute
   ApiPublicHooksMonitorRunRoute: typeof ApiPublicHooksMonitorRunRoute
   ApiPublicHooksResendRoute: typeof ApiPublicHooksResendRoute
+  ApiPublicHooksSiteRecordsRoute: typeof ApiPublicHooksSiteRecordsRoute
   ApiPublicHooksVercelAnalyticsRoute: typeof ApiPublicHooksVercelAnalyticsRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -515,6 +529,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksResendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/site-records': {
+      id: '/api/public/hooks/site-records'
+      path: '/api/public/hooks/site-records'
+      fullPath: '/api/public/hooks/site-records'
+      preLoaderRoute: typeof ApiPublicHooksSiteRecordsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/vercel-analytics': {
       id: '/api/public/hooks/vercel-analytics'
       path: '/api/public/hooks/vercel-analytics'
@@ -597,6 +618,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksInvoiceScheduleRoute: ApiPublicHooksInvoiceScheduleRoute,
   ApiPublicHooksMonitorRunRoute: ApiPublicHooksMonitorRunRoute,
   ApiPublicHooksResendRoute: ApiPublicHooksResendRoute,
+  ApiPublicHooksSiteRecordsRoute: ApiPublicHooksSiteRecordsRoute,
   ApiPublicHooksVercelAnalyticsRoute: ApiPublicHooksVercelAnalyticsRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,

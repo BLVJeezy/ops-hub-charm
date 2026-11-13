@@ -584,6 +584,7 @@ const RECORD_LABEL: Record<string, string> = {
   aanvraag: "Aanvragen",
   blokkade: "Geblokkeerd",
   lead: "Leads",
+  bestelling: "Bestellingen",
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -591,6 +592,9 @@ const STATUS_STYLE: Record<string, string> = {
   confirmed: "bg-emerald-500/15 text-emerald-500",
   scheduled: "bg-sky-500/15 text-sky-500",
   pending: "bg-amber-500/15 text-amber-500",
+  urgent: "bg-red-500/15 text-red-500",
+  bevestigd: "bg-emerald-500/15 text-emerald-500",
+  geannuleerd: "bg-red-500/15 text-red-500",
   nieuw: "bg-amber-500/15 text-amber-500",
   new: "bg-amber-500/15 text-amber-500",
   qualified: "bg-sky-500/15 text-sky-500",

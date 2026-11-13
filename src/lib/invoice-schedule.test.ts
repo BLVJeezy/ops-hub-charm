@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceMonthNames, brusselsToday, nextMonthlyDate } from "./invoice-schedule";
+import { addDays, advanceMonthNames, brusselsHour, brusselsToday, isDueAt, nextMonthlyDate } from "./invoice-schedule";
 
 describe("nextMonthlyDate", () => {
   it("moves to the same day next month", () =>
@@ -29,6 +29,23 @@ describe("advanceMonthNames", () => {
     expect(advanceMonthNames("SEO oktober 2026 + hosting oktober 2026")).toBe(
       "SEO november 2026 + hosting november 2026",
     ));
+});
+
+describe("hours", () => {
+  it("brusselsHour follows Belgian time incl. summer time", () => {
+    expect(brusselsHour(new Date("2026-11-13T09:00:00Z"))).toBe(10);
+    expect(brusselsHour(new Date("2026-07-01T09:00:00Z"))).toBe(11);
+    expect(brusselsHour(new Date("2026-11-13T23:00:00Z"))).toBe(0);
+  });
+  it("isDueAt", () => {
+    const now = new Date("2026-11-13T09:30:00Z"); // 10:30 Brussels
+    expect(isDueAt("2026-11-12", 23, now)).toBe(true);
+    expect(isDueAt("2026-11-13", 10, now)).toBe(true);
+    expect(isDueAt("2026-11-13", 11, now)).toBe(false);
+    expect(isDueAt("2026-11-14", 0, now)).toBe(false);
+    expect(isDueAt("2026-11-13", null, now)).toBe(true); // default 10:00
+  });
+  it("addDays crosses months", () => expect(addDays("2026-11-30", 1)).toBe("2026-12-01"));
 });
 
 describe("brusselsToday", () => {

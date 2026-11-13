@@ -11,7 +11,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { INVOICE_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, todayISO } from "@/lib/format";
-import { brusselsToday, dayOf, nextMonthlyDate } from "@/lib/invoice-schedule";
+import { brusselsToday, brusselsHour, dayOf, nextMonthlyDate, DEFAULT_SEND_HOUR, hourLabel } from "@/lib/invoice-schedule";
+
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
 import type { LineItem } from "@/lib/invoice-pdf";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
 
@@ -30,7 +32,9 @@ export type InvoiceRow = {
   total: number;
   status: string;
   scheduled_send_at?: string | null;
+  scheduled_send_hour?: number | null;
   repeat_monthly?: boolean;
+  repeat_hour?: number | null;
   repeat_day?: number | null;
   next_repeat_on?: string | null;
   schedule_error?: string | null;
@@ -84,8 +88,10 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
     if (form.line_items.length === 0) { toast.error("Add at least one line item"); return; }
     const today = brusselsToday();
     const willAutoSend = (form.status === "Draft" && !!form.scheduled_send_at) || !!form.repeat_monthly;
-    if (form.status === "Draft" && form.scheduled_send_at && form.scheduled_send_at < today) {
-      toast.error("Verzenddatum ligt in het verleden"); return;
+    const sendHour = form.scheduled_send_hour ?? DEFAULT_SEND_HOUR;
+    if (form.status === "Draft" && form.scheduled_send_at &&
+        (form.scheduled_send_at < today || (form.scheduled_send_at === today && sendHour < brusselsHour() && !form.schedule_error))) {
+      toast.error("Verzendmoment ligt in het verleden"); return;
     }
     if (willAutoSend && !clients.find((c) => c.id === form.client)?.contact_email) {
       toast.error("Koppel een klant met e-mailadres om automatisch te versturen"); return;
@@ -111,6 +117,8 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
         total,
         status: form.status,
         scheduled_send_at: form.status === "Draft" ? (form.scheduled_send_at || null) : null,
+        scheduled_send_hour: form.status === "Draft" && form.scheduled_send_at ? sendHour : null,
+        repeat_hour: form.repeat_monthly ? (form.repeat_hour ?? sendHour) : form.repeat_hour ?? null,
         repeat_monthly: !!form.repeat_monthly,
         repeat_day: repeatDay,
         next_repeat_on: nextRepeatOn,
@@ -230,11 +238,13 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
                 <div className="flex gap-2">
                   <Input type="date" min={brusselsToday()} value={form.scheduled_send_at ?? ""}
                     onChange={(e) => setForm({ ...form, scheduled_send_at: e.target.value || null })} />
+                  <HourSelect value={form.scheduled_send_hour ?? DEFAULT_SEND_HOUR}
+                    onChange={(h) => setForm({ ...form, scheduled_send_hour: h, repeat_hour: form.repeat_monthly ? (form.repeat_hour ?? h) : form.repeat_hour })} />
                   {form.scheduled_send_at && (
                     <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, scheduled_send_at: null })}>Wissen</Button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">Wordt die dag rond 10:00 verstuurd naar het e-mailadres van de klant.</p>
+                <p className="text-[11px] text-muted-foreground">Wordt verstuurd om {hourLabel(form.scheduled_send_hour)} (Belgische tijd) naar het e-mailadres van de klant.</p>
               </F>
             ) : (
               <p className="text-xs text-muted-foreground">Deze factuur is al {form.status === "Paid" ? "betaald" : "verstuurd"}. Je kan wel een maandelijkse herhaling instellen.</p>
@@ -253,12 +263,16 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
               })} />
             </div>
             {form.repeat_monthly && (
-              <div className="grid grid-cols-2 gap-3 items-end">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
                 <F label="Op dag van de maand">
                   <Input type="number" min={1} max={31} value={form.repeat_day ?? ""}
                     onChange={(e) => setForm({ ...form, repeat_day: Math.min(31, Math.max(1, Number(e.target.value) || 1)), next_repeat_on: null })} />
                 </F>
-                <p className="text-[11px] text-muted-foreground pb-2">
+                <F label="Om">
+                  <HourSelect value={form.repeat_hour ?? form.scheduled_send_hour ?? DEFAULT_SEND_HOUR}
+                    onChange={(h) => setForm({ ...form, repeat_hour: h })} />
+                </F>
+                <p className="text-[11px] text-muted-foreground pb-2 col-span-2 md:col-span-1">
                   {form.next_repeat_on
                     ? `Volgende: ${formatDate(form.next_repeat_on)}`
                     : form.status === "Draft"
@@ -275,6 +289,17 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function HourSelect({ value, onChange }: { value: number; onChange: (h: number) => void }) {
+  return (
+    <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+      <SelectTrigger className="w-28 shrink-0"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {HOURS.map((h) => <SelectItem key={h} value={String(h)}>{hourLabel(h)}</SelectItem>)}
+      </SelectContent>
+    </Select>
   );
 }
 

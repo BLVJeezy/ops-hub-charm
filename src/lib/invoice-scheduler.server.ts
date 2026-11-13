@@ -3,7 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/integrations/supabase/types'
 import { deliverInvoice } from '@/lib/invoice-mail.server'
-import { advanceMonthNames, brusselsToday } from '@/lib/invoice-schedule'
+import { addDays, advanceMonthNames, brusselsToday, isDueAt } from '@/lib/invoice-schedule'
 import { formatInvoiceNumber } from '@/lib/invoice-code'
 
 type Db = SupabaseClient<Database>
@@ -28,10 +28,13 @@ async function claim(db: Db, id: string, col: string, val: string | boolean): Pr
   return Array.isArray(data) && data.length === 1
 }
 
-async function fail(db: Db, id: string, err: unknown, summary: ScheduleSummary, label: string) {
+async function fail(db: Db, id: string, err: unknown, summary: ScheduleSummary, label: string, retryOn?: string) {
   const msg = err instanceof Error ? err.message : String(err)
   summary.failed.push({ id, error: msg })
-  await untyped(db).from('invoices').update({ schedule_error: msg, schedule_locked_at: null }).eq('id', id)
+  // Retry once a day (same hour), not every hourly run.
+  const patch: Record<string, unknown> = { schedule_error: msg, schedule_locked_at: null }
+  if (retryOn) patch.scheduled_send_at = retryOn
+  await untyped(db).from('invoices').update(patch).eq('id', id)
   await alertJason(`Geplande factuur niet verstuurd: ${label}`, msg)
 }
 
@@ -42,17 +45,18 @@ export async function processScheduledInvoices(db: Db, now: Date = new Date()): 
   // 1. One-off scheduled drafts whose day has come.
   const { data: due } = await untyped(db)
     .from('invoices')
-    .select('id, invoice_number, client_name')
+    .select('id, invoice_number, client_name, scheduled_send_at, scheduled_send_hour')
     .eq('status', 'Draft')
     .not('scheduled_send_at', 'is', null)
     .lte('scheduled_send_at', today)
-  for (const inv of (due ?? []) as Array<{ id: string; invoice_number: number | null; client_name: string | null }>) {
+  type Due = { id: string; invoice_number: number | null; client_name: string | null; scheduled_send_at: string; scheduled_send_hour: number | null }
+  for (const inv of ((due ?? []) as Due[]).filter((d) => isDueAt(d.scheduled_send_at, d.scheduled_send_hour, now))) {
     if (!(await claim(db, inv.id, 'status', 'Draft'))) continue
     try {
       await deliverInvoice(db, inv.id)
       summary.scheduledSent++
     } catch (e) {
-      await fail(db, inv.id, e, summary, `${formatInvoiceNumber(inv.invoice_number)} · ${inv.client_name ?? ''}`)
+      await fail(db, inv.id, e, summary, `${formatInvoiceNumber(inv.invoice_number)} · ${inv.client_name ?? ''}`, addDays(today, 1))
     }
   }
 
@@ -65,7 +69,7 @@ export async function processScheduledInvoices(db: Db, now: Date = new Date()): 
     .not('next_repeat_on', 'is', null)
     .lte('next_repeat_on', today)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const src of (repeats ?? []) as Array<Record<string, any>>) {
+  for (const src of ((repeats ?? []) as Array<Record<string, any>>).filter((r) => isDueAt(r.next_repeat_on, r.repeat_hour, now))) {
     if (!(await claim(db, src.id, 'repeat_monthly', true))) continue
 
     const lineItems = Array.isArray(src.line_items)
@@ -95,6 +99,7 @@ export async function processScheduledInvoices(db: Db, now: Date = new Date()): 
         status: 'Draft',
         repeat_monthly: true,
         repeat_day: src.repeat_day,
+        repeat_hour: src.repeat_hour,
         repeat_parent: src.id,
         created_by: src.created_by,
       })
@@ -118,7 +123,7 @@ export async function processScheduledInvoices(db: Db, now: Date = new Date()): 
       // Keep the new draft and retry it tomorrow as a one-off scheduled send.
       await untyped(db)
         .from('invoices')
-        .update({ scheduled_send_at: today })
+        .update({ scheduled_send_at: addDays(today, 1), scheduled_send_hour: src.repeat_hour })
         .eq('id', created.id)
       await fail(db, created.id, e, summary, `${formatInvoiceNumber(created.invoice_number)} · ${src.client_name ?? ''}`)
     }

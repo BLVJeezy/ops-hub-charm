@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---- tiny in-memory stand-in for the Supabase query builder (only what the scheduler uses) ----
@@ -84,6 +85,7 @@ vi.mock("@/lib/invoice-mail.server", () => ({
     return { ok: true };
   }),
 }));
+process.env.RESEND_API_KEY = "test";
 vi.stubGlobal(
   "fetch",
   vi.fn(async () => new Response("{}")),
@@ -95,6 +97,7 @@ const NOW = new Date("2026-11-01T09:00:00Z"); // 10:00 in Brussels
 beforeEach(() => {
   rows = [];
   sent.length = 0;
+  vi.mocked(fetch).mockClear();
   failFor = new Set();
   nextNumber = 100;
 });
@@ -119,6 +122,25 @@ describe("scheduled one-off invoices", () => {
     expect(sent).toEqual(["a"]);
   });
 
+  it("respects the chosen hour (Belgian time)", async () => {
+    rows.push(
+      { id: "early", status: "Draft", scheduled_send_at: "2026-11-01", scheduled_send_hour: 8 },
+      { id: "late", status: "Draft", scheduled_send_at: "2026-11-01", scheduled_send_hour: 14 },
+    );
+    await processScheduledInvoices(db, NOW); // 10:00 Brussels
+    expect(sent).toEqual(["early"]);
+    await processScheduledInvoices(db, new Date("2026-11-01T13:00:00Z")); // 14:00 Brussels
+    expect(sent).toEqual(["early", "late"]);
+  });
+
+  it("a failed send is not retried again the same day", async () => {
+    rows.push({ id: "a", status: "Draft", scheduled_send_at: "2026-11-01", invoice_number: 40 });
+    failFor.add("a");
+    await processScheduledInvoices(db, NOW);
+    await processScheduledInvoices(db, new Date("2026-11-01T10:00:00Z"));
+    expect(fetch).toHaveBeenCalledTimes(1); // one alert, not one per hour
+  });
+
   it("skips a row another run is currently sending", async () => {
     rows.push({
       id: "a",
@@ -137,7 +159,7 @@ describe("scheduled one-off invoices", () => {
     expect(s.failed).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       status: "Draft",
-      scheduled_send_at: "2026-11-01",
+      scheduled_send_at: "2026-11-02",
       schedule_error: "Klant heeft geen e-mailadres",
       schedule_locked_at: null,
     });
@@ -188,6 +210,14 @@ describe("monthly repeats", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it("waits for the repeat hour", async () => {
+    rows.push({ ...src(), repeat_hour: 16 });
+    await processScheduledInvoices(db, NOW);
+    expect(rows).toHaveLength(1);
+    await processScheduledInvoices(db, new Date("2026-11-01T15:00:00Z"));
+    expect(rows).toHaveLength(2);
+  });
+
   it("waits until the repeat date", async () => {
     rows.push({ ...src(), next_repeat_on: "2026-11-15" });
     await processScheduledInvoices(db, NOW);
@@ -208,7 +238,7 @@ describe("monthly repeats", () => {
     const copy = rows.find((r) => r.id === "new-100")!;
     expect(copy).toMatchObject({
       status: "Draft",
-      scheduled_send_at: "2026-11-01",
+      scheduled_send_at: "2026-11-02",
       repeat_monthly: true,
     });
     // next day: the copy is retried as a scheduled send, the source does not create another copy

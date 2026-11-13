@@ -44,17 +44,8 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
         }
         const supabase = createClient(supabaseUrl, serviceKey)
 
-        // 1. Scheduled invoices and monthly repeats due today (Europe/Brussels).
-        let scheduled: unknown = null
-        try {
-          const { processScheduledInvoices } = await import('@/lib/invoice-scheduler.server')
-          scheduled = await processScheduledInvoices(supabase as never)
-        } catch (e) {
-          console.error('scheduled invoices failed', e)
-          scheduled = { error: e instanceof Error ? e.message : String(e) }
-        }
-
-        // 2. Weekly reminders for unpaid sent invoices.
+        // Scheduled invoices run hourly in /api/public/hooks/invoice-schedule.
+        // Weekly reminders for unpaid sent invoices.
         const { data: invoices, error } = await supabase
           .from('invoices')
           .select('*')
@@ -167,7 +158,7 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
           results.push({ id: inv.id, ok: true })
         }
 
-        return Response.json({ ok: true, scheduled, checked: invoices?.length ?? 0, sent, results })
+        return Response.json({ ok: true, checked: invoices?.length ?? 0, sent, results })
       },
     },
   },

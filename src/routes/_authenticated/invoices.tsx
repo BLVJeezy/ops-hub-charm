@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceMail } from "@/lib/invoice-send.functions";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
+import { hourLabel } from "@/lib/invoice-schedule";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,
@@ -225,13 +226,13 @@ function Invoices() {
                 <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-3 text-xs text-muted-foreground">
                   {r.status === "Draft" && r.scheduled_send_at && (
                     <span className="inline-flex items-center gap-1 text-sky-400">
-                      <CalendarClock className="w-3.5 h-3.5" /> Gepland {formatDate(r.scheduled_send_at)}
+                      <CalendarClock className="w-3.5 h-3.5" /> Gepland {formatDate(r.scheduled_send_at)} om {hourLabel(r.scheduled_send_hour)}
                     </span>
                   )}
                   {r.repeat_monthly && (
                     <span className="inline-flex items-center gap-1 text-violet-400">
                       <Repeat className="w-3.5 h-3.5" /> Maandelijks
-                      {r.next_repeat_on ? ` · volgende ${formatDate(r.next_repeat_on)}` : r.repeat_day ? ` · dag ${r.repeat_day}` : ""}
+                      {r.next_repeat_on ? ` · volgende ${formatDate(r.next_repeat_on)} ${hourLabel(r.repeat_hour)}` : r.repeat_day ? ` · dag ${r.repeat_day}, ${hourLabel(r.repeat_hour)}` : ""}
                     </span>
                   )}
                   {r.schedule_error && (

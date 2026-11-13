@@ -28,6 +28,33 @@ export function nextMonthlyDate(fromIso: string, day: number): string {
   return `${year}-${String(month0 + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+/** Current hour (0–23) in Belgium. */
+export function brusselsHour(now: Date = new Date()): number {
+  const h = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Brussels", hour: "2-digit", hourCycle: "h23" }).format(now);
+  return Number(h) % 24;
+}
+
+export const DEFAULT_SEND_HOUR = 10;
+
+/** Is something planned for `dateIso` at `hour` (Belgian time) due at `now`? */
+export function isDueAt(dateIso: string, hour: number | null | undefined, now: Date = new Date()): boolean {
+  const today = brusselsToday(now);
+  if (dateIso < today) return true;
+  if (dateIso > today) return false;
+  return brusselsHour(now) >= (hour ?? DEFAULT_SEND_HOUR);
+}
+
+export function hourLabel(hour: number | null | undefined): string {
+  return `${String(hour ?? DEFAULT_SEND_HOUR).padStart(2, "0")}:00`;
+}
+
+/** YYYY-MM-DD plus `n` days. */
+export function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + n));
+  return t.toISOString().slice(0, 10);
+}
+
 export function dayOf(iso: string): number {
   return Number(iso.split("-")[2]);
 }

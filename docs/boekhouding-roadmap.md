@@ -30,12 +30,18 @@ Doel: Hub OS wordt de plek waar elke euro van Solyn Global binnenkomt en buiteng
 - `expenses` worden terugkerende aankoopboekingen (LeadSnap, Lovable, Vercel, …) — sluit aan op Fase 5 "Cost control" van de Hub-upgrade.
 - Optioneel: aankoopfacturen via Peppol ontvangen (Riory's werkbonnen-app heeft hier al een plan voor).
 
-### Fase C — Bank
-- Banktransacties importeren (CSV/CODA, later open banking).
+### Fase C — Bank (Revolut Business)
+- **Revolut Business API**, alleen-lezen (scope READ: geen betalingen mogelijk). Vereist het **Grow-plan of hoger** en instellen via de Revolut Business **web**app (Settings → APIs → Business API).
+- Koppelen vanuit Hub OS: een adminpagina "Koppel Revolut" maakt zelf een sleutelpaar aan (private key blijft server-side in Vault), toont het publieke certificaat om in Revolut te plakken, en vangt de toestemming op via een redirect-URL. Access tokens (40 min) worden automatisch vernieuwd met de refresh token.
+- Dagelijkse sync van alle rekeningen/valuta naar `bank_transactions` (max. 1000 per call → per periode pagineren).
+- Webhook van Revolut voor nieuwe transacties (bijna realtime) als tweede stap.
+- Andere banken: CSV/CODA-import.
 - Automatisch koppelen aan facturen (bedrag + factuurnummer in mededeling) → factuur op **Paid**, herinneringen stoppen.
 - Cashflow-overzicht en "wat staat er open".
 
-### Fase D — Rapporten & export
+### Fase D — Rapporten & export ("één knop")
+- Knop **Rapport** → kies periode (maand/kwartaal/jaar) → PDF + Excel met: inkomsten, uitgaven (per categorie), winst, openstaande facturen, top-klanten, kosten per klant, websitestatistieken (uptime), en **vergelijking met de vorige periode en dezelfde periode vorig jaar**.
+- Bijlagen (facturen, bonnetjes) als zip erbij, klaar om door te sturen.
 - Resultatenrekening, balans, proef- en saldibalans, btw-overzicht per periode.
 - Winst per klant (omzet − toegewezen kosten).
 - Export voor de boekhouder: Excel/CSV per boekjaar + alle PDF's en bonnetjes als zip; importformaat van de gekozen software (bv. Xero/FreeAgent/QuickBooks).

@@ -237,14 +237,14 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
               <F label="Automatisch versturen op (optioneel)">
                 <div className="flex gap-2">
                   <Input type="date" min={brusselsToday()} value={form.scheduled_send_at ?? ""}
-                    onChange={(e) => setForm({ ...form, scheduled_send_at: e.target.value || null })} />
+                    onChange={(e) => setForm({ ...form, scheduled_send_at: e.target.value || null, date: e.target.value || form.date })} />
                   <HourSelect value={form.scheduled_send_hour ?? DEFAULT_SEND_HOUR}
                     onChange={(h) => setForm({ ...form, scheduled_send_hour: h, repeat_hour: form.repeat_monthly ? (form.repeat_hour ?? h) : form.repeat_hour })} />
                   {form.scheduled_send_at && (
                     <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, scheduled_send_at: null })}>Wissen</Button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">Wordt verstuurd om {hourLabel(form.scheduled_send_hour)} (Belgische tijd) naar het e-mailadres van de klant.</p>
+                <p className="text-[11px] text-muted-foreground">Wordt verstuurd om {hourLabel(form.scheduled_send_hour)} (Belgische tijd) naar het e-mailadres van de klant. De factuurdatum op de PDF wordt de verzenddatum.</p>
               </F>
             ) : (
               <p className="text-xs text-muted-foreground">Deze factuur is al {form.status === "Paid" ? "betaald" : "verstuurd"}. Je kan wel een maandelijkse herhaling instellen.</p>
@@ -254,7 +254,7 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
                 <Repeat className="w-4 h-4 text-muted-foreground" />
                 <div>
                   <div className="text-sm font-medium">Elke maand herhalen</div>
-                  <div className="text-[11px] text-muted-foreground">Maakt elke maand een nieuwe factuur (nieuw nummer) en verstuurt ze. Maanden in de omschrijving schuiven mee.</div>
+                  <div className="text-[11px] text-muted-foreground">Maakt elke maand een nieuwe factuur (nieuw nummer, datum van die dag) en verstuurt ze. Maanden in de omschrijving schuiven mee.</div>
                 </div>
               </div>
               <Switch checked={!!form.repeat_monthly} onCheckedChange={(v) => setForm({

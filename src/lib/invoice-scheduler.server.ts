@@ -53,6 +53,8 @@ export async function processScheduledInvoices(db: Db, now: Date = new Date()): 
   for (const inv of ((due ?? []) as Due[]).filter((d) => isDueAt(d.scheduled_send_at, d.scheduled_send_hour, now))) {
     if (!(await claim(db, inv.id, 'status', 'Draft'))) continue
     try {
+      // The invoice date (and so the 7-day due date on the PDF) is the day it is actually sent.
+      await untyped(db).from('invoices').update({ date: today }).eq('id', inv.id)
       await deliverInvoice(db, inv.id)
       summary.scheduledSent++
     } catch (e) {

@@ -113,6 +113,9 @@ describe("scheduled one-off invoices", () => {
     const s = await processScheduledInvoices(db, NOW);
     expect(sent.sort()).toEqual(["a", "b"]);
     expect(s.scheduledSent).toBe(2);
+    // invoice date becomes the day it is sent, also for a draft that was dated earlier
+    expect(rows.find((r) => r.id === "b")!.date).toBe("2026-11-01");
+    expect(rows.find((r) => r.id === "c")!.date).toBeUndefined();
   });
 
   it("does not send twice when run twice", async () => {

@@ -28,7 +28,6 @@ import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticated/status_.$id'
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
-import { Route as ApiPublicTestResendRouteImport } from './routes/api/public/test-resend'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicHooksDailyBriefingRouteImport } from './routes/api/public/hooks/daily-briefing'
 import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api/public/hooks/invoice-reminders'
@@ -137,11 +136,6 @@ const ApiPublicTRoute = ApiPublicTRouteImport.update({
   path: '/api/public/t',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicTestResendRoute = ApiPublicTestResendRouteImport.update({
-  id: '/api/public/test-resend',
-  path: '/api/public/test-resend',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -225,7 +219,6 @@ export interface FileRoutesByFullPath {
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/t': typeof ApiPublicTRoute
-  '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
@@ -256,7 +249,6 @@ export interface FileRoutesByTo {
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/t': typeof ApiPublicTRoute
-  '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
@@ -290,7 +282,6 @@ export interface FileRoutesById {
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
   '/_authenticated/status_/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/t': typeof ApiPublicTRoute
-  '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
@@ -324,7 +315,6 @@ export interface FileRouteTypes {
     | '/clients/$id'
     | '/status/$id'
     | '/api/public/t'
-    | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients/'
     | '/api/public/hooks/daily-briefing'
@@ -355,7 +345,6 @@ export interface FileRouteTypes {
     | '/clients/$id'
     | '/status/$id'
     | '/api/public/t'
-    | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients'
     | '/api/public/hooks/daily-briefing'
@@ -388,7 +377,6 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$id'
     | '/_authenticated/status_/$id'
     | '/api/public/t'
-    | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/_authenticated/clients/'
     | '/api/public/hooks/daily-briefing'
@@ -410,7 +398,6 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ApiPublicTRoute: typeof ApiPublicTRoute
-  ApiPublicTestResendRoute: typeof ApiPublicTestResendRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicHooksDailyBriefingRoute: typeof ApiPublicHooksDailyBriefingRoute
   ApiPublicHooksInvoiceRemindersRoute: typeof ApiPublicHooksInvoiceRemindersRoute
@@ -559,13 +546,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/test-resend': {
-      id: '/api/public/test-resend'
-      path: '/api/public/test-resend'
-      fullPath: '/api/public/test-resend'
-      preLoaderRoute: typeof ApiPublicTestResendRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -697,7 +677,6 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ApiPublicTRoute: ApiPublicTRoute,
-  ApiPublicTestResendRoute: ApiPublicTestResendRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicHooksDailyBriefingRoute: ApiPublicHooksDailyBriefingRoute,
   ApiPublicHooksInvoiceRemindersRoute: ApiPublicHooksInvoiceRemindersRoute,

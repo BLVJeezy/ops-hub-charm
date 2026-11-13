@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
@@ -109,6 +109,7 @@ function StatusPage() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
   const runFn = useServerFn(runChecksNow);
+  const navigate = useNavigate();
 
   const [sites, setSites] = useState<Site[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -271,7 +272,7 @@ function StatusPage() {
                 key={s.id}
                 s={s}
                 openCount={open.filter((i) => i.site_id === s.id).length}
-                onOpen={() => setDetail(s)}
+                onOpen={() => navigate({ to: "/status/$id", params: { id: s.id } })}
               />
             ))}
           </div>

@@ -23,6 +23,7 @@ import { Route as AuthenticatedStatusRouteImport } from './routes/_authenticated
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
+import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticated/status_.$id'
 import { Route as ApiPublicTestResendRouteImport } from './routes/api/public/test-resend'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api/public/hooks/invoice-reminders'
@@ -103,6 +104,11 @@ const AuthenticatedClientsIdRoute = AuthenticatedClientsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedClientsRoute,
 } as any)
+const AuthenticatedStatusIdRoute = AuthenticatedStatusIdRouteImport.update({
+  id: '/status_/$id',
+  path: '/status/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicTestResendRoute = ApiPublicTestResendRouteImport.update({
   id: '/api/public/test-resend',
   path: '/api/public/test-resend',
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/status': typeof AuthenticatedStatusRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
+  '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByTo {
   '/status': typeof AuthenticatedStatusRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
+  '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   '/_authenticated/status': typeof AuthenticatedStatusRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
+  '/_authenticated/status_/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/email/unsubscribe'
     | '/clients/$id'
+    | '/status/$id'
     | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients/'
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/email/unsubscribe'
     | '/clients/$id'
+    | '/status/$id'
     | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '/_authenticated/status'
     | '/email/unsubscribe'
     | '/_authenticated/clients/$id'
+    | '/_authenticated/status_/$id'
     | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/_authenticated/clients/'
@@ -420,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsIdRouteImport
       parentRoute: typeof AuthenticatedClientsRoute
     }
+    '/_authenticated/status_/$id': {
+      id: '/_authenticated/status_/$id'
+      path: '/status/$id'
+      fullPath: '/status/$id'
+      preLoaderRoute: typeof AuthenticatedStatusIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/test-resend': {
       id: '/api/public/test-resend'
       path: '/api/public/test-resend'
@@ -507,6 +526,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedStatusRoute: typeof AuthenticatedStatusRoute
+  AuthenticatedStatusIdRoute: typeof AuthenticatedStatusIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -517,6 +537,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedStatusRoute: AuthenticatedStatusRoute,
+  AuthenticatedStatusIdRoute: AuthenticatedStatusIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

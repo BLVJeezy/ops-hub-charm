@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, Download, Lock, LockOpen, Plus, RefreshCw, Scale, Trash2 } from "lucide-react";
+import { BookOpen, Download, Landmark, Link2, Lock, LockOpen, Plus, RefreshCw, Scale, Trash2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   type Account, type AccountType, type Entry, type Line, type Period, type PeriodKind,
 } from "@/lib/ledger";
 import { todayISO } from "@/lib/format";
+import { isDuplicate, parseRevolutCsv, rulePattern } from "@/lib/bank";
 
 export const Route = createFileRoute("/_authenticated/boekhouding")({
   component: () => (
@@ -93,14 +94,16 @@ function Bookkeeping() {
       <PeriodPicker P={P} kind={kind} setKind={setKind} setAnchor={setAnchor} />
 
       <Tabs defaultValue="overzicht">
-        <TabsList className="w-full grid grid-cols-5">
+        <TabsList className="w-full grid grid-cols-6">
           <TabsTrigger value="overzicht" className="text-xs">Overzicht</TabsTrigger>
+          <TabsTrigger value="bank" className="text-xs">Bank</TabsTrigger>
           <TabsTrigger value="dagboek" className="text-xs">Dagboek</TabsTrigger>
           <TabsTrigger value="rekeningen" className="text-xs">Rekeningen</TabsTrigger>
           <TabsTrigger value="periodes" className="text-xs">Periodes</TabsTrigger>
           <TabsTrigger value="export" className="text-xs">Export</TabsTrigger>
         </TabsList>
         <TabsContent value="overzicht"><Overview P={P} accounts={accounts} entries={entries} lines={lines} /></TabsContent>
+        <TabsContent value="bank"><BankTab P={P} accounts={accounts} onChange={load} /></TabsContent>
         <TabsContent value="dagboek"><Journal P={P} accounts={accounts} entries={entries} lines={lines} periods={periods} onChange={load} /></TabsContent>
         <TabsContent value="rekeningen"><Accounts P={P} accounts={accounts} entries={entries} lines={lines} onChange={load} /></TabsContent>
         <TabsContent value="periodes"><Periods accounts={accounts} entries={entries} lines={lines} periods={periods} onChange={load} /></TabsContent>
@@ -159,6 +162,11 @@ function Overview({ P, accounts, entries, lines }: Data) {
         <Kpi label="Openstaand bij klanten" value={eur(bal("debtors"))} sub={<>bank {eur(bal("bank"))}</>} />
       </div>
 
+      {bal("suspense") !== 0 && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          {eur(Math.abs(bal("suspense")))} aan bankverrichtingen staat nog op <b>1900 Te verwerken</b>. Kies een rekening in het tabblad Bank, dan klopt het resultaat.
+        </div>
+      )}
       <div className="rounded-2xl border border-border bg-card p-4">
         <div className="text-xs font-semibold tracking-[0.15em] text-muted-foreground uppercase mb-2">Laatste 6 periodes</div>
         <div className="h-56">
@@ -425,5 +433,143 @@ function NewEntryDialog({ open, onClose, accounts, onSaved }: { open: boolean; o
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------- Bank (Revolut Business) ----------
+type BankTx = {
+  id: string; date: string; type: string | null; description: string; amount: number; orig_amount: number | null; orig_currency: string | null;
+  category_account_id: string | null; categorised_by: string | null; invoice_id: string | null; reviewed: boolean; note: string | null;
+};
+type Inv = { id: string; invoice_number: number | null; client_name: string | null; total: number; date: string; status: string };
+
+function BankTab({ P, accounts, onChange }: { P: Period; accounts: Account[]; onChange: () => void }) {
+  const [txs, setTxs] = useState<BankTx[] | null>(null);
+  const [invoices, setInvoices] = useState<Inv[]>([]);
+  const [filter, setFilter] = useState<"review" | "all" | "in" | "out">("review");
+  const [allTime, setAllTime] = useState(true);
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const acc = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+  const usable = accounts.filter((a) => a.active && a.system_key !== "bank");
+
+  const load = useCallback(async () => {
+    const [t, i] = await Promise.all([fetchAll<BankTx>("bank_transactions", "date"), db.from("invoices").select("id,invoice_number,client_name,total,date,status").in("status", ["Sent", "Paid"])]);
+    setTxs(t.sort((a, b) => b.date.localeCompare(a.date))); setInvoices(i.data ?? []);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const resync = async () => { await db.rpc("ledger_sync"); await load(); onChange(); };
+  const setCategory = async (t: BankTx, accountId: string) => {
+    const { error } = await db.from("bank_transactions").update({ category_account_id: accountId || null, categorised_by: accountId ? "manual" : null, reviewed: !!accountId, invoice_id: null }).eq("id", t.id);
+    if (error) return toast.error(error.message);
+    await resync();
+  };
+  const linkInvoice = async (t: BankTx, invoiceId: string) => {
+    const debtors = accounts.find((a) => a.system_key === "debtors")?.id;
+    const { error } = await db.from("bank_transactions").update({ invoice_id: invoiceId || null, category_account_id: invoiceId ? debtors : null, categorised_by: invoiceId ? "invoice" : null, reviewed: !!invoiceId }).eq("id", t.id);
+    if (error) return toast.error(error.message);
+    if (invoiceId) await db.from("invoices").update({ status: "Paid" }).eq("id", invoiceId).eq("status", "Sent");
+    toast.success(invoiceId ? "Gekoppeld aan factuur" : "Ontkoppeld"); await resync();
+  };
+  const makeRule = async (t: BankTx) => {
+    if (!t.category_account_id) return toast.error("Kies eerst een rekening");
+    const pattern = rulePattern(t.type, t.description);
+    const { error } = await db.from("bank_rules").upsert({ pattern, direction: t.amount > 0 ? "in" : "out", account_id: t.category_account_id, priority: 45 }, { onConflict: "pattern,direction" });
+    if (error) return toast.error(error.message);
+    toast.success(`Regel "${pattern}" → ${acc.get(t.category_account_id)?.name}`); await resync();
+  };
+  const importCsv = async (file: File) => {
+    setBusy(true);
+    try {
+      const { rows, skipped, error } = parseRevolutCsv(await file.text());
+      if (error) throw new Error(error);
+      const existing = txs ?? [];
+      const fresh = rows.filter((r) => !existing.some((e) => e.id && (e as unknown as { hash?: string }).hash === r.hash) && !isDuplicate(r, existing));
+      for (let i = 0; i < fresh.length; i += 500) {
+        const { error: e } = await db.from("bank_transactions").upsert(fresh.slice(i, i + 500).map((r) => ({ ...r, source: "revolut-csv" })), { onConflict: "hash", ignoreDuplicates: true });
+        if (e) throw new Error(e.message);
+      }
+      toast.success(`${fresh.length} nieuwe verrichtingen geïmporteerd (${rows.length - fresh.length} al aanwezig, ${skipped} overgeslagen)`);
+      await resync();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import mislukt");
+    } finally { setBusy(false); }
+  };
+
+  if (txs === null) return <p className="mt-3 text-sm text-muted-foreground">Laden…</p>;
+  const inP = allTime ? txs : txs.filter((t) => t.date >= P.from && t.date <= P.to);
+  const needle = q.trim().toLowerCase();
+  const shown = inP.filter((t) => (filter === "review" ? !t.category_account_id : filter === "in" ? t.amount > 0 : filter === "out" ? t.amount < 0 : true))
+    .filter((t) => !needle || t.description.toLowerCase().includes(needle));
+  const sum = (f: (t: BankTx) => boolean) => inP.filter(f).reduce((a, t) => a + Number(t.amount), 0);
+  const review = inP.filter((t) => !t.category_account_id);
+  const span = txs.length ? `${txs[txs.length - 1].date.split("-").reverse().join("-")} → ${txs[0].date.split("-").reverse().join("-")}` : "—";
+  const openFor = (t: BankTx) => invoices.filter((i) => Math.abs(Number(i.total) - Number(t.amount)) < 0.005 && (i.status === "Sent" || !txs.some((x) => x.invoice_id === i.id) || i.id === t.invoice_id));
+
+  return (
+    <div className="mt-3 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground flex items-center gap-1.5"><Landmark className="w-4 h-4" /> Revolut Business · Main EUR · {txs.length} verrichtingen · {span}</div>
+        <label className={`inline-flex items-center gap-1.5 text-xs px-3 h-8 rounded-full border border-border cursor-pointer ${busy ? "opacity-50" : "hover:bg-muted"}`}>
+          <Upload className="w-3.5 h-3.5" /> Revolut CSV importeren
+          <input type="file" accept=".csv,text/csv" className="hidden" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); e.target.value = ""; }} />
+        </label>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Kpi label={allTime ? "Binnengekomen (alles)" : `Binnengekomen · ${P.label}`} value={eur(sum((t) => t.amount > 0))} />
+        <Kpi label="Uitgegeven" value={eur(-sum((t) => t.amount < 0))} />
+        <Kpi label="Netto" value={eur(sum(() => true))} tone={sum(() => true) >= 0 ? "pos" : "neg"} />
+        <Kpi label="Te controleren" value={String(review.length)} sub={<span className="text-muted-foreground">{eur(review.reduce((a, t) => a + Math.abs(Number(t.amount)), 0))} totaal</span>} tone={review.length ? "neg" : "pos"} />
+      </div>
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {([["review", "Te controleren"], ["all", "Alles"], ["in", "Inkomend"], ["out", "Uitgaand"]] as const).map(([k, l]) => (
+          <button key={k} onClick={() => setFilter(k)} className={`text-xs px-2.5 py-1 rounded-full border ${filter === k ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}>{l}</button>
+        ))}
+        <button onClick={() => setAllTime(!allTime)} className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground">{allTime ? "Alle periodes" : <span className="capitalize">{P.label}</span>}</button>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek…" className="h-7 flex-1 min-w-32 rounded-full border border-input bg-transparent px-3 text-xs" />
+      </div>
+      <div className="rounded-2xl border border-border bg-card divide-y divide-border">
+        {shown.slice(0, 300).map((t) => {
+          const cands = t.amount > 0 ? openFor(t) : [];
+          return (
+            <div key={t.id} className="p-3 text-sm space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-20 shrink-0">{t.date.split("-").reverse().join("-")}</span>
+                <span className="flex-1 truncate" title={t.description}><span className="text-[10px] font-mono text-muted-foreground mr-1">{t.type}</span>{t.description}</span>
+                <span className={`tabular-nums font-medium ${t.amount > 0 ? "text-emerald-500" : ""}`}>{eur(t.amount)}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 pl-0 sm:pl-[5.5rem]">
+                {t.orig_currency && <span className="text-[10px] text-muted-foreground">{t.orig_amount} {t.orig_currency}</span>}
+                {t.invoice_id ? (
+                  <span className="text-xs text-emerald-500 flex items-center gap-1"><Link2 className="w-3 h-3" />Factuur {invoices.find((i) => i.id === t.invoice_id)?.invoice_number ?? ""} · {invoices.find((i) => i.id === t.invoice_id)?.client_name ?? ""}
+                    <button className="text-muted-foreground underline ml-1" onClick={() => linkInvoice(t, "")}>los</button></span>
+                ) : (
+                  <select value={t.category_account_id ?? ""} onChange={(e) => setCategory(t, e.target.value)} className={`h-7 rounded-md border px-1.5 text-xs bg-card max-w-[230px] ${t.category_account_id ? "border-input" : "border-amber-500/60"}`}>
+                    <option value="">— te verwerken —</option>
+                    {usable.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+                  </select>
+                )}
+                {!t.invoice_id && cands.length > 0 && (
+                  <select value="" onChange={(e) => linkInvoice(t, e.target.value)} className="h-7 rounded-md border border-emerald-500/50 px-1.5 text-xs bg-card max-w-[230px]">
+                    <option value="">Koppel aan factuur…</option>
+                    {cands.map((i) => <option key={i.id} value={i.id}>#{i.invoice_number} · {i.client_name} · {i.date.split("-").reverse().join("-")}</option>)}
+                  </select>
+                )}
+                {t.category_account_id && !t.invoice_id && (
+                  <button onClick={() => makeRule(t)} className="text-[11px] text-muted-foreground flex items-center gap-0.5 hover:text-foreground" title="Alle gelijkaardige verrichtingen voortaan zo boeken">
+                    <Wand2 className="w-3 h-3" />altijd zo
+                  </button>
+                )}
+                {t.categorised_by && <span className="text-[10px] text-muted-foreground">{t.categorised_by === "rule" ? "regel" : t.categorised_by === "invoice" ? "factuur" : "manueel"}</span>}
+              </div>
+            </div>
+          );
+        })}
+        {!shown.length && <p className="p-3 text-sm text-muted-foreground">{filter === "review" ? "Alles is verwerkt 🎉" : "Geen verrichtingen."}</p>}
+        {shown.length > 300 && <p className="p-3 text-xs text-muted-foreground">Eerste 300 van {shown.length}; zoek of filter om de rest te zien.</p>}
+      </div>
+      <p className="text-[11px] text-muted-foreground">Elke verrichting wordt geboekt tegen 1000 Bank. Zonder rekening komt ze op 1900 Te verwerken. Ontvangsten van klanten worden automatisch aan een factuur met hetzelfde bedrag gekoppeld (die factuur gaat op Betaald). Volgende stap: de Revolut-koppeling haalt dit dagelijks zelf op.</p>
+    </div>
   );
 }

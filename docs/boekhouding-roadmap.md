@@ -34,7 +34,7 @@ Oorspronkelijk plan:
 - `expenses` worden terugkerende aankoopboekingen (LeadSnap, Lovable, Vercel, …) — sluit aan op Fase 5 "Cost control" van de Hub-upgrade.
 - Optioneel: aankoopfacturen via Peppol ontvangen (Riory's werkbonnen-app heeft hier al een plan voor).
 
-### Fase C — Bank (Revolut Business)
+### Fase C — Bank (Revolut Business) · deels ✅ (13/11/2026: afschrift Dec 2025–Nov 2026 geïmporteerd, regels, factuurkoppeling, CSV-import in de app; API-koppeling nog open)
 - **Revolut Business API**, alleen-lezen (scope READ: geen betalingen mogelijk). Vereist het **Grow-plan of hoger** en instellen via de Revolut Business **web**app (Settings → APIs → Business API).
 - Koppelen vanuit Hub OS: een adminpagina "Koppel Revolut" maakt zelf een sleutelpaar aan (private key blijft server-side in Vault), toont het publieke certificaat om in Revolut te plakken, en vangt de toestemming op via een redirect-URL. Access tokens (40 min) worden automatisch vernieuwd met de refresh token.
 - Dagelijkse sync van alle rekeningen/valuta naar `bank_transactions` (max. 1000 per call → per periode pagineren).

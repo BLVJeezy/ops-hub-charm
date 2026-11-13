@@ -153,7 +153,7 @@ function SiteFolder() {
         </TabsList>
 
         <TabsContent value="overzicht"><Overview site={site} /></TabsContent>
-        <TabsContent value="stats"><Visitors siteId={site.id} /><Stats siteId={site.id} /></TabsContent>
+        <TabsContent value="stats"><Visitors siteId={site.id} provider={(site as Site & { analytics_provider?: string }).analytics_provider ?? "none"} /><Stats siteId={site.id} /></TabsContent>
         <TabsContent value="paginas"><Pages siteId={site.id} /></TabsContent>
         <TabsContent value="data"><DataSources site={site} /></TabsContent>
         <TabsContent value="fin"><Finance clientId={site.client_id} clientName={site.clients?.name ?? null} /></TabsContent>
@@ -245,7 +245,9 @@ function Overview({ site }: { site: Site }) {
         </div>
         {site.last_error && <p className="text-xs text-red-400 mt-3 break-words">{site.last_error}</p>}
       </Card>
-      <TrackingSnippet trackingId={(site as Site & { tracking_id?: string }).tracking_id} />
+      {((site as Site & { analytics_provider?: string }).analytics_provider ?? "none") === "none" && (
+        <TrackingSnippet trackingId={(site as Site & { tracking_id?: string }).tracking_id} />
+      )}
       {site.notes && <Card title="Notities"><p className="text-sm whitespace-pre-wrap">{site.notes}</p></Card>}
     </>
   );
@@ -397,16 +399,17 @@ function TrackingSnippet({ trackingId }: { trackingId?: string }) {
   );
 }
 
-function Visitors({ siteId }: { siteId: string }) {
-  const [days, setDays] = useState<VisitDay[] | null>(null);
+function Visitors({ siteId, provider }: { siteId: string; provider: string }) {
+  const [days, setDays] = useState<Array<VisitDay & { bounce_rate: number | null; session_seconds: number | null }> | null>(null);
+  const [breakdown, setBreakdown] = useState<{ device: Array<[string, number]>; country: Array<[string, number]> }>({ device: [], country: [] });
   const [pages, setPages] = useState<Array<{ path: string; views: number }>>([]);
   const [sources, setSources] = useState<Array<{ source: string; views: number }>>([]);
   const [range, setRange] = useState<"week" | "month" | "all">("month");
   const today = brusselsToday();
 
   useEffect(() => {
-    db.from("site_visits_daily").select("day,pageviews,visitors").eq("site_id", siteId).order("day")
-      .then(({ data }: { data: VisitDay[] | null }) => setDays(data ?? []));
+    db.from("site_visits_daily").select("day,pageviews,visitors,bounce_rate,session_seconds").eq("site_id", siteId).order("day")
+      .then(({ data }: { data: Array<VisitDay & { bounce_rate: number | null; session_seconds: number | null }> | null }) => setDays(data ?? []));
   }, [siteId]);
 
   useEffect(() => {
@@ -419,20 +422,38 @@ function Visitors({ siteId }: { siteId: string }) {
     Promise.all([
       db.from("site_pages_daily").select("path,views").eq("site_id", siteId).gte("day", since).limit(5000),
       db.from("site_sources_daily").select("source,views").eq("site_id", siteId).gte("day", since).limit(5000),
-    ]).then(([p, so]: Array<{ data: Array<{ views: number } & Record<string, unknown>> | null }>) => {
+      db.from("site_breakdown_daily").select("dim,label,value").eq("site_id", siteId).gte("day", since).limit(5000),
+    ]).then(([p, so, bd]: Array<{ data: Array<{ views: number } & Record<string, unknown>> | null }>) => {
       setPages(sum(p.data ?? [], "path").map(([path, views]) => ({ path, views })));
       setSources(sum(so.data ?? [], "source").map(([source, views]) => ({ source, views })));
+      const rows = ((bd.data ?? []) as unknown as Array<{ dim: string; label: string; value: number }>).map((r) => ({ ...r, views: r.value }));
+      setBreakdown({
+        device: sum(rows.filter((r) => r.dim === "device"), "label"),
+        country: sum(rows.filter((r) => r.dim === "country"), "label"),
+      });
     });
   }, [siteId, range, today]);
 
   if (!days) return null;
   if (days.length === 0) return (
     <Card title="Bezoekers" icon={<Users className="w-3.5 h-3.5" />}>
-      <p className="text-sm text-muted-foreground">Nog geen bezoekersdata. Plaats de bezoekersteller (zie Overzicht) op de website; vanaf dan telt de Hub elke dag de bezoekers.</p>
+      <p className="text-sm text-muted-foreground">
+        {provider === "vercel"
+          ? "Nog geen bezoekersdata. Zet Vercel Web Analytics aan voor dit project; daarna haalt de Hub elke dag de cijfers op."
+          : provider === "lovable"
+            ? "Nog geen bezoekersdata. De Hub haalt elke ochtend de cijfers van gisteren op uit Lovable."
+            : "Nog geen bezoekersdata. Plaats de bezoekersteller (zie Overzicht) op de website; vanaf dan telt de Hub elke dag de bezoekers."}
+      </p>
     </Card>
   );
 
   const t = visitTotals(days, today, shiftDay);
+  const since = range === "week" ? shiftDay(today, -6) : range === "month" ? shiftDay(today, -29) : "0000-01-01";
+  const inRange = days.filter((d) => d.day >= since && d.visitors > 0);
+  const w = inRange.reduce((a, d) => a + d.visitors, 0);
+  const bounce = w && inRange.some((d) => d.bounce_rate != null) ? Math.round(inRange.reduce((a, d) => a + (d.bounce_rate ?? 0) * d.visitors, 0) / w) : null;
+  const session = w && inRange.some((d) => d.session_seconds != null) ? Math.round(inRange.reduce((a, d) => a + Number(d.session_seconds ?? 0) * d.visitors, 0) / w) : null;
+  const sourceLabel = provider === "lovable" ? "Lovable" : provider === "vercel" ? "Vercel" : "Hub-teller";
   const n = range === "week" ? 7 : range === "month" ? 30 : Math.max(30, Math.min(365, days.length));
   const chart = Array.from({ length: n }, (_, i) => {
     const d = shiftDay(today, -(n - 1 - i));
@@ -468,6 +489,13 @@ function Visitors({ siteId }: { siteId: string }) {
           </ResponsiveContainer>
         </div>
       </Card>
+      {(bounce != null || session != null) && (
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <Kpi label="Bouncepercentage (gewogen)" value={bounce == null ? "—" : `${bounce}%`} />
+          <Kpi label="Gem. sessieduur" value={session == null ? "—" : session < 60 ? `${session} s` : `${Math.floor(session / 60)} min ${session % 60} s`} />
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground -mt-1 mb-3">Bron: {sourceLabel} · elke dag bijgewerkt · week/maand zijn sommen van dagelijkse bezoekers</p>
       <div className="grid md:grid-cols-2 gap-3">
         <Card title="Populairste pagina's">
           {pages.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : pages.map((p) => (
@@ -479,6 +507,20 @@ function Visitors({ siteId }: { siteId: string }) {
             <div key={p.source} className="flex justify-between gap-2 text-sm py-0.5"><span className="truncate">{p.source}</span><span className="tabular-nums text-muted-foreground">{p.views}</span></div>
           ))}
         </Card>
+        {breakdown.device.length > 0 && (
+          <Card title="Toestellen">
+            {breakdown.device.map(([l, v]) => (
+              <div key={l} className="flex justify-between gap-2 text-sm py-0.5"><span className="capitalize">{l}</span><span className="tabular-nums text-muted-foreground">{v}</span></div>
+            ))}
+          </Card>
+        )}
+        {breakdown.country.length > 0 && (
+          <Card title="Landen">
+            {breakdown.country.map(([l, v]) => (
+              <div key={l} className="flex justify-between gap-2 text-sm py-0.5"><span>{l}</span><span className="tabular-nums text-muted-foreground">{v}</span></div>
+            ))}
+          </Card>
+        )}
       </div>
     </>
   );

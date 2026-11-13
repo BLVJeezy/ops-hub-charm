@@ -1,0 +1,15 @@
+out/
+voices/
+stills/
+fonts/*.ttf
+music/*.wav
+*.mp4
+*.wav
+*.srt
+poster.jpg
+network.json
+lines.json
+events.json
+timeline.json
+chapters.json
+data.json

@@ -1,0 +1,21 @@
+NOON SCAN — Solyn Hub OS daily briefing film (style: Sci-fi Hologram HUD, from the Lemo-Opuscar library, MIT)
+
+Picture
+- Every wireframe, HUD element, grid and light effect is drawn in code. Engine: engine/holo.js and engine/hud.js, copied from the
+  Lemo-Opuscar hologram-hud style (github.com/lemomo-ai/lemo-opuscar, MIT licence). Models: models/gen_network.mjs (primitives from
+  models/mkmodel.mjs, same source). No generated or stock images. Client silhouettes are simple generic shapes (wrench, scissors,
+  cross, horseshoe, house, letter S), not logos.
+- All figures come from the Solyn Hub OS database snapshot of the day (data.json).
+
+Fonts (SIL Open Font License 1.1, licence files in fonts/; fetched by tools/fonts.sh)
+- Rajdhani — Indian Type Foundry
+- Share Tech Mono — Carrois Apostrophe
+
+Voice
+- Kokoro TTS v1.0 (hexgrad/Kokoro-82M, Apache-2.0) via kokoro-onnx, voice bm_george
+
+Music
+- Original composition, synthesised in numpy (music/score.py). No samples.
+
+Sound design
+- UI sounds, foley and ambience synthesised in numpy (mix.py, adapted from the hologram-hud demo mixer; core/audio/sfx.py of the library).

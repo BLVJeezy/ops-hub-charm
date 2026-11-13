@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as AuthenticatedBriefingRouteImport } from './routes/_authenticated/briefing'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
@@ -27,6 +28,7 @@ import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticat
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
 import { Route as ApiPublicTestResendRouteImport } from './routes/api/public/test-resend'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicHooksDailyBriefingRouteImport } from './routes/api/public/hooks/daily-briefing'
 import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api/public/hooks/invoice-reminders'
 import { Route as ApiPublicHooksInvoiceScheduleRouteImport } from './routes/api/public/hooks/invoice-schedule'
 import { Route as ApiPublicHooksMonitorRunRouteImport } from './routes/api/public/hooks/monitor-run'
@@ -55,6 +57,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedBriefingRoute = AuthenticatedBriefingRouteImport.update({
+  id: '/briefing',
+  path: '/briefing',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   id: '/clients',
@@ -127,6 +134,12 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksDailyBriefingRoute =
+  ApiPublicHooksDailyBriefingRouteImport.update({
+    id: '/api/public/hooks/daily-briefing',
+    path: '/api/public/hooks/daily-briefing',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksInvoiceRemindersRoute =
   ApiPublicHooksInvoiceRemindersRouteImport.update({
     id: '/api/public/hooks/invoice-reminders',
@@ -185,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/briefing': typeof AuthenticatedBriefingRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
@@ -199,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
+  '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
@@ -213,6 +228,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/briefing': typeof AuthenticatedBriefingRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
@@ -226,6 +242,7 @@ export interface FileRoutesByTo {
   '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
+  '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
@@ -242,6 +259,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/_authenticated/briefing': typeof AuthenticatedBriefingRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
@@ -256,6 +274,7 @@ export interface FileRoutesById {
   '/api/public/test-resend': typeof ApiPublicTestResendRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
+  '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
@@ -272,6 +291,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/unsubscribe'
+    | '/briefing'
     | '/clients'
     | '/dashboard'
     | '/expenses'
@@ -286,6 +306,7 @@ export interface FileRouteTypes {
     | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients/'
+    | '/api/public/hooks/daily-briefing'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
@@ -300,6 +321,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/unsubscribe'
+    | '/briefing'
     | '/dashboard'
     | '/expenses'
     | '/invoices'
@@ -313,6 +335,7 @@ export interface FileRouteTypes {
     | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/clients'
+    | '/api/public/hooks/daily-briefing'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
@@ -328,6 +351,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/unsubscribe'
+    | '/_authenticated/briefing'
     | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/expenses'
@@ -342,6 +366,7 @@ export interface FileRouteTypes {
     | '/api/public/test-resend'
     | '/lovable/email/suppression'
     | '/_authenticated/clients/'
+    | '/api/public/hooks/daily-briefing'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
@@ -362,6 +387,7 @@ export interface RootRouteChildren {
   ApiPublicTRoute: typeof ApiPublicTRoute
   ApiPublicTestResendRoute: typeof ApiPublicTestResendRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicHooksDailyBriefingRoute: typeof ApiPublicHooksDailyBriefingRoute
   ApiPublicHooksInvoiceRemindersRoute: typeof ApiPublicHooksInvoiceRemindersRoute
   ApiPublicHooksInvoiceScheduleRoute: typeof ApiPublicHooksInvoiceScheduleRoute
   ApiPublicHooksMonitorRunRoute: typeof ApiPublicHooksMonitorRunRoute
@@ -402,6 +428,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/briefing': {
+      id: '/_authenticated/briefing'
+      path: '/briefing'
+      fullPath: '/briefing'
+      preLoaderRoute: typeof AuthenticatedBriefingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/clients': {
       id: '/_authenticated/clients'
@@ -501,6 +534,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/daily-briefing': {
+      id: '/api/public/hooks/daily-briefing'
+      path: '/api/public/hooks/daily-briefing'
+      fullPath: '/api/public/hooks/daily-briefing'
+      preLoaderRoute: typeof ApiPublicHooksDailyBriefingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/invoice-reminders': {
       id: '/api/public/hooks/invoice-reminders'
       path: '/api/public/hooks/invoice-reminders'
@@ -581,6 +621,7 @@ const AuthenticatedClientsRouteWithChildren =
   AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBriefingRoute: typeof AuthenticatedBriefingRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
@@ -592,6 +633,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBriefingRoute: AuthenticatedBriefingRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
@@ -614,6 +656,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTRoute: ApiPublicTRoute,
   ApiPublicTestResendRoute: ApiPublicTestResendRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicHooksDailyBriefingRoute: ApiPublicHooksDailyBriefingRoute,
   ApiPublicHooksInvoiceRemindersRoute: ApiPublicHooksInvoiceRemindersRoute,
   ApiPublicHooksInvoiceScheduleRoute: ApiPublicHooksInvoiceScheduleRoute,
   ApiPublicHooksMonitorRunRoute: ApiPublicHooksMonitorRunRoute,

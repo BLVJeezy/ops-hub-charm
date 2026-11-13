@@ -1,0 +1,21 @@
+// Page entry: data.json (Hub snapshot) + network.json (model) + voices/dur.json → film
+import { loadModel } from './engine/holo.js';
+import { makeFilm } from './film.js';
+import { makePlan } from './plan.js';
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+const Q = new URLSearchParams(location.search);
+await Promise.all(['300', '400', '500', '600'].map(w => document.fonts.load(`${w} 40px Rajdhani`)).concat([document.fonts.load('20px ShareTechMono')]));
+const get = async (u, d) => { try { const r = await fetch(u); return r.ok ? await r.json() : d; } catch { return d; } };
+const S = await get(Q.get('data') || 'data.json');
+const plan = makePlan(S);
+const model = await loadModel(Q.get('model') || 'network.json', { diag: 2.9 });
+const dur = await get('voices/dur.json', {});
+const film = makeFilm(plan, model, dur);
+window.DUR = film.TL.DUR;
+window.EV = film.events();
+window.SUBS = film.subs();
+window.TIMELINE = film.timeline();
+window.CHAPTERS = film.chapters();
+window.TEXTS = film.texts;
+window.render = t => film.render(g, t, { nosub: Q.has('nosub') });
+window.READY = true;

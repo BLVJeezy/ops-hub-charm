@@ -259,7 +259,7 @@ async function fetchLatestDeployment(
   projectId: string,
 ): Promise<{ state?: string; url?: string; created?: number } | null> {
   const params = new URLSearchParams({ projectId, target: "production", limit: "1" });
-  if (process.env.VERCEL_TEAM_ID) params.set("teamId", process.env.VERCEL_TEAM_ID);
+  params.set("teamId", process.env.VERCEL_TEAM_ID || "team_LMDAIL57CfPMVXgRrEHeVIzi");
   try {
     const res = await fetch(`https://api.vercel.com/v6/deployments?${params}`, {
       headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },

@@ -94,6 +94,11 @@ export async function runMonitoring(
     .from("email_events")
     .delete()
     .lt("created_at", new Date(Date.now() - HISTORY_DAYS * 86400_000).toISOString());
+  // Visitor hashes are only needed for today (and yesterday around midnight).
+  await db
+    .from("site_visitor_hashes")
+    .delete()
+    .lt("day", new Date(Date.now() - 2 * 86400_000).toISOString().slice(0, 10));
 
   return summary;
 }

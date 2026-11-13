@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  ArrowLeft, BarChart3, CheckCircle2, Database, ExternalLink, FileText, Folder, Github, Globe,
+  ArrowLeft, BarChart3, Copy, Users, CheckCircle2, Database, ExternalLink, FileText, Folder, Github, Globe,
   Info, Pencil, RefreshCw, Trash2, Wallet, XCircle,
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -14,7 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { runChecksNow } from "@/lib/monitoring.functions";
 import { getSitePages } from "@/lib/site-data.functions";
-import { mttrMinutes, summarise, type DailyRow } from "@/lib/site-stats";
+import { mttrMinutes, shiftDay, summarise, type DailyRow } from "@/lib/site-stats";
+import { visitTotals, type VisitDay } from "@/lib/visits";
 import { brusselsToday } from "@/lib/invoice-schedule";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
@@ -152,7 +153,7 @@ function SiteFolder() {
         </TabsList>
 
         <TabsContent value="overzicht"><Overview site={site} /></TabsContent>
-        <TabsContent value="stats"><Stats siteId={site.id} /></TabsContent>
+        <TabsContent value="stats"><Visitors siteId={site.id} /><Stats siteId={site.id} /></TabsContent>
         <TabsContent value="paginas"><Pages siteId={site.id} /></TabsContent>
         <TabsContent value="data"><DataSources site={site} /></TabsContent>
         <TabsContent value="fin"><Finance clientId={site.client_id} clientName={site.clients?.name ?? null} /></TabsContent>
@@ -244,6 +245,7 @@ function Overview({ site }: { site: Site }) {
         </div>
         {site.last_error && <p className="text-xs text-red-400 mt-3 break-words">{site.last_error}</p>}
       </Card>
+      <TrackingSnippet trackingId={(site as Site & { tracking_id?: string }).tracking_id} />
       {site.notes && <Card title="Notities"><p className="text-sm whitespace-pre-wrap">{site.notes}</p></Card>}
     </>
   );
@@ -374,6 +376,110 @@ function Stats({ siteId }: { siteId: string }) {
           </div>
         )}
       </Card>
+    </>
+  );
+}
+
+// ---------- Bezoekers ----------
+const HUB_ORIGIN = typeof window !== "undefined" ? window.location.origin.replace(/^https:\/\/id-preview--[^.]+/, "https://solyn22") : "https://solyn22.lovable.app";
+
+function TrackingSnippet({ trackingId }: { trackingId?: string }) {
+  if (!trackingId) return null;
+  const code = `<script defer src="${HUB_ORIGIN}/t.js" data-site="${trackingId}"></script>`;
+  return (
+    <Card title="Bezoekersteller" icon={<Users className="w-3.5 h-3.5" />}>
+      <p className="text-xs text-muted-foreground mb-2">Plaats deze regel in de &lt;head&gt; van de website. Geen cookies, geen persoonsgegevens bewaard.</p>
+      <div className="flex gap-2 items-start">
+        <code className="flex-1 text-[11px] bg-muted/50 rounded p-2 break-all">{code}</code>
+        <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(code); toast.success("Gekopieerd"); }}><Copy className="w-4 h-4" /></Button>
+      </div>
+    </Card>
+  );
+}
+
+function Visitors({ siteId }: { siteId: string }) {
+  const [days, setDays] = useState<VisitDay[] | null>(null);
+  const [pages, setPages] = useState<Array<{ path: string; views: number }>>([]);
+  const [sources, setSources] = useState<Array<{ source: string; views: number }>>([]);
+  const [range, setRange] = useState<"week" | "month" | "all">("month");
+  const today = brusselsToday();
+
+  useEffect(() => {
+    db.from("site_visits_daily").select("day,pageviews,visitors").eq("site_id", siteId).order("day")
+      .then(({ data }: { data: VisitDay[] | null }) => setDays(data ?? []));
+  }, [siteId]);
+
+  useEffect(() => {
+    const since = range === "week" ? shiftDay(today, -6) : range === "month" ? shiftDay(today, -29) : "0000-01-01";
+    const sum = (rows: Array<{ views: number } & Record<string, unknown>>, key: string) => {
+      const m = new Map<string, number>();
+      for (const r of rows) m.set(String(r[key]), (m.get(String(r[key])) ?? 0) + Number(r.views));
+      return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    };
+    Promise.all([
+      db.from("site_pages_daily").select("path,views").eq("site_id", siteId).gte("day", since).limit(5000),
+      db.from("site_sources_daily").select("source,views").eq("site_id", siteId).gte("day", since).limit(5000),
+    ]).then(([p, so]: Array<{ data: Array<{ views: number } & Record<string, unknown>> | null }>) => {
+      setPages(sum(p.data ?? [], "path").map(([path, views]) => ({ path, views })));
+      setSources(sum(so.data ?? [], "source").map(([source, views]) => ({ source, views })));
+    });
+  }, [siteId, range, today]);
+
+  if (!days) return null;
+  if (days.length === 0) return (
+    <Card title="Bezoekers" icon={<Users className="w-3.5 h-3.5" />}>
+      <p className="text-sm text-muted-foreground">Nog geen bezoekersdata. Plaats de bezoekersteller (zie Overzicht) op de website; vanaf dan telt de Hub elke dag de bezoekers.</p>
+    </Card>
+  );
+
+  const t = visitTotals(days, today, shiftDay);
+  const n = range === "week" ? 7 : range === "month" ? 30 : Math.max(30, Math.min(365, days.length));
+  const chart = Array.from({ length: n }, (_, i) => {
+    const d = shiftDay(today, -(n - 1 - i));
+    const r = days.find((x) => x.day === d);
+    return { label: d.slice(8, 10) + "/" + d.slice(5, 7), visitors: r?.visitors ?? 0, pageviews: r?.pageviews ?? 0 };
+  });
+
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+        <Kpi label={`Vandaag · ${t.today.pageviews} weergaven`} value={`${t.today.visitors} bezoekers`} />
+        <Kpi label={`7 dagen · ${t.week.pageviews} weergaven`} value={`${t.week.visitors}`} />
+        <Kpi label={`30 dagen · ${t.month.pageviews} weergaven`} value={`${t.month.visitors}`} />
+        <Kpi label={`Sinds ${formatDate(days[0].day)} · ${t.all.pageviews} weergaven`} value={`${t.all.visitors}`} />
+      </div>
+      <Card title="Bezoekers per dag" icon={<Users className="w-3.5 h-3.5" />}>
+        <div className="flex gap-1 mb-2">
+          {([["week", "7 dagen"], ["month", "30 dagen"], ["all", "Alles"]] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setRange(k)}
+              className={`px-3 py-1 rounded-full text-xs border ${range === k ? "bg-white text-black border-white" : "border-border text-muted-foreground"}`}>{l}</button>
+          ))}
+        </div>
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chart} margin={{ left: -20, right: 4, top: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" stroke="hsl(var(--muted-foreground))" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }}
+                formatter={(v: number, k: string) => [v, k === "visitors" ? "Bezoekers" : "Weergaven"]} />
+              <Bar dataKey="visitors" fill="#C9A84C" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+      <div className="grid md:grid-cols-2 gap-3">
+        <Card title="Populairste pagina's">
+          {pages.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : pages.map((p) => (
+            <div key={p.path} className="flex justify-between gap-2 text-sm py-0.5"><span className="truncate">{p.path}</span><span className="tabular-nums text-muted-foreground">{p.views}</span></div>
+          ))}
+        </Card>
+        <Card title="Bronnen">
+          {sources.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : sources.map((p) => (
+            <div key={p.source} className="flex justify-between gap-2 text-sm py-0.5"><span className="truncate">{p.source}</span><span className="tabular-nums text-muted-foreground">{p.views}</span></div>
+          ))}
+        </Card>
+      </div>
     </>
   );
 }

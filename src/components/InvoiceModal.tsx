@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { INVOICE_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, todayISO } from "@/lib/format";
-import { brusselsToday, brusselsHour, dayOf, nextMonthlyDate, DEFAULT_SEND_HOUR, hourLabel } from "@/lib/invoice-schedule";
+import { brusselsToday, brusselsHour, dayOf, nextMonthlyDate, nextOccurrence, DEFAULT_SEND_HOUR, hourLabel } from "@/lib/invoice-schedule";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 import type { LineItem } from "@/lib/invoice-pdf";
@@ -96,12 +96,13 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
     if (willAutoSend && !clients.find((c) => c.id === form.client)?.contact_email) {
       toast.error("Koppel een klant met e-mailadres om automatisch te versturen"); return;
     }
-    // Repeat bookkeeping: day of month, and the next date for invoices that are already sent.
-    const repeatDay = form.repeat_monthly ? (form.repeat_day ?? dayOf(form.scheduled_send_at || form.date || today)) : form.repeat_day ?? null;
-    let nextRepeatOn: string | null = form.repeat_monthly ? (form.next_repeat_on ?? null) : null;
-    if (form.repeat_monthly && form.status !== "Draft" && !nextRepeatOn) {
-      const base = (form.date && form.date > today) ? form.date : today;
-      nextRepeatOn = nextMonthlyDate(base, repeatDay ?? dayOf(base));
+    // Repeat follows the date + time above: same day of the month, same hour.
+    const repeat = repeatPlan(form, today);
+    const repeatDay = form.repeat_monthly ? repeat.day : null;
+    let nextRepeatOn: string | null = null;
+    if (form.repeat_monthly && form.status !== "Draft") {
+      const keep = form.next_repeat_on && form.repeat_day === repeat.day && form.next_repeat_on >= today;
+      nextRepeatOn = keep ? form.next_repeat_on! : repeat.next;
     }
     setSaving(true);
     try {
@@ -118,7 +119,7 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
         status: form.status,
         scheduled_send_at: form.status === "Draft" ? (form.scheduled_send_at || null) : null,
         scheduled_send_hour: form.status === "Draft" && form.scheduled_send_at ? sendHour : null,
-        repeat_hour: form.repeat_monthly ? (form.repeat_hour ?? sendHour) : form.repeat_hour ?? null,
+        repeat_hour: form.repeat_monthly ? repeat.hour : null,
         repeat_monthly: !!form.repeat_monthly,
         repeat_day: repeatDay,
         next_repeat_on: nextRepeatOn,
@@ -239,7 +240,7 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
                   <Input type="date" min={brusselsToday()} value={form.scheduled_send_at ?? ""}
                     onChange={(e) => setForm({ ...form, scheduled_send_at: e.target.value || null, date: e.target.value || form.date })} />
                   <HourSelect value={form.scheduled_send_hour ?? DEFAULT_SEND_HOUR}
-                    onChange={(h) => setForm({ ...form, scheduled_send_hour: h, repeat_hour: form.repeat_monthly ? (form.repeat_hour ?? h) : form.repeat_hour })} />
+                    onChange={(h) => setForm({ ...form, scheduled_send_hour: h })} />
                   {form.scheduled_send_at && (
                     <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, scheduled_send_at: null })}>Wissen</Button>
                   )}
@@ -247,7 +248,12 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
                 <p className="text-[11px] text-muted-foreground">Wordt verstuurd om {hourLabel(form.scheduled_send_hour)} (Belgische tijd) naar het e-mailadres van de klant. De factuurdatum op de PDF wordt de verzenddatum.</p>
               </F>
             ) : (
-              <p className="text-xs text-muted-foreground">Deze factuur is al {form.status === "Paid" ? "betaald" : "verstuurd"}. Je kan wel een maandelijkse herhaling instellen.</p>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Deze factuur is al {form.status === "Paid" ? "betaald" : "verstuurd"}. Je kan wel een maandelijkse herhaling instellen: op dezelfde dag als de factuurdatum.</p>
+                <F label="Uur voor de herhaling">
+                  <HourSelect value={form.repeat_hour ?? DEFAULT_SEND_HOUR} onChange={(h) => setForm({ ...form, repeat_hour: h })} />
+                </F>
+              </div>
             )}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -257,30 +263,26 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
                   <div className="text-[11px] text-muted-foreground">Maakt elke maand een nieuwe factuur (nieuw nummer, datum van die dag) en verstuurt ze. Maanden in de omschrijving schuiven mee.</div>
                 </div>
               </div>
-              <Switch checked={!!form.repeat_monthly} onCheckedChange={(v) => setForm({
-                ...form, repeat_monthly: v,
-                repeat_day: v ? (form.repeat_day ?? dayOf(form.scheduled_send_at || form.date || brusselsToday())) : form.repeat_day,
-              })} />
+              <Switch checked={!!form.repeat_monthly} onCheckedChange={(v) => setForm({ ...form, repeat_monthly: v })} />
             </div>
-            {form.repeat_monthly && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
-                <F label="Op dag van de maand">
-                  <Input type="number" min={1} max={31} value={form.repeat_day ?? ""}
-                    onChange={(e) => setForm({ ...form, repeat_day: Math.min(31, Math.max(1, Number(e.target.value) || 1)), next_repeat_on: null })} />
-                </F>
-                <F label="Om">
-                  <HourSelect value={form.repeat_hour ?? form.scheduled_send_hour ?? DEFAULT_SEND_HOUR}
-                    onChange={(h) => setForm({ ...form, repeat_hour: h })} />
-                </F>
-                <p className="text-[11px] text-muted-foreground pb-2 col-span-2 md:col-span-1">
-                  {form.next_repeat_on
-                    ? `Volgende: ${formatDate(form.next_repeat_on)}`
-                    : form.status === "Draft"
-                      ? "Start na de eerste verzending van deze factuur."
-                      : "Volgende datum wordt berekend bij opslaan."}
-                </p>
-              </div>
-            )}
+            {form.repeat_monthly && (() => {
+              const r = repeatPlan(form, brusselsToday());
+              return (
+                <div className="rounded-lg bg-muted/40 px-3 py-2 text-xs">
+                  <div className="font-medium">
+                    Elke maand op de {r.day}e om {hourLabel(r.hour)}
+                    {r.day > 28 && <span className="font-normal text-muted-foreground"> (of de laatste dag van kortere maanden)</span>}
+                  </div>
+                  <div className="text-muted-foreground mt-0.5">
+                    {form.status === "Draft"
+                      ? form.scheduled_send_at
+                        ? `Eerste: ${formatDate(form.scheduled_send_at)} · daarna ${formatDate(r.next)} enzovoort`
+                        : "Kies hierboven een datum en uur, of verstuur deze factuur zelf: daarna herhaalt ze elke maand."
+                      : `Volgende: ${formatDate(form.next_repeat_on && form.repeat_day === r.day ? form.next_repeat_on : r.next)}`}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
         <DialogFooter>
@@ -290,6 +292,17 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Day, hour and next date of a monthly repeat, taken from the schedule above (or the invoice date). */
+function repeatPlan(form: InvoiceRow, today: string): { day: number; hour: number; next: string } {
+  const isDraft = form.status === "Draft";
+  const base = (isDraft ? form.scheduled_send_at || form.date : form.date) || today;
+  const day = dayOf(base);
+  const hour = isDraft ? form.scheduled_send_hour ?? DEFAULT_SEND_HOUR : form.repeat_hour ?? DEFAULT_SEND_HOUR;
+  // draft: one month after its first send; already sent: the next time that day comes around
+  const next = isDraft ? nextMonthlyDate(base, day) : nextOccurrence(base > today ? base : today, day);
+  return { day, hour, next };
 }
 
 function HourSelect({ value, onChange }: { value: number; onChange: (h: number) => void }) {

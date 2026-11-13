@@ -48,6 +48,13 @@ export function hourLabel(hour: number | null | undefined): string {
   return `${String(hour ?? DEFAULT_SEND_HOUR).padStart(2, "0")}:00`;
 }
 
+/** First date after `todayIso` that falls on `day` of a month (clamped to short months). */
+export function nextOccurrence(todayIso: string, day: number): string {
+  const [y, m] = todayIso.split("-").map(Number);
+  const thisMonth = `${y}-${String(m).padStart(2, "0")}-${String(Math.min(day, daysInMonth(y, m - 1))).padStart(2, "0")}`;
+  return thisMonth > todayIso ? thisMonth : nextMonthlyDate(todayIso, day);
+}
+
 /** YYYY-MM-DD plus `n` days. */
 export function addDays(iso: string, n: number): string {
   const [y, m, d] = iso.split("-").map(Number);

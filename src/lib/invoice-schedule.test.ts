@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, advanceMonthNames, brusselsHour, brusselsToday, isDueAt, nextMonthlyDate } from "./invoice-schedule";
+import { addDays, nextOccurrence, advanceMonthNames, brusselsHour, brusselsToday, isDueAt, nextMonthlyDate } from "./invoice-schedule";
 
 describe("nextMonthlyDate", () => {
   it("moves to the same day next month", () =>
@@ -46,6 +46,15 @@ describe("hours", () => {
     expect(isDueAt("2026-11-13", null, now)).toBe(true); // default 10:00
   });
   it("addDays crosses months", () => expect(addDays("2026-11-30", 1)).toBe("2026-12-01"));
+});
+
+describe("nextOccurrence", () => {
+  it("uses this month when the day is still ahead", () => expect(nextOccurrence("2026-11-13", 29)).toBe("2026-11-29"));
+  it("uses next month when the day has passed or is today", () => {
+    expect(nextOccurrence("2026-11-13", 1)).toBe("2026-12-01");
+    expect(nextOccurrence("2026-11-13", 13)).toBe("2026-12-13");
+  });
+  it("clamps in short months", () => expect(nextOccurrence("2027-02-10", 31)).toBe("2027-02-28"));
 });
 
 describe("brusselsToday", () => {

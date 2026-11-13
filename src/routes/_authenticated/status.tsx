@@ -62,6 +62,21 @@ type Incident = {
   resolved_at: string | null;
 };
 
+type BackupRun = {
+  target: string;
+  ok: boolean;
+  at: string;
+  rows: number | null;
+  bytes: number | null;
+  error: string | null;
+  stale: boolean;
+};
+const BACKUP_TARGETS: Record<string, string> = {
+  hub: "Solyn Hub OS",
+  riory: "Riory BV",
+  "villa-amano": "Villa Amano",
+};
+
 type Check = {
   id: number;
   kind: string;
@@ -119,13 +134,16 @@ function StatusPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
   const [detail, setDetail] = useState<Site | null>(null);
+  const [backups, setBackups] = useState<BackupRun[]>([]);
 
   const load = useCallback(async () => {
-    const [s, i, c] = await Promise.all([
+    const [s, i, c, b] = await Promise.all([
       db.from("monitored_sites").select("*, clients:client_id(name)").order("name"),
       db.from("incidents").select("*").order("opened_at", { ascending: false }).limit(60),
       supabase.from("clients").select("id,name").order("name"),
+      db.rpc("backup_status"),
     ]);
+    setBackups((b.data as BackupRun[]) ?? []);
     if (s.error) toast.error(s.error.message);
     setSites((s.data as Site[]) ?? []);
     setIncidents((i.data as Incident[]) ?? []);
@@ -279,6 +297,11 @@ function StatusPage() {
         )}
       </Section>
 
+      {/* Off-site backups */}
+      <Section icon={<HardDrive className="w-4 h-4" />} title="Off-site backups">
+        <BackupList runs={backups} />
+      </Section>
+
       {/* History */}
       {history.length > 0 && (
         <Section icon={<CheckCircle2 className="w-4 h-4" />} title="Incident history">
@@ -313,6 +336,37 @@ function StatusPage() {
         clients={clients}
         onSaved={load}
       />
+    </div>
+  );
+}
+
+function BackupList({ runs }: { runs: BackupRun[] }) {
+  const byTarget = new Map(runs.map((r) => [r.target, r]));
+  const targets = Array.from(new Set([...Object.keys(BACKUP_TARGETS), ...byTarget.keys()]));
+  return (
+    <div className="rounded-xl border border-border bg-card divide-y divide-border">
+      {targets.map((t) => {
+        const r = byTarget.get(t);
+        const color = !r ? "#6B7280" : !r.ok ? "#DC2626" : r.stale ? "#D97706" : "#1D9E75";
+        const label = !r ? "No backup yet" : !r.ok ? "Failed" : r.stale ? "Overdue" : "OK";
+        return (
+          <div key={t} className="flex items-center gap-3 p-3">
+            <Dot color={color} />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium">{BACKUP_TARGETS[t] ?? t}</div>
+              <div className="text-xs text-muted-foreground truncate">
+                {r
+                  ? `${ago(r.at)} · ${(r.rows ?? 0).toLocaleString()} rows · ${((r.bytes ?? 0) / 1024 / 1024).toFixed(1)} MB encrypted`
+                  : "Runs nightly at 03:07"}
+                {r?.error ? ` · ${r.error}` : ""}
+              </div>
+            </div>
+            <span className="text-xs font-medium" style={{ color }}>
+              {label}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

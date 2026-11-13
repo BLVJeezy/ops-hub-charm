@@ -21,6 +21,7 @@ export type Snapshot = {
   generated_at?: string;
   sites: SnapSite[];
   invoices?: { open_count?: number; open_total?: number; overdue_count?: number; draft_count?: number; paid_30d?: number };
+  backups?: { target: string; ok: boolean; at: string; stale?: boolean; error?: string | null }[];
 };
 export type SiteState = "ok" | "warn" | "down";
 export type BriefingStatus = "ok" | "warning" | "critical";
@@ -32,9 +33,15 @@ export function siteState(s: SnapSite): SiteState {
   return "ok";
 }
 
+/** Backups that failed last night or have not run for 36 hours. */
+export function backupIssues(snap: Snapshot): string[] {
+  return (snap.backups ?? []).filter((b) => !b.ok || b.stale).map((b) => b.target);
+}
+
 export function briefingStatus(snap: Snapshot): BriefingStatus {
   const st = (snap.sites ?? []).map(siteState);
-  return st.includes("down") ? "critical" : st.includes("warn") ? "warning" : "ok";
+  if (st.includes("down")) return "critical";
+  return st.includes("warn") || backupIssues(snap).length ? "warning" : "ok";
 }
 
 export function totals(snap: Snapshot) {
@@ -73,6 +80,12 @@ export function briefingMail(snap: Snapshot, link: string | null, hasVideo: bool
         <td style="padding:6px 8px;text-align:right">${s.new_24h ?? 0}</td></tr>`;
     })
     .join("");
+  const bad = backupIssues(snap);
+  const backupLine = snap.backups?.length
+    ? bad.length
+      ? `<p style="margin:12px 0 0;color:#d97706">Back-up niet gelukt: ${bad.map(esc).join(", ")}</p>`
+      : `<p style="margin:12px 0 0;color:#6b6b6b;font-size:12px">Off-site back-ups vannacht: alle ${snap.backups.length} gelukt</p>`
+    : "";
   const subject = `[${L.word}] Noon scan ${snap.day} · ${T.visitors} bezoekers gisteren`;
   const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1B222C">
     <div style="display:inline-block;padding:4px 10px;border-radius:999px;background:${L.color};color:#fff;font-size:12px;font-weight:bold">${L.word}</div>
@@ -82,6 +95,7 @@ export function briefingMail(snap: Snapshot, link: string | null, hasVideo: bool
       <tr style="color:#6b6b6b;font-size:12px"><td style="padding:6px 8px">Site</td><td style="padding:6px 8px;text-align:right">Uptime 24u</td><td style="padding:6px 8px;text-align:right">Bezoekers</td><td style="padding:6px 8px;text-align:right">Nieuw</td></tr>
       ${rows}
     </table>
+    ${backupLine}
     ${link ? `<p style="margin-top:16px"><a href="${esc(link)}" style="background:#C9A24B;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">${hasVideo ? "Bekijk de video in Hub OS" : "Open de briefing in Hub OS"}</a></p>` : ""}
     ${hasVideo ? "" : `<p style="color:#6b6b6b;font-size:12px">De video wordt nog gemaakt en verschijnt zo in de Hub.</p>`}
   </div>`;

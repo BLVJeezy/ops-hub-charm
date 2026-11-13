@@ -12,7 +12,7 @@ The **Status** tab in Hub OS shows, per client: whether the website is up, HTTPS
 | Database | `GET` a **read-only** health URL with the **public** anon key | as above |
 | Deploy | Vercel API, latest production deployment (needs `VERCEL_TOKEN`) | state `ERROR` / `CANCELED` |
 | Email | Resend webhook events for the site's sending domain, last 24 h | ≥ 1 bounced / failed / complained / delayed |
-| Backup | `last_backup_at` (filled by the backup system, phase 1) | — shows "Not set up yet" for now |
+| Backup | `last_backup_at` (set by each successful nightly off-site backup, see `backup/README.md`) | Riory and Villa Amano are covered; other sites show "Not set up yet" |
 
 Site status: **Offline** if the website fails, **Issues** if any other check fails or the response is slower than 4 s, otherwise **Online**.
 

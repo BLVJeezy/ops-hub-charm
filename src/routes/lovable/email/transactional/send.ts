@@ -59,6 +59,17 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           return Response.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+
+        // Only team members may trigger app emails (the caller chooses the recipient).
+
+        const { data: isStaff } = await supabase.rpc('is_staff' as never, { _user_id: user.id } as never)
+
+        if (isStaff !== true) {
+
+          return Response.json({ error: 'Forbidden' }, { status: 403 })
+
+        }
+
         // Parse request body
         let templateName: string
         let recipientEmail: string

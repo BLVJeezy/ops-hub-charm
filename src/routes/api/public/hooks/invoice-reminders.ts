@@ -30,7 +30,7 @@ function fmtDate(d: string) {
 export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
         const supabaseUrl = process.env.SUPABASE_URL
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
         const resendKey = process.env.RESEND_API_KEY
@@ -38,6 +38,12 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
           return Response.json({ error: 'server misconfigured' }, { status: 500 })
         }
         const supabase = createClient(supabaseUrl, serviceKey)
+
+        // Only the daily pg_cron job may call this: it sends the Vault secret 'invoice_cron_secret'.
+        const auth = request.headers.get('authorization') ?? ''
+        const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+        const { data: allowed } = await supabase.rpc('verify_cron_secret' as never, { _name: 'invoice_cron_secret', _token: token } as never)
+        if (allowed !== true) return new Response('unauthorized', { status: 401 })
 
         // 1. Scheduled invoices and monthly repeats due today (Europe/Brussels).
         let scheduled: unknown = null

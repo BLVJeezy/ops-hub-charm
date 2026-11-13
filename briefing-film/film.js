@@ -12,11 +12,11 @@ const sine = t => 0.5 - 0.5 * Math.cos(Math.PI * clamp(t));
 const pad2 = n => String(n).padStart(2, '0');
 
 export function buildTimeline(plan, dur = {}) {
-  const TL = { boot: [0, 3 * BAR], verdict: [3 * BAR, 5 * BAR], sites: [] };
+  const TL = { boot: [0, 3 * BAR], verdict: [3 * BAR, 6 * BAR], sites: [] };
   let t = TL.verdict[1];
   plan.order.forEach((s, k) => { TL.sites.push({ k, s, t0: t, t1: t + 3 * BAR }); t += 3 * BAR; });
   TL.totals = [t, t + 4 * BAR]; t += 4 * BAR;
-  TL.end = [t, t + 3 * BAR]; t += 3 * BAR + 1;
+  TL.end = [t, t + 3 * BAR]; t += 3 * BAR + 1.5;
   TL.DUR = t;
   const at = { intro: 0.75, verdict: TL.verdict[0] + 2.25, totals: TL.totals[0] + 0.25, end: TL.end[0] + 1.25 };
   TL.sites.forEach(x => { at['s' + x.k] = x.t0 + 0.75; });
@@ -216,7 +216,7 @@ export function makeFilm(plan, model, dur) {
   function siteBlock(ctx, t, fr, x, info) {
     const L = x.t0, s = x.s, id = 'site' + s.idx;
     if (t < L - 0.05 || t >= x.t1) return;
-    const out = 1 - seg(t, x.t1 - 0.4, x.t1 - 0.05);
+    const out = 1 - seg(t, x.t1 - 0.25, x.t1 - 0.02);
     const lk = seg(t, L, L + 0.22);
     U.targetBox(ctx, T, info.bbox[id], lk, { alpha: out, flash: t >= L && t < L + 0.12, tag: `SITE ${pad2(x.k + 1)} · ${s.state === 'down' ? 'FAULT' : 'LOCK'}`, pad: 18 });
     const anchor = info.anchor[id];
@@ -227,7 +227,7 @@ export function makeFilm(plan, model, dur) {
     if (rv <= 0) return;
     const rows = [
       ['RESPONSE', s.last_response_ms != null ? (s.last_response_ms / 1000).toFixed(2) : '—', 'S'],
-      ['VISITORS YESTERDAY', String(s.visitors_yesterday ?? 0), delta(s)],
+      ['VISITS YESTERDAY', String(s.visitors_yesterday ?? 0), delta(s)],
       ['NEW REQUESTS · 24H', String(s.new_24h ?? 0), ''],
       ['BOOKED · NEXT 7 DAYS', String(s.upcoming_7d ?? 0), ''],
       ['HEALTH CHECKS · 24H', String(s.checks24 ?? 0), ''],
@@ -268,7 +268,7 @@ export function makeFilm(plan, model, dur) {
     y += 120 + 18;
     // rows: one per half beat after the big value
     rows.forEach(([lab, val, unit], j) => {
-      const ta = L + 3.0 + j * 0.25, rr = seg(t, ta, ta + 0.35);
+      const ta = L + 2.0 + j * 0.12, rr = seg(t, ta, ta + 0.35);
       if (rr <= 0) return;
       const yy = y + j * 54 + 36;
       ctx.strokeStyle = T.dim(0.35 * a * rr); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, yy + 14); ctx.lineTo(cx + w * eo(rr), yy + 14); ctx.stroke();
@@ -284,7 +284,7 @@ export function makeFilm(plan, model, dur) {
   }
   const delta = s => {
     const a = s.visitors_yesterday ?? 0, b = s.visitors_day_before ?? 0;
-    return a === b ? '= DAY BEFORE' : (a > b ? '▲ ' : '▼ ') + Math.abs(a - b);
+    return a === b ? '=' : (a > b ? '▲' : '▼') + Math.abs(a - b);
   };
 
   // ---- chip rail: each inspected site docks on the left and stays ----
@@ -356,10 +356,12 @@ export function makeFilm(plan, model, dur) {
     ctx.restore();
   }
 
+  // subtitle hold: the voice + 0.6 s, and long enough to read (letters / 15 + 1.5 s, + a frame of margin)
+  const hold = v => Math.max(1.8, v.d + 0.6, v.sub.replace(/\s/g, '').length / 15 + 1.6);
   function subAt(t) {
     for (let i = 0; i < TL.vo.length; i++) {
       const v = TL.vo[i], nx = TL.vo[i + 1];
-      const end = Math.min(v.t + Math.max(1.8, v.d + 0.6), nx ? nx.t - 0.12 : TL.DUR);
+      const end = Math.min(v.t + hold(v), nx ? nx.t - 0.12 : TL.DUR);
       if (t >= v.t - 0.1 && t < end) return { text: v.sub, a: seg(t, v.t - 0.1, v.t + 0.1) * (1 - seg(t, end - 0.15, end)) };
     }
     return null;
@@ -387,7 +389,7 @@ export function makeFilm(plan, model, dur) {
       ev(L + 1.5, 'roll', { d: 0.5, n: x.s.name.length });
       ev(L + 2.0, 'roll', { d: 1.0, n: 6 });
       ev(L + 3.0, 'confirm', { i: x.k, bar: true });
-      for (let j = 0; j < 5; j++) ev(L + 3.0 + j * 0.25 + 0.35, 'tick_row', { j });
+      for (let j = 0; j < 5; j++) ev(L + 2.0 + j * 0.12 + 0.35, 'tick_row', { j });
       ev(x.t1 - 0.9, 'reassemble');
       ev(x.t1 - 0.3, 'dock', { i: x.k });
     }
@@ -401,7 +403,7 @@ export function makeFilm(plan, model, dur) {
     for (const v of TL.vo) ev(v.t, 'vo', { id: v.id, d: v.d });
     return E.sort((a, b) => a.t - b.t);
   }
-  const subs = () => TL.vo.map((v, i) => { const nx = TL.vo[i + 1]; return { t0: v.t - 0.1, t1: Math.min(v.t + Math.max(1.8, v.d + 0.6), nx ? nx.t - 0.12 : TL.DUR), text: v.sub }; });
+  const subs = () => TL.vo.map((v, i) => { const nx = TL.vo[i + 1]; return { t0: v.t - 0.1, t1: Math.min(v.t + hold(v), nx ? nx.t - 0.12 : TL.DUR), text: v.sub }; });
   const timeline = () => ({ bpm: 120, bar: BAR, dur: TL.DUR, status: plan.status, boot: TL.boot, verdict: TL.verdict, totals: TL.totals, end: TL.end,
     sites: TL.sites.map(x => ({ k: x.k, id: x.s.id, name: x.s.name, state: x.s.state, t0: x.t0, t1: x.t1 })), vo: TL.vo });
   // chapters for the Hub player

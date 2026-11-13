@@ -27,4 +27,6 @@ node "$HERE/tools/export.mjs" "$HERE"                                           
 node core/render/video.mjs "$HERE" --fps 24 --workers ${WORKERS:-3} --out "$HERE/out/video.mp4"   # 8. picture
 sh core/render/mux.sh "$HERE/out/video.mp4" "$HERE/mix.wav" "$HERE/noon-scan.mp4" 24 0            # 9. master −14 LUFS
 node core/render/still.mjs "$HERE" 9.5 --q nosub=1 --out "$HERE/out" --prefix po_ && cp "$HERE/out/po_9.5.jpg" "$HERE/poster.jpg"
+ffmpeg -loglevel error -y -i "$HERE/noon-scan.mp4" -vf scale=1280:-2 -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p \
+  -c:a aac -b:a 128k -movflags +faststart "$HERE/noon-scan-web.mp4"                 # 10. small copy for the Hub player / storage
 echo "done: $HERE/noon-scan.mp4"

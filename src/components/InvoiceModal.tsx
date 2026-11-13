@@ -5,15 +5,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Plus, Repeat, Trash2, AlertTriangle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { INVOICE_STATUSES } from "@/lib/constants";
-import { formatCurrency, todayISO } from "@/lib/format";
+import { formatCurrency, formatDate, todayISO } from "@/lib/format";
+import { brusselsToday, dayOf, nextMonthlyDate } from "@/lib/invoice-schedule";
 import type { LineItem } from "@/lib/invoice-pdf";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
 
-type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null };
+type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null };
 
 export type InvoiceRow = {
   id?: string;
@@ -27,6 +29,12 @@ export type InvoiceRow = {
   vat_note?: string | null;
   total: number;
   status: string;
+  scheduled_send_at?: string | null;
+  repeat_monthly?: boolean;
+  repeat_day?: number | null;
+  next_repeat_on?: string | null;
+  schedule_error?: string | null;
+  sent_at?: string | null;
 };
 
 const EMPTY: InvoiceRow = {
@@ -74,6 +82,21 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
   async function save() {
     if (!form.client_name?.trim()) { toast.error("Client name is required"); return; }
     if (form.line_items.length === 0) { toast.error("Add at least one line item"); return; }
+    const today = brusselsToday();
+    const willAutoSend = (form.status === "Draft" && !!form.scheduled_send_at) || !!form.repeat_monthly;
+    if (form.status === "Draft" && form.scheduled_send_at && form.scheduled_send_at < today) {
+      toast.error("Verzenddatum ligt in het verleden"); return;
+    }
+    if (willAutoSend && !clients.find((c) => c.id === form.client)?.contact_email) {
+      toast.error("Koppel een klant met e-mailadres om automatisch te versturen"); return;
+    }
+    // Repeat bookkeeping: day of month, and the next date for invoices that are already sent.
+    const repeatDay = form.repeat_monthly ? (form.repeat_day ?? dayOf(form.scheduled_send_at || form.date || today)) : form.repeat_day ?? null;
+    let nextRepeatOn: string | null = form.repeat_monthly ? (form.next_repeat_on ?? null) : null;
+    if (form.repeat_monthly && form.status !== "Draft" && !nextRepeatOn) {
+      const base = (form.date && form.date > today) ? form.date : today;
+      nextRepeatOn = nextMonthlyDate(base, repeatDay ?? dayOf(base));
+    }
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -87,6 +110,11 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
         vat_note: form.vat_note,
         total,
         status: form.status,
+        scheduled_send_at: form.status === "Draft" ? (form.scheduled_send_at || null) : null,
+        repeat_monthly: !!form.repeat_monthly,
+        repeat_day: repeatDay,
+        next_repeat_on: nextRepeatOn,
+        schedule_error: null,
         created_by: form.id ? undefined : u.user?.id,
       } as never;
       if (form.id) {
@@ -187,6 +215,59 @@ export function InvoiceModal({ open, onOpenChange, initial, clients, onSaved }: 
               </SelectContent>
             </Select>
           </F>
+
+          <div className="md:col-span-2 rounded-xl border border-border p-3 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <CalendarClock className="w-4 h-4" /> Inplannen
+            </div>
+            {form.schedule_error && (
+              <div className="flex gap-2 text-xs text-red-400">
+                <AlertTriangle className="w-4 h-4 shrink-0" /> Laatste automatische verzending mislukt: {form.schedule_error}
+              </div>
+            )}
+            {form.status === "Draft" ? (
+              <F label="Automatisch versturen op (optioneel)">
+                <div className="flex gap-2">
+                  <Input type="date" min={brusselsToday()} value={form.scheduled_send_at ?? ""}
+                    onChange={(e) => setForm({ ...form, scheduled_send_at: e.target.value || null })} />
+                  {form.scheduled_send_at && (
+                    <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, scheduled_send_at: null })}>Wissen</Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Wordt die dag rond 10:00 verstuurd naar het e-mailadres van de klant.</p>
+              </F>
+            ) : (
+              <p className="text-xs text-muted-foreground">Deze factuur is al {form.status === "Paid" ? "betaald" : "verstuurd"}. Je kan wel een maandelijkse herhaling instellen.</p>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <div className="text-sm font-medium">Elke maand herhalen</div>
+                  <div className="text-[11px] text-muted-foreground">Maakt elke maand een nieuwe factuur (nieuw nummer) en verstuurt ze. Maanden in de omschrijving schuiven mee.</div>
+                </div>
+              </div>
+              <Switch checked={!!form.repeat_monthly} onCheckedChange={(v) => setForm({
+                ...form, repeat_monthly: v,
+                repeat_day: v ? (form.repeat_day ?? dayOf(form.scheduled_send_at || form.date || brusselsToday())) : form.repeat_day,
+              })} />
+            </div>
+            {form.repeat_monthly && (
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <F label="Op dag van de maand">
+                  <Input type="number" min={1} max={31} value={form.repeat_day ?? ""}
+                    onChange={(e) => setForm({ ...form, repeat_day: Math.min(31, Math.max(1, Number(e.target.value) || 1)), next_repeat_on: null })} />
+                </F>
+                <p className="text-[11px] text-muted-foreground pb-2">
+                  {form.next_repeat_on
+                    ? `Volgende: ${formatDate(form.next_repeat_on)}`
+                    : form.status === "Draft"
+                      ? "Start na de eerste verzending van deze factuur."
+                      : "Volgende datum wordt berekend bij opslaan."}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>

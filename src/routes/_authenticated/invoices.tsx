@@ -1,7 +1,7 @@
 import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2, Trash2 } from "lucide-react";
+import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2, Trash2, CalendarClock, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +32,10 @@ type Row = InvoiceRow & {
   bounced_at?: string | null;
 };
 type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null };
+
+function isPlanned(r: { status: string; scheduled_send_at?: string | null; repeat_monthly?: boolean }) {
+  return (r.status === "Draft" && !!r.scheduled_send_at) || !!r.repeat_monthly;
+}
 
 function Invoices() {
   useCurrency();
@@ -67,7 +71,8 @@ function Invoices() {
 
   const filtered = useMemo(() => {
     let list = rows;
-    if (tab !== "All") list = list.filter((r) => r.status === tab);
+    if (tab === "Gepland") list = list.filter(isPlanned);
+    else if (tab !== "All") list = list.filter((r) => r.status === tab);
     if (q.trim()) {
       const s = q.toLowerCase();
       list = list.filter((r) =>
@@ -126,7 +131,7 @@ function Invoices() {
     }
   }
 
-  const counts = { All: rows.length, Draft: rows.filter(r => r.status === "Draft").length, Sent: rows.filter(r => r.status === "Sent").length, Paid: rows.filter(r => r.status === "Paid").length };
+  const counts = { All: rows.length, Draft: rows.filter(r => r.status === "Draft").length, Sent: rows.filter(r => r.status === "Sent").length, Paid: rows.filter(r => r.status === "Paid").length, Gepland: rows.filter(isPlanned).length };
 
   const statusColor: Record<string, string> = {
     Draft: "bg-muted text-muted-foreground",
@@ -153,8 +158,8 @@ function Invoices() {
 
       <div className="space-y-2 mb-4">
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-4">
-            {(["All", "Draft", "Sent", "Paid"] as const).map((t) => (
+          <TabsList className="w-full grid grid-cols-5">
+            {(["All", "Draft", "Gepland", "Sent", "Paid"] as const).map((t) => (
               <TabsTrigger key={t} value={t} className="text-xs">
                 {t} <span className="ml-1 opacity-60">{counts[t]}</span>
               </TabsTrigger>
@@ -216,8 +221,24 @@ function Invoices() {
                   </div>
                 </div>
               </div>
-              {(r.sent_at || (r.reminder_count ?? 0) > 0 || r.email_status) && (
+              {(r.sent_at || (r.reminder_count ?? 0) > 0 || r.email_status || isPlanned(r) || r.schedule_error) && (
                 <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  {r.status === "Draft" && r.scheduled_send_at && (
+                    <span className="inline-flex items-center gap-1 text-sky-400">
+                      <CalendarClock className="w-3.5 h-3.5" /> Gepland {formatDate(r.scheduled_send_at)}
+                    </span>
+                  )}
+                  {r.repeat_monthly && (
+                    <span className="inline-flex items-center gap-1 text-violet-400">
+                      <Repeat className="w-3.5 h-3.5" /> Maandelijks
+                      {r.next_repeat_on ? ` · volgende ${formatDate(r.next_repeat_on)}` : r.repeat_day ? ` · dag ${r.repeat_day}` : ""}
+                    </span>
+                  )}
+                  {r.schedule_error && (
+                    <span className="inline-flex items-center gap-1 text-red-400" title={r.schedule_error}>
+                      ⚠ Automatisch versturen mislukt
+                    </span>
+                  )}
                   {r.sent_at && (
                     <span className="inline-flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />

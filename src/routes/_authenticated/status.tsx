@@ -481,7 +481,8 @@ function pillsFor(s: Site): Pill[] {
     { icon: Lock, label: "HTTPS", state: s.ssl_ok === null ? "off" : s.ssl_ok ? "ok" : "fail" },
     { icon: Database, label: "DB", state: st(s.db_status) },
     { icon: Webhook, label: "API", state: st(s.api_status) },
-    { icon: Rocket, label: "Deploy", state: deploy },
+    // Deploy status comes from Vercel; sites hosted elsewhere have nothing to report, so no pill.
+    ...(s.vercel_project_id || s.last_deploy_state ? [{ icon: Rocket, label: "Deploy", state: deploy } as Pill] : []),
     { icon: Mail, label: "Email", state: st(s.email_status) },
     { icon: HardDrive, label: "Backup", state: backup },
   ];

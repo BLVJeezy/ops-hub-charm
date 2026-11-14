@@ -125,11 +125,11 @@ function Expenses() {
                     {r.notes ? ` · ${r.notes}` : ""}
                   </div>
                   {isAdmin && (
-                    <div className="flex shrink-0 -mr-1.5">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditing(r); setModalOpen(true); }}>
+                    <div className="flex shrink-0 -mr-2.5">
+                      <Button size="icon" variant="ghost" className="hit h-9 w-9" title="Edit" aria-label="Edit" onClick={() => { setEditing(r); setModalOpen(true); }}>
                         <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Delete" onClick={() => del(r)}>
+                      <Button size="icon" variant="ghost" className="hit h-9 w-9" title="Delete" aria-label="Delete" onClick={() => del(r)}>
                         <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                       </Button>
                     </div>
@@ -143,7 +143,7 @@ function Expenses() {
 
       {/* Planning reference, folded away: not part of the totals */}
       <details className="rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm">
-        <summary className="cursor-pointer text-muted-foreground flex items-center gap-2"><Info className="w-3.5 h-3.5" /> Setup cost per new client (planning only)</summary>
+        <summary className="cursor-pointer text-muted-foreground flex items-center gap-2 min-h-8"><Info className="w-3.5 h-3.5" /> Setup cost per new client (planning only)</summary>
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div>
             <div className="text-[11px] text-muted-foreground">Website setup</div>

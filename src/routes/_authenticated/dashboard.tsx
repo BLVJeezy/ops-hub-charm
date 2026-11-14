@@ -139,8 +139,8 @@ function Dashboard() {
               <AreaChart data={chart}>
                 <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#C9A14A" stopOpacity={0.5} /><stop offset="100%" stopColor="#C9A14A" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval={2} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={28} allowDecimals={false} axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" interval={2} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={28} allowDecimals={false} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
                 <Area type="monotone" dataKey="Bezoekers" stroke="#C9A14A" fill="url(#g)" strokeWidth={2} />
               </AreaChart>
@@ -171,7 +171,7 @@ function Dashboard() {
       <div className="lg:hidden rounded-2xl border border-border bg-card p-4">
         <div className="inline-flex rounded-full bg-muted p-0.5 text-xs mb-2">
           {(["agenda", "nieuw", "opvolgen"] as const).map((k) => (
-            <button key={k} onClick={() => setFeed(k)} className={`rounded-full px-3 py-1 transition ${feed === k ? "bg-white text-black" : "text-muted-foreground"}`}>
+            <button key={k} onClick={() => setFeed(k)} className={`rounded-full px-3 min-h-8 transition ${feed === k ? "bg-white text-black" : "text-muted-foreground"}`}>
               {k === "agenda" ? "Agenda" : k === "nieuw" ? "Aanvragen" : "Opvolgen"}
               {feeds[k] > 0 && <span className="ml-1 opacity-60">{feeds[k]}</span>}
             </button>
@@ -213,11 +213,11 @@ function Dashboard() {
                 </div>
               ))}
             </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5"><span>Found</span><span>Negotiating</span></div>
+            <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5"><span>Found</span><span>Negotiating</span></div>
           </div>
           <div className="hidden lg:grid grid-cols-3 sm:grid-cols-4 gap-2">
             {pipeline.map(({ s, n }) => (
-              <Link key={s} to="/pipeline" className="rounded-xl bg-muted/40 p-2 hover:bg-muted"><div className="text-lg font-bold tabular-nums">{n}</div><div className="text-[10px] text-muted-foreground truncate">{s}</div></Link>
+              <Link key={s} to="/pipeline" className="rounded-xl bg-muted/40 p-2 hover:bg-muted"><div className="text-lg font-bold tabular-nums">{n}</div><div className="text-[11px] text-muted-foreground truncate">{s}</div></Link>
             ))}
           </div>
         </Panel>
@@ -264,7 +264,7 @@ function RecRow({ r, site, created }: { r: Rec; site?: string; created?: boolean
     <Link to="/status/$id" params={{ id: r.site_id }} className="flex items-center gap-2 py-1.5 text-sm hover:text-primary">
       <span className="text-xs text-muted-foreground w-16 shrink-0">{d ? d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" }) : "—"}</span>
       <span className="flex-1 truncate">{r.customer_name || r.title || KIND[r.kind]}</span>
-      <span className="text-[10px] text-muted-foreground truncate max-w-24">{site}</span>
+      <span className="text-[11px] text-muted-foreground truncate max-w-24">{site}</span>
     </Link>
   );
 }

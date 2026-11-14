@@ -93,7 +93,7 @@ function BriefingPage() {
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         {list.map((r) => (
           <button key={r.day} onClick={() => navigate({ search: { day: r.day } })}
-            className={`shrink-0 text-xs px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${r.day === row.day ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}>
+            className={`shrink-0 text-xs px-3 min-h-9 rounded-full border flex items-center gap-1.5 ${r.day === row.day ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${r.status === "critical" ? "bg-red-500" : r.status === "warning" ? "bg-amber-500" : "bg-emerald-500"}`} />
             {new Date(`${r.day}T12:00:00Z`).toLocaleDateString("nl-BE", { day: "numeric", month: "short" })}
           </button>
@@ -117,7 +117,7 @@ function BriefingPage() {
           <div className="hidden lg:block text-[11px] text-muted-foreground px-2 py-1">Hoofdstukken</div>
           {chapters.length ? chapters.map((c, i) => (
             <button key={i} onClick={() => seek(c.t)} disabled={!video.url}
-              className={`shrink-0 lg:w-full flex items-center gap-2 text-left text-xs lg:text-sm px-2.5 lg:px-2 py-1 lg:py-1.5 rounded-full lg:rounded-md border border-border lg:border-0 ${i === cur && video.url ? "bg-primary/15 text-primary" : "hover:bg-muted"} disabled:opacity-50`}>
+              className={`shrink-0 lg:w-full flex items-center gap-2 text-left text-xs lg:text-sm px-3 lg:px-2 min-h-9 lg:min-h-0 lg:py-1.5 rounded-full lg:rounded-md border border-border lg:border-0 ${i === cur && video.url ? "bg-primary/15 text-primary" : "hover:bg-muted"} disabled:opacity-50`}>
               <span className="font-mono text-[11px] text-muted-foreground w-9">{Math.floor(c.t / 60)}:{String(Math.floor(c.t % 60)).padStart(2, "0")}</span>
               {c.state && <span className={`w-1.5 h-1.5 rounded-full ${DOT[c.state as keyof typeof DOT] ?? "bg-muted"}`} />}
               <span className="truncate">{c.label}</span>
@@ -144,7 +144,7 @@ function Kpi({ label, short, value, warn, tone = "" }: { label: string; short: s
   return (
     <div className={`rounded-xl border bg-card px-2.5 py-2 md:p-3 ${tone ? `tone ${tone}` : "border-border"}`} title={label}>
       <div className={`text-xl md:text-2xl font-bold tabular-nums ${warn ? "text-red-400" : ""}`}>{value}</div>
-      <div className="text-[10px] md:text-[11px] text-muted-foreground truncate"><span className="md:hidden">{short}</span><span className="hidden md:inline">{label}</span></div>
+      <div className="text-[11px] md:text-[11px] text-muted-foreground truncate"><span className="md:hidden">{short}</span><span className="hidden md:inline">{label}</span></div>
     </div>
   );
 }
@@ -186,8 +186,8 @@ function SiteCard({ s, chapter, onPlay }: { s: SnapSite; chapter?: { t: number }
 function Mini({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-lg bg-muted/40 py-1.5">
-      <div className="text-base font-semibold">{value}{sub && <span className="text-[10px] text-muted-foreground ml-1">{sub}</span>}</div>
-      <div className="text-[10px] text-muted-foreground">{label}</div>
+      <div className="text-base font-semibold">{value}{sub && <span className="text-[11px] text-muted-foreground ml-1">{sub}</span>}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
   );
 }

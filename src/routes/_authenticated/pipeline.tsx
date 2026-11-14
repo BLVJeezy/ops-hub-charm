@@ -129,7 +129,7 @@ function Pipeline() {
               );
             })}
           </div>
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
+          <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5">
             <span>{FUNNEL[0]}</span>
             <span>{FUNNEL[FUNNEL.length - 1]}</span>
           </div>
@@ -195,7 +195,7 @@ function Pipeline() {
                               <div className="flex items-center justify-between mt-2 lg:mt-3 gap-2">
                                 <PhoneButtons phone={r.contact_phone} />
                                 <Select value={r.pipeline_stage} onValueChange={(v) => moveClient(r, v)}>
-                                  <SelectTrigger className="h-8 w-auto min-w-[130px] text-sm ml-auto">
+                                  <SelectTrigger className="h-9 w-auto min-w-[130px] text-sm ml-auto">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>

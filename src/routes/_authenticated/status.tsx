@@ -227,6 +227,7 @@ function StatusPage() {
               onClick={() => run()}
               disabled={running || !sites.length}
               className="rounded-full h-10 px-3 gap-2"
+              aria-label="Run checks"
             >
               <RefreshCw className={`w-4 h-4 ${running ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">{running ? "Checking…" : "Run checks"}</span>
@@ -505,7 +506,7 @@ function SiteCard({ s, openCount, onOpen }: { s: Site; openCount: number; onOpen
             </span>
           ) : (
             s.is_critical && (
-              <span className="text-[10px] shrink-0 rounded-full border border-border px-1.5 py-px text-muted-foreground">
+              <span className="text-[11px] shrink-0 rounded-full border border-border px-1.5 py-px text-muted-foreground">
                 bookings
               </span>
             )
@@ -546,7 +547,7 @@ function IncidentRow({ i, site }: { i: Incident; site: string }) {
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium truncate">{i.title}</span>
           <span
-            className="text-[10px] uppercase font-semibold shrink-0"
+            className="text-[11px] uppercase font-semibold shrink-0"
             style={{ color: SEV_COLOR[i.severity] }}
           >
             {i.severity}
@@ -750,7 +751,7 @@ function SiteDetail({
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-muted/40 p-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="truncate">{value}</div>
     </div>
   );

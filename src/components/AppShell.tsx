@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       {/* Content */}
-      <main className="lg:ml-56 lg:pt-16 pb-28 lg:pb-0 min-h-screen">
+      <main className="lg:ml-56 pt-[env(safe-area-inset-top)] lg:pt-16 pb-28 lg:pb-0 min-h-screen">
         {children}
       </main>
 
@@ -137,15 +137,16 @@ function MobileNav() {
   const pillStyle = { backgroundColor: "hsl(var(--sidebar-background) / 0.85)", borderColor: "hsl(var(--sidebar-border))" };
   return (
     <div className="lg:hidden">
-      {(menu || search) && <div className="fixed inset-0 z-30 bg-black/40" onClick={() => { setMenu(false); setSearch(false); }} />}
+      <div className="edge-fade" aria-hidden />
+      {(menu || search) && <div className="fade-in fixed inset-0 z-30 bg-black/50" onClick={() => { setMenu(false); setSearch(false); }} />}
 
       {menu && (
-        <div className={`fixed z-40 left-1/2 -translate-x-1/2 bottom-[5.25rem] w-[min(92vw,360px)] rounded-3xl p-3 ${pill}`} style={pillStyle}>
+        <div className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-3xl p-3 pop-in ${pill}`} style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}>
           <div className="grid grid-cols-3 gap-2">
             {NAV_ITEMS.map((it) => {
               const active = it === here, Icon = it.icon;
               return (
-                <Link key={it.to} to={it.to} className="flex flex-col items-center gap-1.5 rounded-2xl py-3 transition"
+                <Link key={it.to} to={it.to} className="press flex flex-col items-center gap-1.5 rounded-2xl py-3"
                   style={{ backgroundColor: active ? "hsl(var(--primary) / 0.15)" : "hsl(var(--muted) / 0.4)", color: active ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
                   <Icon className="w-5 h-5" />
                   <span className="text-[11px]">{it.label}</span>
@@ -153,21 +154,21 @@ function MobileNav() {
               );
             })}
           </div>
-          <button onClick={async () => { await signOut(); navigate({ to: "/auth" }); }} className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground py-2">
+          <button onClick={async () => { await signOut(); navigate({ to: "/auth" }); }} className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground min-h-11 rounded-2xl">
             <LogOut className="w-3.5 h-3.5" /> Sign out
           </button>
         </div>
       )}
 
       {search && (
-        <form onSubmit={submit} className={`fixed z-40 left-1/2 -translate-x-1/2 bottom-[5.25rem] w-[min(92vw,360px)] rounded-full flex items-center gap-2 pl-4 pr-1.5 h-12 ${pill}`} style={pillStyle}>
+        <form onSubmit={submit} className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-full flex items-center gap-2 pl-4 pr-1.5 h-12 pop-in ${pill}`} style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}>
           <SearchIcon className="w-4 h-4 text-muted-foreground shrink-0" />
           <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek klanten, steden, nummers…" className="flex-1 bg-transparent text-sm outline-none" />
           <button type="submit" className="h-9 px-4 rounded-full text-sm font-medium" style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}>Zoek</button>
         </form>
       )}
 
-      <nav className={`fixed z-40 left-1/2 -translate-x-1/2 bottom-4 h-14 rounded-full flex items-center gap-1 px-1.5 ${pill}`} style={{ ...pillStyle, paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <nav className={`fixed z-40 left-1/2 -translate-x-1/2 h-14 rounded-full flex items-center gap-1 px-1.5 ${pill}`} style={{ ...pillStyle, bottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
         <button aria-label="Zoeken" onClick={() => { setSearch(!search); setMenu(false); }} className="w-11 h-11 rounded-full flex items-center justify-center"
           style={{ backgroundColor: search ? "hsl(var(--primary) / 0.15)" : "transparent", color: search ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
           {search ? <X className="w-5 h-5" /> : <SearchIcon className="w-5 h-5" />}
@@ -175,7 +176,7 @@ function MobileNav() {
         <button onClick={() => { setMenu(!menu); setSearch(false); }} className="h-11 px-4 rounded-full flex items-center gap-2 text-sm font-medium" style={{ backgroundColor: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
           <Here className="w-4 h-4" /> {here.label}
         </button>
-        <button aria-label="Menu" onClick={() => { setMenu(!menu); setSearch(false); }} className="w-11 h-11 rounded-full flex items-center justify-center"
+        <button aria-label="Menu" aria-expanded={menu} onClick={() => { setMenu(!menu); setSearch(false); }} className="w-11 h-11 rounded-full flex items-center justify-center"
           style={{ backgroundColor: menu ? "hsl(var(--primary) / 0.15)" : "transparent", color: menu ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
           {menu ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
         </button>

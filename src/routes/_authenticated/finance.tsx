@@ -23,7 +23,7 @@ function Mini({ label, value, sub, good }: { label: string; value: string; sub?:
     <div className="min-w-0">
       <div className="text-[11px] text-muted-foreground truncate">{label}</div>
       <div className={`text-[15px] md:text-xl font-semibold tabular-nums truncate ${good ? "text-emerald-400" : ""}`}>{value}</div>
-      {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
+      {sub && <div className="text-[11px] text-muted-foreground truncate">{sub}</div>}
     </div>
   );
 }
@@ -196,7 +196,7 @@ function Finance() {
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`rounded-full px-2.5 py-1 transition ${view === v ? "bg-white text-black" : "text-muted-foreground"}`}
+                className={`rounded-full px-3 min-h-8 transition ${view === v ? "bg-white text-black" : "text-muted-foreground"}`}
               >
                 {v === "paid" ? "Paid" : "Per year"}
               </button>
@@ -243,8 +243,8 @@ function Finance() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={10} axisLine={false} tickLine={false} interval={0} tickFormatter={(v: string) => v.slice(0, 1)} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickFormatter={(v) => formatCurrency(v)} axisLine={false} tickLine={false} width={52} />
+              <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} axisLine={false} tickLine={false} interval={0} tickFormatter={(v: string) => v.slice(0, 1)} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => formatCurrency(v)} axisLine={false} tickLine={false} width={52} />
               <Tooltip
                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 formatter={(v: number) => formatCurrency(v)}

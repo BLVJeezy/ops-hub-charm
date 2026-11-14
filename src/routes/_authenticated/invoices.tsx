@@ -184,7 +184,7 @@ function Invoices() {
                   <select
                     value={r.status}
                     onChange={(e) => markStatus(r, e.target.value)}
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium border-0 ${statusColor[r.status] ?? "bg-muted"}`}
+                    aria-label="Status" className={`shrink-0 rounded-full px-2.5 h-8 text-xs font-medium border-0 ${statusColor[r.status] ?? "bg-muted"}`}
                   >
                     {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s} className="bg-card text-foreground">{s}</option>)}
                   </select>
@@ -197,22 +197,22 @@ function Invoices() {
                 <div className="text-xs text-muted-foreground truncate">
                   <span className="font-mono">{formatInvoiceNumber(r.invoice_number)}</span> · {formatDate(r.date)}
                 </div>
-                <div className="flex shrink-0 -mr-1.5">
+                <div className="flex shrink-0 -mr-2.5">
                   {isAdmin && r.status !== "Paid" && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => sendInvoiceEmail(r)} title={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur per e-mail"}>
+                    <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => sendInvoiceEmail(r)} title={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur per e-mail"} aria-label={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur"}>
                       <Send className="w-3.5 h-3.5 text-sky-400" />
                     </Button>
                   )}
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => downloadPdf(r)} title="Download PDF">
+                  <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => downloadPdf(r)} title="Download PDF" aria-label="Download PDF">
                     <Download className="w-3.5 h-3.5" />
                   </Button>
                   {isAdmin && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit">
+                    <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit" aria-label="Bewerken">
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
                   )}
                   {isAdmin && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteInvoiceRow(r)} title="Delete">
+                    <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => deleteInvoiceRow(r)} title="Delete" aria-label="Verwijderen">
                       <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                     </Button>
                   )}

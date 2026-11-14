@@ -120,15 +120,15 @@ function PeriodPicker({ P, kind, setKind, setAnchor }: { P: Period; kind: Period
     <div className="flex items-center justify-between md:justify-start gap-2">
       <div className="inline-flex rounded-full border border-border p-0.5">
         {(["month", "quarter", "year"] as PeriodKind[]).map((k) => (
-          <button key={k} onClick={() => setKind(k)} className={`px-2.5 md:px-3 h-8 rounded-full text-xs ${kind === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+          <button key={k} onClick={() => setKind(k)} className={`px-2.5 md:px-3 h-9 rounded-full text-xs ${kind === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             {k === "month" ? "Maand" : k === "quarter" ? "Kwartaal" : "Jaar"}
           </button>
         ))}
       </div>
       <div className="inline-flex items-center gap-1">
-        <Button size="sm" variant="outline" onClick={() => setAnchor(shiftPeriod(P, -1).from)}>‹</Button>
+        <Button size="sm" variant="outline" aria-label="Vorige periode" className="h-9 w-9 rounded-full" onClick={() => setAnchor(shiftPeriod(P, -1).from)}>‹</Button>
         <span className="text-sm font-medium w-[4.5rem] md:w-28 text-center capitalize">{P.label}</span>
-        <Button size="sm" variant="outline" onClick={() => setAnchor(shiftPeriod(P, 1).from)}>›</Button>
+        <Button size="sm" variant="outline" aria-label="Volgende periode" className="h-9 w-9 rounded-full" onClick={() => setAnchor(shiftPeriod(P, 1).from)}>›</Button>
       </div>
     </div>
   );
@@ -212,8 +212,8 @@ function Overview({ P, accounts, entries, lines }: Data) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={(v: string) => v.split(" ")[0]} />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} width={44} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={(v: string) => v.split(" ")[0]} />
+              <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} width={44} />
               <Tooltip formatter={(v: number) => eur(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
               <Bar dataKey="Opbrengsten" fill="url(#bkGold)" radius={[3, 3, 0, 0]} />
               <Bar dataKey="Kosten" fill="#52525b" radius={[3, 3, 0, 0]} />
@@ -302,7 +302,7 @@ function Journal({ P, accounts, entries, lines, periods, onChange }: Data & { pe
               <button onClick={() => setOpen(open === e.id ? null : e.id)} className="w-full flex items-center gap-3 p-3 text-left text-sm hover:bg-muted/40">
                 <span className="text-xs text-muted-foreground w-20 shrink-0">{e.date.split("-").reverse().join("-")}</span>
                 <span className="flex-1 truncate">{e.description}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{SOURCE_LABEL[e.source] ?? e.source}</span>
+                <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{SOURCE_LABEL[e.source] ?? e.source}</span>
                 {locked(e.date) && <Lock className="w-3 h-3 text-muted-foreground" />}
                 <span className="tabular-nums w-24 text-right">{eur(amt)}</span>
               </button>
@@ -348,7 +348,7 @@ function Accounts({ P, accounts, entries, lines, onChange }: Data & { onChange: 
           {accounts.filter((a) => a.type === t).map((a) => (
             <div key={a.id} className="flex items-center gap-3 px-3 py-2 text-sm border-b border-border/40 last:border-0">
               <span className="font-mono text-xs text-muted-foreground w-12">{a.code}</span>
-              <span className="flex-1">{a.name}{a.system_key && <span className="ml-2 text-[10px] text-muted-foreground">auto</span>}</span>
+              <span className="flex-1">{a.name}{a.system_key && <span className="ml-2 text-[11px] text-muted-foreground">auto</span>}</span>
               <span className="tabular-nums">{eur(bal.get(a.id) ?? 0)}</span>
             </div>
           ))}
@@ -575,11 +575,11 @@ function BankTab({ P, accounts, onChange }: { P: Period; accounts: Account[]; on
             <div key={t.id} className="p-3 text-sm space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground w-20 shrink-0">{t.date.split("-").reverse().join("-")}</span>
-                <span className="flex-1 truncate" title={t.description}><span className="text-[10px] font-mono text-muted-foreground mr-1">{t.type}</span>{t.description}</span>
+                <span className="flex-1 truncate" title={t.description}><span className="text-[11px] font-mono text-muted-foreground mr-1">{t.type}</span>{t.description}</span>
                 <span className={`tabular-nums font-medium ${t.amount > 0 ? "text-emerald-500" : ""}`}>{eur(t.amount)}</span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 pl-0 sm:pl-[5.5rem]">
-                {t.orig_currency && <span className="text-[10px] text-muted-foreground">{t.orig_amount} {t.orig_currency}</span>}
+                {t.orig_currency && <span className="text-[11px] text-muted-foreground">{t.orig_amount} {t.orig_currency}</span>}
                 {t.invoice_id ? (
                   <span className="text-xs text-emerald-500 flex items-center gap-1"><Link2 className="w-3 h-3" />Factuur {invoices.find((i) => i.id === t.invoice_id)?.invoice_number ?? ""} · {invoices.find((i) => i.id === t.invoice_id)?.client_name ?? ""}
                     <button className="text-muted-foreground underline ml-1" onClick={() => linkInvoice(t, "")}>los</button></span>
@@ -600,7 +600,7 @@ function BankTab({ P, accounts, onChange }: { P: Period; accounts: Account[]; on
                     <Wand2 className="w-3 h-3" />altijd zo
                   </button>
                 )}
-                {t.categorised_by && <span className="text-[10px] text-muted-foreground">{t.categorised_by === "rule" ? "regel" : t.categorised_by === "invoice" ? "factuur" : "manueel"}</span>}
+                {t.categorised_by && <span className="text-[11px] text-muted-foreground">{t.categorised_by === "rule" ? "regel" : t.categorised_by === "invoice" ? "factuur" : "manueel"}</span>}
               </div>
             </div>
           );

@@ -188,7 +188,7 @@ function Card({ title, icon, children }: { title: string; icon?: ReactNode; chil
 function Kv({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-lg bg-muted/40 p-2 min-w-0">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="truncate text-sm">{value}</div>
     </div>
   );
@@ -319,8 +319,8 @@ function Stats({ siteId }: { siteId: string }) {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chart} margin={{ left: -20, right: 4, top: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis domain={[90, 100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" allowDataOverflow />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis domain={[90, 100]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDataOverflow />
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number) => [`${v}%`, "Uptime"]} />
                   <Bar dataKey="uptime" fill="#1D9E75" radius={[3, 3, 0, 0]} />
                 </BarChart>
@@ -332,8 +332,8 @@ function Stats({ siteId }: { siteId: string }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chart} margin={{ left: -10, right: 4, top: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} formatter={(v: number) => [`${v} ms`, "Laadtijd"]} />
                   <Line type="monotone" dataKey="avgMs" stroke="#C9A84C" strokeWidth={2} dot={false} connectNulls />
                 </LineChart>
@@ -480,8 +480,8 @@ function Visitors({ siteId, provider }: { siteId: string; provider: string }) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chart} margin={{ left: -20, right: 4, top: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" stroke="hsl(var(--muted-foreground))" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" stroke="hsl(var(--muted-foreground))" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
               <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }}
                 formatter={(v: number, k: string) => [v, k === "visitors" ? "Bezoekers" : "Weergaven"]} />
               <Bar dataKey="visitors" fill="#C9A84C" radius={[3, 3, 0, 0]} />
@@ -733,7 +733,7 @@ function DataSources({ site }: { site: Site }) {
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium">{fmtWhen(r)}</span>
                 {r.status && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${STATUS_STYLE[r.status.toLowerCase()] ?? "bg-muted text-muted-foreground"}`}>
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded ${STATUS_STYLE[r.status.toLowerCase()] ?? "bg-muted text-muted-foreground"}`}>
                     {r.status}
                   </span>
                 )}
@@ -799,7 +799,7 @@ function Finance({ clientId, clientName }: { clientId: string | null; clientName
                 </div>
                 <div className="text-right shrink-0">
                   <div className="tabular-nums">{formatCurrency(Number(r.total))}</div>
-                  <div className={`text-[10px] ${r.status === "Paid" ? "text-emerald-400" : r.status === "Sent" ? "text-amber-400" : "text-muted-foreground"}`}>{r.status}</div>
+                  <div className={`text-[11px] ${r.status === "Paid" ? "text-emerald-400" : r.status === "Sent" ? "text-amber-400" : "text-muted-foreground"}`}>{r.status}</div>
                 </div>
               </div>
             ))}

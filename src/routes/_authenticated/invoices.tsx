@@ -177,27 +177,27 @@ function Invoices() {
       ) : (
         <ul className="space-y-2">
           {filtered.map((r) => (
-            <li key={r.id} className="rounded-xl border border-border bg-card px-3.5 py-3">
-              <div className="flex items-center gap-2">
-                <div className="font-semibold truncate min-w-0 flex-1">{r.client_name}</div>
+            <li key={r.id} className="rounded-xl border border-border bg-card px-3.5 py-3 lg:py-2 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1.9fr)_auto_5.5rem_auto] lg:items-center lg:gap-x-4">
+              <div className="flex items-center gap-2 lg:contents">
+                <div className="font-semibold truncate min-w-0 flex-1 lg:col-start-1 lg:row-start-1">{r.client_name}</div>
                 {isAdmin ? (
                   <select
                     value={r.status}
                     onChange={(e) => markStatus(r, e.target.value)}
-                    aria-label="Status" className={`shrink-0 rounded-full px-2.5 h-8 text-xs font-medium border-0 ${statusColor[r.status] ?? "bg-muted"}`}
+                    aria-label="Status" className={`lg:col-start-4 lg:row-start-1 shrink-0 rounded-full px-2.5 h-8 text-xs font-medium border-0 ${statusColor[r.status] ?? "bg-muted"}`}
                   >
                     {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s} className="bg-card text-foreground">{s}</option>)}
                   </select>
                 ) : (
-                  <span className={`shrink-0 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColor[r.status] ?? "bg-muted"}`}>{r.status}</span>
+                  <span className={`lg:col-start-4 lg:row-start-1 shrink-0 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColor[r.status] ?? "bg-muted"}`}>{r.status}</span>
                 )}
-                <div className="shrink-0 text-base font-bold tabular-nums w-[4.5rem] text-right">{formatCurrency(Number(r.total || 0))}</div>
+                <div className="lg:col-start-5 lg:row-start-1 lg:w-auto shrink-0 text-base font-bold tabular-nums w-[4.5rem] text-right">{formatCurrency(Number(r.total || 0))}</div>
               </div>
-              <div className="flex items-center justify-between gap-2 mt-1">
-                <div className="text-xs text-muted-foreground truncate">
+              <div className="flex items-center justify-between gap-2 mt-1 lg:mt-0 lg:contents">
+                <div className="text-xs text-muted-foreground truncate lg:col-start-2 lg:row-start-1">
                   <span className="font-mono">{formatInvoiceNumber(r.invoice_number)}</span> · {formatDate(r.date)}
                 </div>
-                <div className="flex shrink-0 -mr-2.5">
+                <div className="flex shrink-0 -mr-2.5 lg:col-start-6 lg:row-start-1 lg:justify-end lg:w-36">
                   {isAdmin && r.status !== "Paid" && (
                     <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => sendInvoiceEmail(r)} title={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur per e-mail"} aria-label={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur"}>
                       <Send className="w-3.5 h-3.5 text-sky-400" />
@@ -219,7 +219,7 @@ function Invoices() {
                 </div>
               </div>
               {(r.sent_at || (r.reminder_count ?? 0) > 0 || r.email_status || isPlanned(r) || r.schedule_error) && (
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                <div className="mt-1 lg:mt-0 lg:col-start-3 lg:row-start-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground min-w-0">
                   {r.status === "Draft" && r.scheduled_send_at && (
                     <span className="inline-flex items-center gap-1 text-sky-400">
                       <CalendarClock className="w-3.5 h-3.5" /> Gepland {formatDate(r.scheduled_send_at)} {hourLabel(r.scheduled_send_hour)}

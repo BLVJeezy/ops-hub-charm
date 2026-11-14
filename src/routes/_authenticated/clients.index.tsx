@@ -87,7 +87,7 @@ function ClientsPage() {
   const topMrr = Math.max(1, ...filtered.map((r) => clientMRR(r)));
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto pb-24">
+    <div className="p-4 md:p-6 max-w-3xl lg:max-w-7xl mx-auto pb-24">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-3">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Clients</h1>
         <Button onClick={() => setModalOpen(true)} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
@@ -97,20 +97,23 @@ function ClientsPage() {
 
       {!loading && (
         <div className="tone tone-gold rounded-2xl border p-4 mb-3">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <div className="text-xs text-muted-foreground">Recurring per month</div>
-              <div className="ink-gold text-4xl leading-none font-bold tracking-tight tabular-nums mt-1">{formatCurrency(sum.mrr)}</div>
+          <div className="lg:flex lg:items-center lg:gap-10">
+            <div className="flex items-end justify-between gap-3 lg:block lg:shrink-0">
+              <div>
+                <div className="text-xs text-muted-foreground">Recurring per month</div>
+                <div className="ink-gold text-4xl lg:text-5xl leading-none font-bold tracking-tight tabular-nums mt-1">{formatCurrency(sum.mrr)}</div>
+              </div>
+              <div className="text-right shrink-0 lg:hidden">
+                <div className="text-lg font-semibold tabular-nums leading-none">{sum.active}</div>
+                <div className="text-[11px] text-muted-foreground mt-1">active client{sum.active === 1 ? "" : "s"}</div>
+              </div>
             </div>
-            <div className="text-right shrink-0">
-              <div className="text-lg font-semibold tabular-nums leading-none">{sum.active}</div>
-              <div className="text-[11px] text-muted-foreground mt-1">active client{sum.active === 1 ? "" : "s"}</div>
+            <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-8 mt-3 pt-3 lg:mt-0 lg:pt-0 lg:pl-10 border-t lg:border-t-0 lg:border-l border-white/10 text-[11px] text-muted-foreground lg:flex-1">
+              <div className="hidden lg:block"><div className="text-sm lg:text-xl font-semibold text-foreground tabular-nums">{sum.active}</div>active client{sum.active === 1 ? "" : "s"}</div>
+              <div><div className="text-sm lg:text-xl font-semibold text-foreground tabular-nums">{formatCurrency(sum.net)}</div>net per month</div>
+              <div><div className="text-sm lg:text-xl font-semibold text-foreground tabular-nums">{formatCurrency(sum.paid)}</div>paid so far</div>
+              <div><div className="text-sm lg:text-xl font-semibold text-foreground tabular-nums">{sum.attention}</div>need attention</div>
             </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-[11px] text-muted-foreground">
-            <div><div className="text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sum.net)}</div>net per month</div>
-            <div><div className="text-sm font-semibold text-foreground tabular-nums">{formatCurrency(sum.paid)}</div>paid so far</div>
-            <div><div className="text-sm font-semibold text-foreground tabular-nums">{sum.attention}</div>need attention</div>
           </div>
         </div>
       )}
@@ -130,7 +133,7 @@ function ClientsPage() {
           <EmptyState icon={Users} title="No clients" description="Create your first client to get started." />
         </div>
       ) : (
-        <div className="space-y-2 tone-gold">
+        <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3 tone-gold">
           {[...filtered].sort((x, y) => clientMRR(y) - clientMRR(x) || x.name.localeCompare(y.name)).map((r) => {
             const total = paidByClient[r.id] || 0;
             const mrr = clientMRR(r);

@@ -46,6 +46,10 @@ export type FeeClient = {
   website_monthly_fee?: number | null;
   website_yearly_fee?: number | null;
   website_setup_fee?: number | null;
+  social_monthly_fee?: number | null;
+  social_setup_fee?: number | null;
+  social_start_date?: string | null;
+  social_end_date?: string | null;
   seo_start_date?: string | null;
   seo_end_date?: string | null;
   contract_start_date?: string | null;
@@ -55,7 +59,16 @@ function seoEnded(c: FeeClient): boolean {
   return !!c.seo_end_date && new Date(c.seo_end_date) < new Date();
 }
 
-/** §4.8 — MRR per client: SEO (unless ended) + Website, yearly fees /12 */
+function socialEnded(c: FeeClient): boolean {
+  return !!c.social_end_date && new Date(c.social_end_date) < new Date();
+}
+
+/** Social media marketing is billed monthly; it counts until its end date has passed. */
+export function socialMonthly(c: FeeClient): number {
+  return socialEnded(c) ? 0 : Number(c.social_monthly_fee || 0);
+}
+
+/** §4.8 — MRR per client: SEO (unless ended) + Website + Social media, yearly fees /12 */
 export function clientMRR(c: FeeClient): number {
   let mrr = 0;
   if (!seoEnded(c)) {
@@ -64,7 +77,7 @@ export function clientMRR(c: FeeClient): number {
   }
   if (c.website_billing_frequency === "Yearly" && Number(c.website_yearly_fee)) mrr += Number(c.website_yearly_fee) / 12;
   else mrr += Number(c.website_monthly_fee || 0);
-  return mrr;
+  return mrr + socialMonthly(c);
 }
 
 /** Recurring yearly projection: all active SEO and website fees annualised. */
@@ -77,13 +90,13 @@ export function clientMonthlyFee(c: FeeClient): number {
   let fee = 0;
   if (!seoEnded(c) && c.billing_frequency === "Monthly") fee += Number(c.monthly_fee || 0);
   if (c.website_billing_frequency === "Monthly") fee += Number(c.website_monthly_fee || 0);
-  return fee;
+  return fee + socialMonthly(c);
 }
 
 /** §4.16 — contract-based revenue for a given calendar month (0-indexed month) */
 export function clientRevenueForMonth(c: FeeClient, year: number, month: number): number {
   if (c.status !== "Active" && c.status !== "Paused") return 0;
-  if (!c.contract_start_date && !c.seo_start_date) return 0;
+  if (!c.contract_start_date && !c.seo_start_date && !c.social_start_date) return 0;
   const mStart = new Date(year, month, 1);
   const mEnd = new Date(year, month + 1, 0);
   let rev = 0;
@@ -116,6 +129,17 @@ export function clientRevenueForMonth(c: FeeClient, year: number, month: number)
         rev += Number(c.website_monthly_fee || 0);
       }
       if (isStartMonth) rev += Number(c.website_setup_fee || 0);
+    }
+  }
+
+  // Social media marketing (monthly; starts on its own date, else with the contract)
+  const socialStart = c.social_start_date || c.contract_start_date;
+  if (Number(c.social_monthly_fee) && socialStart) {
+    const s = new Date(socialStart);
+    const e = c.social_end_date ? new Date(c.social_end_date) : null;
+    if (s <= mEnd && (!e || e >= mStart)) {
+      rev += Number(c.social_monthly_fee);
+      if (s.getFullYear() === year && s.getMonth() === month) rev += Number(c.social_setup_fee || 0);
     }
   }
 

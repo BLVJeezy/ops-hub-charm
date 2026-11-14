@@ -34,6 +34,10 @@ export type ClientRow = {
   website_setup_fee?: number | null;
   website_monthly_fee?: number | null;
   website_yearly_fee?: number | null;
+  social_monthly_fee?: number | null;
+  social_setup_fee?: number | null;
+  social_start_date?: string | null;
+  social_end_date?: string | null;
   seo_package: string;
   billing_frequency: string;
   monthly_fee?: number | null;
@@ -53,6 +57,7 @@ const EMPTY: ClientRow = {
   status: "Prospect", pipeline_stage: "Found", writeoff_reason: null, health: "Not set",
   website_needed: false, website_billing_frequency: "Monthly",
   website_setup_fee: null, website_monthly_fee: null, website_yearly_fee: null,
+  social_monthly_fee: null, social_setup_fee: null, social_start_date: null, social_end_date: null,
   seo_package: "None", billing_frequency: "Monthly",
   monthly_fee: null, yearly_fee: null, setup_fee: null,
   seo_start_date: null, seo_end_date: null, contract_start_date: null,
@@ -76,10 +81,12 @@ export function ClientModal({ open, onOpenChange, initial, onSaved }: Props) {
   const [form, setForm] = useState<ClientRow>({ ...EMPTY, ...(initial as ClientRow) });
   const [prevStatus, setPrevStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [social, setSocial] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm({ ...EMPTY, ...(initial as ClientRow) });
+      setSocial(!!(initial?.social_monthly_fee || initial?.social_setup_fee));
       setPrevStatus(initial?.status ?? null);
     }
   }, [open, initial]);
@@ -260,6 +267,37 @@ export function ClientModal({ open, onOpenChange, initial, onSaved }: Props) {
                     setForm((f) => ({ ...f, website_yearly_fee: v, website_monthly_fee: f.website_monthly_fee || autoFillMonthly(v) }));
                   }}
                 />
+              </Field>
+            </>
+          )}
+
+          <div className="md:col-span-2 flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <div className="text-sm font-medium">Social media marketing</div>
+              <div className="text-xs text-muted-foreground">Monthly package, counts toward MRR</div>
+            </div>
+            <Switch
+              checked={social}
+              onCheckedChange={(v) => {
+                setSocial(v);
+                if (!v) setForm((f) => ({ ...f, social_monthly_fee: null, social_setup_fee: null, social_start_date: null, social_end_date: null }));
+              }}
+            />
+          </div>
+
+          {social && (
+            <>
+              <Field label="Social media monthly fee (€)">
+                <Input type="number" value={form.social_monthly_fee ?? ""} onChange={(e) => set("social_monthly_fee", num(e.target.value))} />
+              </Field>
+              <Field label="Social media setup fee (€)">
+                <Input type="number" value={form.social_setup_fee ?? ""} onChange={(e) => set("social_setup_fee", num(e.target.value))} />
+              </Field>
+              <Field label="Social media start">
+                <Input type="date" value={form.social_start_date ?? ""} onChange={(e) => set("social_start_date", e.target.value || null)} />
+              </Field>
+              <Field label="Social media end">
+                <Input type="date" value={form.social_end_date ?? ""} onChange={(e) => set("social_end_date", e.target.value || null)} />
               </Field>
             </>
           )}

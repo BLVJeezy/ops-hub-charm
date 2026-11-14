@@ -62,7 +62,7 @@ function Expenses() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 max-w-3xl lg:max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-3 gap-3">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Expenses</h1>
         <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
@@ -70,8 +70,10 @@ function Expenses() {
         </Button>
       </div>
 
+      <div className="lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-4 lg:items-start">
+        <div className="lg:sticky lg:top-20 space-y-3 mb-3 lg:mb-0">
       {/* Total, split by category */}
-      <div className="tone tone-amber rounded-2xl border p-4 mb-3">
+      <div className="tone tone-amber rounded-2xl border p-4">
         <div className="flex items-end justify-between gap-3">
           <div>
             <div className="text-xs text-muted-foreground">Fixed costs per month</div>
@@ -101,6 +103,25 @@ function Expenses() {
         )}
       </div>
 
+      {/* Planning reference, folded away: not part of the totals */}
+      <details className="rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm">
+        <summary className="cursor-pointer text-muted-foreground flex items-center gap-2 min-h-8"><Info className="w-3.5 h-3.5" /> Setup cost per new client (planning only)</summary>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <div className="text-[11px] text-muted-foreground">Website setup</div>
+            <div className="text-lg font-bold">€41 – €75</div>
+            <div className="text-[11px] text-muted-foreground">Domain €1-20 + build €30-45 + CookieYes €10</div>
+          </div>
+          <div>
+            <div className="text-[11px] text-muted-foreground">SEO setup</div>
+            <div className="text-lg font-bold">€20<span className="text-xs font-normal text-muted-foreground">/month</span></div>
+            <div className="text-[11px] text-muted-foreground">Directory listing per client, the rest is manual work</div>
+          </div>
+        </div>
+      </details>
+
+        </div>
+        <div>
       {/* Expense rows */}
       {loading ? (
         <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
@@ -109,7 +130,7 @@ function Expenses() {
           <EmptyState icon={Wallet} title="No expenses" description="Add your recurring monthly costs." />
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border mb-3">
+        <div className="rounded-xl border border-border bg-card divide-y divide-border">
           {[...rows].sort((x, y) => Number(y.monthly_cost || 0) - Number(x.monthly_cost || 0)).map((r) => {
             const color = EXPENSE_CATEGORY_COLORS[r.category] ?? "#B7BCC2";
             return (
@@ -141,22 +162,8 @@ function Expenses() {
         </div>
       )}
 
-      {/* Planning reference, folded away: not part of the totals */}
-      <details className="rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm">
-        <summary className="cursor-pointer text-muted-foreground flex items-center gap-2 min-h-8"><Info className="w-3.5 h-3.5" /> Setup cost per new client (planning only)</summary>
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <div>
-            <div className="text-[11px] text-muted-foreground">Website setup</div>
-            <div className="text-lg font-bold">€41 – €75</div>
-            <div className="text-[11px] text-muted-foreground">Domain €1-20 + build €30-45 + CookieYes €10</div>
-          </div>
-          <div>
-            <div className="text-[11px] text-muted-foreground">SEO setup</div>
-            <div className="text-lg font-bold">€20<span className="text-xs font-normal text-muted-foreground">/month</span></div>
-            <div className="text-[11px] text-muted-foreground">Directory listing per client, the rest is manual work</div>
-          </div>
         </div>
-      </details>
+      </div>
 
       <ExpenseModal
         open={modalOpen}

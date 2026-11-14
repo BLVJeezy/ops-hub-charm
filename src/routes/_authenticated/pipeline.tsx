@@ -129,9 +129,14 @@ function Pipeline() {
               );
             })}
           </div>
-          <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5">
+          <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5 lg:hidden">
             <span>{FUNNEL[0]}</span>
             <span>{FUNNEL[FUNNEL.length - 1]}</span>
+          </div>
+          <div className="hidden lg:flex gap-1 text-[11px] text-muted-foreground mt-1.5">
+            {FUNNEL.map((stage) => (
+              <span key={stage} className={`flex-1 text-center truncate ${byStage[stage].length ? "text-foreground" : ""}`}>{stage}</span>
+            ))}
           </div>
           {emptyStages.length > 0 && (
             <div className="lg:hidden text-[11px] text-muted-foreground mt-2">
@@ -140,24 +145,24 @@ function Pipeline() {
           )}
         </div>
         <DragDropContext onDragStart={() => setDragging(true)} onDragEnd={onDragEnd}>
-          <div className="flex flex-col gap-2 lg:flex-row lg:gap-3 lg:overflow-x-auto lg:pb-4 lg:items-start">
+          <div className="flex flex-col gap-2 lg:grid lg:grid-cols-4 2xl:grid-cols-8 lg:gap-3 lg:items-start">
             {BOARD_STAGES.map((stage) => (
               <Droppable droppableId={stage} key={stage}>
                 {(prov, snap) => (
                   <div
                     ref={prov.innerRef} {...prov.droppableProps}
-                    className={`w-full lg:w-72 lg:shrink-0 rounded-xl border border-border bg-card/40 lg:block ${byStage[stage].length || dragging ? "" : "hidden"} ${snap.isDraggingOver ? "ring-2 ring-primary/30" : ""}`}
+                    className={`w-full min-w-0 rounded-xl border border-border bg-card/40 lg:block ${byStage[stage].length || dragging ? "" : "hidden"} ${snap.isDraggingOver ? "ring-2 ring-primary/30" : ""}`}
                   >
-                    <div className={`px-4 py-2.5 lg:py-3 flex items-center justify-between ${byStage[stage].length ? "border-b border-border" : "lg:border-b lg:border-border"}`}>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STAGE_COLORS[stage] }} />
-                        <span className={`font-semibold ${byStage[stage].length ? "" : "text-muted-foreground lg:text-foreground"}`}>{stage}</span>
+                    <div className={`px-4 2xl:px-3 py-2.5 lg:py-3 flex items-center justify-between gap-2 ${byStage[stage].length ? "border-b border-border" : "lg:border-b lg:border-border"}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: STAGE_COLORS[stage] }} />
+                        <span className={`font-semibold truncate 2xl:text-sm ${byStage[stage].length ? "" : "text-muted-foreground lg:text-foreground"}`}>{stage}</span>
                       </div>
-                      <span className="text-xs tabular-nums bg-muted text-muted-foreground rounded-full px-2 py-0.5">{byStage[stage].length}</span>
+                      <span className="text-xs tabular-nums bg-muted text-muted-foreground rounded-full px-2 py-0.5 shrink-0">{byStage[stage].length}</span>
                     </div>
-                    <div className={`space-y-3 lg:p-3 lg:min-h-[110px] ${byStage[stage].length || snap.isDraggingOver ? "p-2" : "min-h-1"}`}>
+                    <div className={`space-y-3 lg:p-2 lg:min-h-[76px] ${byStage[stage].length || snap.isDraggingOver ? "p-2" : "min-h-1"}`}>
                       {byStage[stage].length === 0 && (
-                        <div className={`h-[86px] items-center justify-center text-sm text-muted-foreground/60 lg:flex ${snap.isDraggingOver ? "flex" : "hidden"}`}>
+                        <div className={`h-[86px] lg:h-[56px] items-center justify-center text-sm text-muted-foreground/60 lg:flex ${snap.isDraggingOver ? "flex" : "hidden"}`}>
                           Drop here
                         </div>
                       )}
@@ -166,7 +171,7 @@ function Pipeline() {
                           {(dp, ds) => (
                             <div
                               ref={dp.innerRef} {...dp.draggableProps}
-                              className={`rounded-lg border border-border bg-card p-3 ${ds.isDragging ? "shadow-lg ring-1 ring-primary/40" : ""}`}
+                              className={`rounded-lg border border-border bg-card p-3 2xl:p-2.5 min-w-0 ${ds.isDragging ? "shadow-lg ring-1 ring-primary/40" : ""}`}
                             >
                               <div className="flex items-start gap-2">
                                 <span {...dp.dragHandleProps} className="mt-0.5 text-muted-foreground/50 cursor-grab">
@@ -174,15 +179,15 @@ function Pipeline() {
                                 </span>
                                 <div className="flex-1 min-w-0">
                                   <button
-                                    className="flex items-center gap-2 font-semibold text-left hover:underline"
+                                    className="flex items-center gap-2 font-semibold text-left hover:underline max-w-full min-w-0"
                                     onClick={() => navigate({ to: "/clients/$id", params: { id: r.id } })}
                                   >
                                     <HealthDot health={r.health} />
                                     <span className="truncate">{r.name}</span>
                                   </button>
                                   {r.location && (
-                                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                                      <MapPin className="w-3.5 h-3.5" /> {r.location}
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1 min-w-0">
+                                      <MapPin className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{r.location}</span>
                                     </div>
                                   )}
                                   {stage === "Write-off" && (
@@ -192,10 +197,10 @@ function Pipeline() {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center justify-between mt-2 lg:mt-3 gap-2">
+                              <div className="flex flex-wrap items-center justify-between mt-2 gap-2">
                                 <PhoneButtons phone={r.contact_phone} />
                                 <Select value={r.pipeline_stage} onValueChange={(v) => moveClient(r, v)}>
-                                  <SelectTrigger className="h-9 w-auto min-w-[130px] text-sm ml-auto">
+                                  <SelectTrigger className="h-9 w-auto min-w-[130px] 2xl:min-w-0 2xl:w-full text-sm ml-auto">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>

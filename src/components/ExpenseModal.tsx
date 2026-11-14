@@ -39,7 +39,16 @@ export function ExpenseModal({ open, onOpenChange, initial, clients, onSaved }: 
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
-      const payload = { ...form, created_by: form.id ? undefined : u.user?.id } as never;
+      // Send only real columns: the row we edit also carries the joined client name, which the
+      // database rejects, so every edit used to fail.
+      const payload = {
+        name: form.name.trim(),
+        category: form.category,
+        monthly_cost: Number(form.monthly_cost) || 0,
+        linked_client: form.linked_client || null,
+        notes: form.notes?.trim() || null,
+        ...(form.id ? {} : { created_by: u.user?.id }),
+      } as never;
       if (form.id) {
         const { error } = await supabase.from("expenses").update(payload).eq("id", form.id);
         if (error) throw error;

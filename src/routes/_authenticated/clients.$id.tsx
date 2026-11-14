@@ -2,7 +2,7 @@ import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { ArrowLeft, Pencil, Mail, MapPin, Phone, MessageSquare, Plus, FileText, Trash2, Globe, Search as SearchIcon, StickyNote, History, Wallet } from "lucide-react";
+import { ArrowLeft, Pencil, Mail, MapPin, Phone, MessageSquare, Plus, FileText, Trash2, Globe, Search as SearchIcon, StickyNote, History, Wallet, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -327,6 +327,20 @@ function ClientDetail() {
               <Field k="Yearly Fee" v={client.yearly_fee ? formatCurrency(client.yearly_fee) : "—"} />
               <Field k="SEO Start Date" v={client.seo_start_date ? formatDate(client.seo_start_date) : "—"} />
               <Field k="SEO End Date" v={client.seo_end_date ? formatDate(client.seo_end_date) : "—"} />
+            </div>
+          </div>
+        )}
+
+        {(client.social_monthly_fee || client.social_setup_fee) && (
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+              <Megaphone className="w-4 h-4 text-muted-foreground" /> Social media marketing
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <Field k="Monthly Fee" v={client.social_monthly_fee ? formatCurrency(client.social_monthly_fee) : "—"} />
+              <Field k="Setup Fee" v={client.social_setup_fee ? formatCurrency(client.social_setup_fee) : "—"} />
+              <Field k="Start Date" v={client.social_start_date ? formatDate(client.social_start_date) : "—"} />
+              <Field k="End Date" v={client.social_end_date ? formatDate(client.social_end_date) : "—"} />
             </div>
           </div>
         )}

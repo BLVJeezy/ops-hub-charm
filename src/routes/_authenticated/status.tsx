@@ -217,7 +217,7 @@ function StatusPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl xl:max-w-7xl mx-auto">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-2xl font-semibold">Status</h1>
         {isAdmin && (
@@ -273,7 +273,7 @@ function StatusPage() {
             description="Add a client website to start checking it."
           />
         ) : (
-          <div className="grid gap-2 md:gap-3 md:grid-cols-2">
+          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3">
             {sites.map((s) => (
               <SiteCard
                 key={s.id}
@@ -501,6 +501,7 @@ function SiteCard({ s, openCount, onOpen }: { s: Site; openCount: number; onOpen
         <div className="flex items-center gap-2.5 min-w-0">
           <Dot color={style.color} />
           <span className="font-semibold truncate">{s.name}</span>
+          <span className="hidden md:inline text-xs text-muted-foreground truncate">{hostOf(s.url)}</span>
           {openCount > 0 ? (
             <span className="text-[11px] shrink-0" style={{ color: "#DC2626" }}>
               {openCount} alert{openCount === 1 ? "" : "s"}
@@ -531,7 +532,7 @@ function SiteCard({ s, openCount, onOpen }: { s: Site; openCount: number; onOpen
             </span>
           ))}
         </div>
-        <span className="text-[11px] text-muted-foreground truncate">{hostOf(s.url)}</span>
+        <span className="text-[11px] text-muted-foreground truncate md:hidden">{hostOf(s.url)}</span>
       </div>
     </button>
   );

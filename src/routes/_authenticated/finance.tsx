@@ -151,7 +151,7 @@ function Finance() {
   const margin = mrr > 0 ? Math.round((netProfit / mrr) * 100) : null;
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-2">
+    <div className="p-4 md:p-6 max-w-5xl xl:max-w-7xl mx-auto space-y-2 lg:space-y-3">
       <div className="flex items-center justify-between mb-2 md:mb-4">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Finance</h1>
         <CurrencyToggle />
@@ -162,7 +162,7 @@ function Finance() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <div className="text-xs text-muted-foreground">Received from paid invoices</div>
-            <div className="ink-gold text-[2.6rem] leading-none font-bold tracking-tight tabular-nums mt-1">
+            <div className="ink-gold text-[2.6rem] lg:text-6xl leading-none font-bold tracking-tight tabular-nums mt-1">
               {formatCurrency(lifetimeRevenue)}
             </div>
           </div>
@@ -179,7 +179,7 @@ function Finance() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-white/10">
+        <div className="grid grid-cols-4 gap-2 lg:gap-8 mt-4 pt-3 border-t border-white/10">
           <Mini label="MRR" value={formatCurrency(mrr)} sub={`${activeClients.length} clients`} />
           <Mini label="Net / month" value={formatCurrency(netProfit)} sub={margin !== null ? `${margin}% margin` : undefined} good={netProfit >= 0} />
           <Mini label="Yearly" value={formatCurrency(jrr)} sub="recurring" />
@@ -187,6 +187,7 @@ function Finance() {
         </div>
       </div>
 
+      <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-3 lg:items-start">
       {/* Who pays */}
       <Card>
         <div className="flex items-center justify-between gap-2 mb-3">
@@ -260,6 +261,8 @@ function Finance() {
           <span className="inline-flex items-center gap-1.5"><i className="w-2 h-2 rounded-sm bg-zinc-700" /> {year - 1}</span>
         </div>
       </Card>
+
+      </div>
 
       <Link to="/boekhouding" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 hover:border-white/20 transition">
         <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />

@@ -79,7 +79,7 @@ function Bookkeeping() {
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Laden…</div>;
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-3 md:space-y-4">
+    <div className="p-4 md:p-6 max-w-6xl xl:max-w-7xl mx-auto space-y-3 md:space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2"><BookOpen className="w-6 h-6 md:w-7 md:h-7 shrink-0" /> Boekhouding</h1>
@@ -161,6 +161,13 @@ function Overview({ P, accounts, entries, lines }: Data) {
     : { inPct: 0, outPct: 0 };
   return (
     <div className="space-y-3 md:space-y-4 mt-3">
+      {bal("suspense") !== 0 && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          {eur(Math.abs(bal("suspense")))} aan bankverrichtingen staat nog op <b>1900 Te verwerken</b>. Kies een rekening in het tabblad Bank, dan klopt het resultaat.
+        </div>
+      )}
+      <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-4 lg:items-stretch">
+      <div className="space-y-3 lg:flex lg:flex-col">
       {/* Result first, then what went in and out */}
       <div className={`tone ${now.result >= 0 ? "tone-emerald" : "tone-red"} rounded-2xl border p-4`}>
         <div className="flex items-end justify-between gap-3">
@@ -194,15 +201,10 @@ function Overview({ P, accounts, entries, lines }: Data) {
         <Kpi label="Openstaand bij klanten" value={eur(bal("debtors"))} />
         <Kpi label="Op de bank" value={eur(bal("bank"))} />
       </div>
-
-      {bal("suspense") !== 0 && (
-        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          {eur(Math.abs(bal("suspense")))} aan bankverrichtingen staat nog op <b>1900 Te verwerken</b>. Kies een rekening in het tabblad Bank, dan klopt het resultaat.
-        </div>
-      )}
-      <div className="rounded-2xl border border-border bg-card p-4">
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-4 lg:flex lg:flex-col">
         <div className="text-sm font-medium mb-2">Laatste 6 periodes</div>
-        <div className="h-36 md:h-56 -ml-3">
+        <div className="h-36 md:h-56 lg:h-auto lg:flex-1 lg:min-h-64 -ml-3">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chart} barGap={2}>
               <defs>
@@ -220,6 +222,7 @@ function Overview({ P, accounts, entries, lines }: Data) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card overflow-x-auto">

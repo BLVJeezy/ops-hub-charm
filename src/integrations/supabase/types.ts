@@ -189,6 +189,10 @@ export type Database = {
           website_monthly_fee: number | null
           website_needed: boolean
           website_setup_fee: number | null
+          social_monthly_fee: number | null
+          social_setup_fee: number | null
+          social_start_date: string | null
+          social_end_date: string | null
           website_yearly_fee: number | null
           writeoff_reason: Database["public"]["Enums"]["writeoff_reason"] | null
           yearly_fee: number | null
@@ -223,6 +227,10 @@ export type Database = {
           website_monthly_fee?: number | null
           website_needed?: boolean
           website_setup_fee?: number | null
+          social_monthly_fee?: number | null
+          social_setup_fee?: number | null
+          social_start_date?: string | null
+          social_end_date?: string | null
           website_yearly_fee?: number | null
           writeoff_reason?:
             | Database["public"]["Enums"]["writeoff_reason"]
@@ -259,6 +267,10 @@ export type Database = {
           website_monthly_fee?: number | null
           website_needed?: boolean
           website_setup_fee?: number | null
+          social_monthly_fee?: number | null
+          social_setup_fee?: number | null
+          social_start_date?: string | null
+          social_end_date?: string | null
           website_yearly_fee?: number | null
           writeoff_reason?:
             | Database["public"]["Enums"]["writeoff_reason"]

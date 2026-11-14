@@ -50,7 +50,7 @@ BEGIN
 
   SELECT coalesce(array_agg(column_name::text), '{}') INTO strip FROM information_schema.columns
   WHERE table_schema = 'public' AND table_name = _table
-    AND column_name ~* '^(token|apikey|api_key|secret|password|access_token|refresh_token)$';
+    AND column_name ~* '^(token|apikey|api_key|secret|password|access_token|refresh_token|ical_url)$';
 
   EXECUTE format('SELECT coalesce(jsonb_agg(to_jsonb(x) - $1), ''[]'') FROM
                     (SELECT * FROM public.%I ORDER BY ctid OFFSET $2 LIMIT $3) x', _table)

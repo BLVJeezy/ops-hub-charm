@@ -72,9 +72,14 @@ type BackupRun = {
   stale: boolean;
 };
 const BACKUP_TARGETS: Record<string, string> = {
-  hub: "Solyn Hub OS",
-  riory: "Riory BV",
+  riory: "Riory",
   "villa-amano": "Villa Amano",
+  belgomed: "Belgomed",
+  "gigi-l": "GiGi L Coiffure",
+  "horsey-valley": "Horsey Valley",
+  "solyn-global": "Solyn Global (website)",
+  "les-autres": "Les Autres",
+  hub: "Solyn Hub OS",
 };
 
 type Check = {
@@ -345,8 +350,8 @@ function BackupList({ runs }: { runs: BackupRun[] }) {
               <div className="text-sm font-medium">{BACKUP_TARGETS[t] ?? t}</div>
               <div className="text-xs text-muted-foreground truncate">
                 {r
-                  ? `${ago(r.at)} · ${(r.rows ?? 0).toLocaleString()} rows · ${((r.bytes ?? 0) / 1024 / 1024).toFixed(1)} MB encrypted`
-                  : "Runs nightly at 03:07"}
+                  ? `${ago(r.at)} · ${r.rows ? `${r.rows.toLocaleString()} rows + ` : ""}code · ${((r.bytes ?? 0) / 1024 / 1024).toFixed(1)} MB encrypted`
+                  : "Database and code, nightly at 03:07"}
                 {r?.error ? ` · ${r.error}` : ""}
               </div>
             </div>

@@ -79,22 +79,22 @@ function Bookkeeping() {
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Laden…</div>;
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2"><BookOpen className="w-7 h-7" /> Boekhouding</h1>
-          <p className="text-xs text-muted-foreground">Dubbel boekhouden · facturen en kosten worden automatisch geboekt (elke nacht, of met de knop).</p>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-3 md:space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2"><BookOpen className="w-6 h-6 md:w-7 md:h-7 shrink-0" /> Boekhouding</h1>
+          <p className="hidden md:block text-xs text-muted-foreground">Dubbel boekhouden · facturen en kosten worden automatisch geboekt (elke nacht, of met de knop).</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={sync} disabled={syncing}><RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} />Synchroniseren</Button>
-          <Button onClick={() => setNewEntry(true)}><Plus className="w-4 h-4 mr-1" />Boeking</Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" onClick={sync} disabled={syncing} title="Synchroniseren" className="rounded-full h-10 px-3"><RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} /><span className="hidden md:inline ml-1">Synchroniseren</span></Button>
+          <Button onClick={() => setNewEntry(true)} className="rounded-full h-10 px-4"><Plus className="w-4 h-4 mr-1" />Boeking</Button>
         </div>
       </div>
 
       <PeriodPicker P={P} kind={kind} setKind={setKind} setAnchor={setAnchor} />
 
       <Tabs defaultValue="overzicht">
-        <TabsList className="w-full grid grid-cols-6">
+        <TabsList className="w-full grid grid-cols-6 [&>button]:px-1 [&>button]:text-[11px] md:[&>button]:text-xs">
           <TabsTrigger value="overzicht" className="text-xs">Overzicht</TabsTrigger>
           <TabsTrigger value="bank" className="text-xs">Bank</TabsTrigger>
           <TabsTrigger value="dagboek" className="text-xs">Dagboek</TabsTrigger>
@@ -117,17 +117,17 @@ function Bookkeeping() {
 
 function PeriodPicker({ P, kind, setKind, setAnchor }: { P: Period; kind: PeriodKind; setKind: (k: PeriodKind) => void; setAnchor: (d: string) => void }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center justify-between md:justify-start gap-2">
       <div className="inline-flex rounded-full border border-border p-0.5">
         {(["month", "quarter", "year"] as PeriodKind[]).map((k) => (
-          <button key={k} onClick={() => setKind(k)} className={`px-3 h-8 rounded-full text-xs ${kind === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+          <button key={k} onClick={() => setKind(k)} className={`px-2.5 md:px-3 h-8 rounded-full text-xs ${kind === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             {k === "month" ? "Maand" : k === "quarter" ? "Kwartaal" : "Jaar"}
           </button>
         ))}
       </div>
       <div className="inline-flex items-center gap-1">
         <Button size="sm" variant="outline" onClick={() => setAnchor(shiftPeriod(P, -1).from)}>‹</Button>
-        <span className="text-sm font-medium w-28 text-center capitalize">{P.label}</span>
+        <span className="text-sm font-medium w-[4.5rem] md:w-28 text-center capitalize">{P.label}</span>
         <Button size="sm" variant="outline" onClick={() => setAnchor(shiftPeriod(P, 1).from)}>›</Button>
       </div>
     </div>
@@ -136,9 +136,11 @@ function PeriodPicker({ P, kind, setKind, setAnchor }: { P: Period; kind: Period
 
 type Data = { P: Period; accounts: Account[]; entries: Entry[]; lines: Line[] };
 
-function Delta({ v }: { v: number | null }) {
+/** `lowerIsBetter` flips the colour: costs going down is good news. */
+function Delta({ v, lowerIsBetter = false }: { v: number | null; lowerIsBetter?: boolean }) {
   if (v === null) return <span className="text-muted-foreground">—</span>;
-  return <span className={v >= 0 ? "text-emerald-500" : "text-red-500"}>{v >= 0 ? "▲" : "▼"} {Math.abs(v)}%</span>;
+  const good = lowerIsBetter ? v <= 0 : v >= 0;
+  return <span className={good ? "text-emerald-400" : "text-red-400"}>{v >= 0 ? "▲" : "▼"} {Math.abs(v)}%</span>;
 }
 
 function Overview({ P, accounts, entries, lines }: Data) {
@@ -153,13 +155,44 @@ function Overview({ P, accounts, entries, lines }: Data) {
     return { name: p.label, Opbrengsten: x.income, Kosten: x.expense };
   });
   const pl = accounts.filter((x) => x.type === "income" || x.type === "expense");
+  const flowTotal = Math.max(now.income, 0) + Math.max(now.expense, 0);
+  const flow = flowTotal > 0
+    ? { inPct: (Math.max(now.income, 0) / flowTotal) * 100, outPct: (Math.max(now.expense, 0) / flowTotal) * 100 }
+    : { inPct: 0, outPct: 0 };
   return (
-    <div className="space-y-4 mt-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Kpi label="Opbrengsten" value={eur(now.income)} sub={<><Delta v={change(now.income, a.income)} /> vs {prev.label}</>} />
-        <Kpi label="Kosten" value={eur(now.expense)} sub={<><Delta v={change(now.expense, a.expense)} /> vs {prev.label}</>} />
-        <Kpi label="Resultaat" value={eur(now.result)} tone={now.result >= 0 ? "pos" : "neg"} sub={<><Delta v={change(now.result, b.result)} /> vs {ly.label}</>} />
-        <Kpi label="Openstaand bij klanten" value={eur(bal("debtors"))} sub={<>bank {eur(bal("bank"))}</>} />
+    <div className="space-y-3 md:space-y-4 mt-3">
+      {/* Result first, then what went in and out */}
+      <div className={`tone ${now.result >= 0 ? "tone-emerald" : "tone-red"} rounded-2xl border p-4`}>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Resultaat <span className="capitalize">{P.label}</span></div>
+            <div className={`text-[2.4rem] leading-none font-bold tracking-tight tabular-nums mt-1 ${now.result >= 0 ? "ink-emerald" : "text-red-400"}`}>{eur(now.result)}</div>
+          </div>
+          <div className="text-right text-[11px] text-muted-foreground shrink-0">
+            <div><Delta v={change(now.result, a.result)} /> vs {prev.label}</div>
+            <div className="mt-0.5"><Delta v={change(now.result, b.result)} /> vs {ly.label}</div>
+          </div>
+        </div>
+        <div className="flex h-2 rounded-full overflow-hidden bg-muted mt-4" aria-hidden>
+          <span style={{ width: `${flow.inPct}%`, background: "linear-gradient(90deg,#f0d489,#b8862f)" }} />
+          <span className="bg-zinc-600" style={{ width: `${flow.outPct}%` }} />
+        </div>
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <div>
+            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5"><i className="w-2 h-2 rounded-sm" style={{ background: "#d6b25e" }} /> Opbrengsten</div>
+            <div className="text-lg font-semibold tabular-nums">{eur(now.income)}</div>
+            <div className="text-[11px]"><Delta v={change(now.income, a.income)} /> <span className="text-muted-foreground">vs {prev.label}</span></div>
+          </div>
+          <div>
+            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5"><i className="w-2 h-2 rounded-sm bg-zinc-600" /> Kosten</div>
+            <div className="text-lg font-semibold tabular-nums">{eur(now.expense)}</div>
+            <div className="text-[11px]"><Delta v={change(now.expense, a.expense)} lowerIsBetter /> <span className="text-muted-foreground">vs {prev.label}</span></div>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Kpi label="Openstaand bij klanten" value={eur(bal("debtors"))} />
+        <Kpi label="Op de bank" value={eur(bal("bank"))} />
       </div>
 
       {bal("suspense") !== 0 && (
@@ -168,33 +201,39 @@ function Overview({ P, accounts, entries, lines }: Data) {
         </div>
       )}
       <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="text-xs font-semibold tracking-[0.15em] text-muted-foreground uppercase mb-2">Laatste 6 periodes</div>
-        <div className="h-56">
+        <div className="text-sm font-medium mb-2">Laatste 6 periodes</div>
+        <div className="h-36 md:h-56 -ml-3">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <BarChart data={chart} barGap={2}>
+              <defs>
+                <linearGradient id="bkGold" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f0d489" />
+                  <stop offset="100%" stopColor="#a8792b" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={(v: string) => v.split(" ")[0]} />
+              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} width={44} />
               <Tooltip formatter={(v: number) => eur(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-              <Bar dataKey="Opbrengsten" fill="#C9A14A" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Kosten" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Opbrengsten" fill="url(#bkGold)" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Kosten" fill="#52525b" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground">
-            <tr className="border-b border-border"><th className="text-left p-3">Resultatenrekening</th><th className="text-right p-3 capitalize">{P.label}</th><th className="text-right p-3 capitalize">{prev.label}</th><th className="text-right p-3 capitalize">{ly.label}</th></tr>
+        <table className="w-full text-xs md:text-sm">
+          <thead className="text-[11px] md:text-xs text-muted-foreground">
+            <tr className="border-b border-border"><th className="text-left p-2 md:p-3 font-medium">Resultatenrekening</th><th className="text-right p-2 md:p-3 font-medium capitalize">{P.label}</th><th className="text-right p-2 md:p-3 font-medium capitalize">{prev.label}</th><th className="hidden md:table-cell text-right p-2 md:p-3 font-medium capitalize">{ly.label}</th></tr>
           </thead>
           <tbody>
             {(["income", "expense"] as const).map((t) => (
               <PlGroup key={t} type={t} accounts={pl.filter((x) => x.type === t)} cols={[now, a, b]} />
             ))}
             <tr className="font-semibold border-t border-border">
-              <td className="p-3">Resultaat</td>
-              {[now, a, b].map((x, i) => <td key={i} className={`p-3 text-right ${x.result < 0 ? "text-red-500" : ""}`}>{eur(x.result)}</td>)}
+              <td className="p-2 md:p-3">Resultaat</td>
+              {[now, a, b].map((x, i) => <td key={i} className={`p-2 md:p-3 text-right tabular-nums whitespace-nowrap ${i === 2 ? "hidden md:table-cell" : ""} ${x.result < 0 ? "text-red-500" : ""}`}>{eur(x.result)}</td>)}
             </tr>
           </tbody>
         </table>
@@ -210,15 +249,15 @@ function PlGroup({ type, accounts, cols }: { type: "income" | "expense"; account
   const rows = accounts.filter((a) => cols.some((c) => c.byAccount[a.id]));
   return (
     <>
-      <tr className="bg-muted/30"><td colSpan={4} className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">{TYPE_LABEL[type]}</td></tr>
+      <tr className="bg-muted/30"><td colSpan={4} className="px-2 md:px-3 py-1 text-[11px] text-muted-foreground">{TYPE_LABEL[type]}</td></tr>
       {rows.length ? rows.map((a) => (
         <tr key={a.id} className="border-b border-border/50">
-          <td className="p-3"><span className="font-mono text-xs text-muted-foreground mr-2">{a.code}</span>{a.name}</td>
-          {cols.map((c, i) => <td key={i} className="p-3 text-right tabular-nums">{c.byAccount[a.id] ? eur(c.byAccount[a.id]) : "—"}</td>)}
+          <td className="p-2 md:p-3"><span className="hidden md:inline font-mono text-xs text-muted-foreground mr-2">{a.code}</span>{a.name}</td>
+          {cols.map((c, i) => <td key={i} className={`p-2 md:p-3 text-right tabular-nums whitespace-nowrap ${i === 2 ? "hidden md:table-cell" : ""}`}>{c.byAccount[a.id] ? eur(c.byAccount[a.id]) : "—"}</td>)}
         </tr>
       )) : <tr><td colSpan={4} className="p-3 text-xs text-muted-foreground">Geen boekingen.</td></tr>}
-      <tr className="text-xs"><td className="px-3 py-1.5 text-muted-foreground">Totaal {TYPE_LABEL[type].toLowerCase()}</td>
-        {cols.map((c, i) => <td key={i} className="px-3 py-1.5 text-right tabular-nums">{eur(type === "income" ? c.income : c.expense)}</td>)}</tr>
+      <tr className="text-[11px] md:text-xs"><td className="px-2 md:px-3 py-1.5 text-muted-foreground">Totaal {TYPE_LABEL[type].toLowerCase()}</td>
+        {cols.map((c, i) => <td key={i} className={`px-2 md:px-3 py-1.5 text-right tabular-nums whitespace-nowrap ${i === 2 ? "hidden md:table-cell" : ""}`}>{eur(type === "income" ? c.income : c.expense)}</td>)}</tr>
     </>
   );
 }

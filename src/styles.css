@@ -97,3 +97,37 @@ html {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 }
+
+/* Tinted surfaces: a soft glow of one hue in the top-left corner of a card.
+   Used to give each kind of number its own colour (money gold, health green, …). */
+.tone {
+  --tone: 0 0% 60%;
+  background:
+    radial-gradient(130% 150% at 0% 0%, hsl(var(--tone) / 0.2), transparent 62%),
+    linear-gradient(180deg, hsl(var(--tone) / 0.05), transparent 70%),
+    hsl(var(--card));
+  border-color: hsl(var(--tone) / 0.28);
+}
+.tone-gold { --tone: 41 62% 56%; }
+.tone-emerald { --tone: 158 64% 42%; }
+.tone-amber { --tone: 32 92% 50%; }
+.tone-red { --tone: 0 78% 56%; }
+.tone-violet { --tone: 258 82% 68%; }
+.tone-sky { --tone: 201 90% 58%; }
+
+/* Gradient ink for the one number that matters on a screen. */
+.ink-gold {
+  background: linear-gradient(100deg, #f4e3b1 0%, #d6b25e 45%, #b8862f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ink-emerald {
+  background: linear-gradient(100deg, #b6f5d8 0%, #34d399 50%, #0f9d6b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* Proportional bar behind a list row. */
+.meter { height: 4px; border-radius: 999px; background: hsl(var(--muted)); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, hsl(var(--tone, 41 62% 56%) / 0.55), hsl(var(--tone, 41 62% 56%))); }

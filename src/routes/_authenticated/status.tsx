@@ -245,19 +245,7 @@ function StatusPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <Tile label="Online" value={counts.up} color="#1D9E75" />
-        <Tile
-          label="With issues"
-          value={counts.issues}
-          color={counts.issues ? "#D97706" : undefined}
-        />
-        <Tile
-          label="Critical alerts"
-          value={counts.critical}
-          color={counts.critical ? "#DC2626" : undefined}
-        />
-      </div>
+      <HealthBanner sites={sites} counts={counts} />
 
       {/* Open alerts */}
       {open.length > 0 && (
@@ -284,7 +272,7 @@ function StatusPage() {
             description="Add a client website to start checking it."
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2 md:gap-3 md:grid-cols-2">
             {sites.map((s) => (
               <SiteCard
                 key={s.id}
@@ -371,13 +359,58 @@ function BackupList({ runs }: { runs: BackupRun[] }) {
   );
 }
 
-function Tile({ label, value, color }: { label: string; value: number; color?: string }) {
+function HealthBanner({
+  sites,
+  counts,
+}: {
+  sites: Site[];
+  counts: { up: number; issues: number; critical: number };
+}) {
+  const tone = counts.critical ? "tone-red" : counts.issues ? "tone-amber" : "tone-emerald";
+  const last = sites.reduce<string | null>(
+    (m, x) => (x.last_checked_at && (!m || x.last_checked_at > m) ? x.last_checked_at : m),
+    null,
+  );
+  const speeds = sites.map((x) => x.last_response_ms).filter((v): v is number => v != null);
+  const avg = speeds.length ? Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length) : null;
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="text-2xl font-bold" style={color ? { color } : undefined}>
-        {value}
+    <div className={`tone ${tone} rounded-2xl border p-4 mb-4 md:mb-6`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="flex items-baseline gap-1.5">
+            <span className={`text-4xl font-bold tabular-nums leading-none ${counts.critical || counts.issues ? "" : "ink-emerald"}`}>
+              {counts.up}
+            </span>
+            <span className="text-lg text-muted-foreground tabular-nums">/ {sites.length}</span>
+            <span className="text-sm text-muted-foreground ml-1">online</span>
+          </div>
+          <div className="text-xs text-muted-foreground mt-1.5">
+            {counts.critical
+              ? `${counts.critical} critical alert${counts.critical === 1 ? "" : "s"}`
+              : counts.issues
+                ? `${counts.issues} site${counts.issues === 1 ? "" : "s"} with issues`
+                : "No issues"}
+            {last ? ` · checked ${ago(last)}` : ""}
+          </div>
+        </div>
+        {avg != null && (
+          <div className="text-right shrink-0">
+            <div className="text-lg font-semibold tabular-nums leading-none">{avg} ms</div>
+            <div className="text-[11px] text-muted-foreground mt-1">average response</div>
+          </div>
+        )}
       </div>
-      <div className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{label}</div>
+      {sites.length > 0 && (
+        <div className="flex gap-1 mt-3" aria-hidden>
+          {sites.map((x) => (
+            <span
+              key={x.id}
+              className="h-1.5 flex-1 rounded-full"
+              style={{ backgroundColor: STATUS_STYLE[x.enabled ? x.last_status : "unknown"].color }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -392,8 +425,8 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+    <div className="mb-4 md:mb-6">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 md:mb-3">
         {icon} {title}
       </div>
       {children}
@@ -455,49 +488,48 @@ function pillsFor(s: Site): Pill[] {
 
 function SiteCard({ s, openCount, onOpen }: { s: Site; openCount: number; onOpen: () => void }) {
   const style = STATUS_STYLE[s.enabled ? s.last_status : "unknown"];
+  const ms = s.last_response_ms;
+  const msColor = ms == null ? undefined : ms > 4000 ? "#D97706" : ms < 600 ? "#34D399" : undefined;
   return (
     <button
       onClick={onOpen}
-      className="text-left rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition w-full"
+      className="text-left rounded-xl border border-border bg-card px-3.5 py-2.5 hover:border-primary/50 transition w-full"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Dot color={style.color} />
-            <span className="font-semibold truncate">{s.name}</span>
-          </div>
-          <div className="text-xs text-muted-foreground truncate mt-1">
-            {hostOf(s.url)} · {s.hosting_provider}
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <div className="text-xs font-medium" style={{ color: style.color }}>
-            {s.enabled ? style.label : "Paused"}
-          </div>
-          {s.last_response_ms != null && (
-            <div className="text-[11px] text-muted-foreground">{s.last_response_ms} ms</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Dot color={style.color} />
+          <span className="font-semibold truncate">{s.name}</span>
+          {openCount > 0 ? (
+            <span className="text-[11px] shrink-0" style={{ color: "#DC2626" }}>
+              {openCount} alert{openCount === 1 ? "" : "s"}
+            </span>
+          ) : (
+            s.is_critical && (
+              <span className="text-[10px] shrink-0 rounded-full border border-border px-1.5 py-px text-muted-foreground">
+                bookings
+              </span>
+            )
           )}
         </div>
+        <div className="text-right shrink-0 text-sm tabular-nums font-medium" style={{ color: s.enabled ? msColor : undefined }}>
+          {!s.enabled ? "Paused" : s.last_status === "down" ? style.label : ms != null ? `${ms} ms` : style.label}
+        </div>
       </div>
-      <div className="flex flex-wrap gap-1.5 mt-3">
-        {pillsFor(s).map((p) => (
-          <span
-            key={p.label}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
-            style={{ backgroundColor: `${PILL_COLOR[p.state]}1A`, color: PILL_COLOR[p.state] }}
-          >
-            <p.icon className="w-3 h-3" /> {p.label}
-          </span>
-        ))}
-      </div>
-      <div className="flex items-center justify-between mt-3 text-[11px] text-muted-foreground">
-        <span>Checked {ago(s.last_checked_at)}</span>
-        {openCount > 0 && (
-          <span style={{ color: "#DC2626" }}>
-            {openCount} active alert{openCount === 1 ? "" : "s"}
-          </span>
-        )}
-        {s.is_critical && openCount === 0 && <span>Booking system</span>}
+      <div className="flex items-center justify-between gap-3 mt-1.5">
+        <div className="flex flex-wrap gap-1">
+          {pillsFor(s).map((p) => (
+            <span
+              key={p.label}
+              title={p.label}
+              aria-label={`${p.label}: ${p.state}`}
+              className="inline-flex items-center justify-center gap-1 h-6 min-w-6 px-1.5 rounded-full text-[11px]"
+              style={{ backgroundColor: `${PILL_COLOR[p.state]}1A`, color: PILL_COLOR[p.state] }}
+            >
+              <p.icon className="w-3 h-3" /> <span className="hidden md:inline">{p.label}</span>
+            </span>
+          ))}
+        </div>
+        <span className="text-[11px] text-muted-foreground truncate">{hostOf(s.url)}</span>
       </div>
     </button>
   );

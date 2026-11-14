@@ -1,11 +1,11 @@
 import { CurrencyToggle, useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import { clientAnnualProjection, clientMRR, type FeeClient } from "@/lib/fees";
-import { TrendingUp, BarChart3, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/finance")({
   component: Finance,
@@ -18,14 +18,12 @@ type Client = FeeClient & {
 type Invoice = { id: string; invoice_number: number; client: string | null; client_name: string | null; total: number; status: string; date: string };
 type Expense = { id: string; monthly_cost: number; linked_client: string | null };
 
-function SectionHeader({ icon: Icon, label, count }: { icon: React.ComponentType<{ className?: string }>; label: string; count?: number }) {
+function Mini({ label, value, sub, good }: { label: string; value: string; sub?: string; good?: boolean }) {
   return (
-    <div className="flex items-center gap-2 mb-3 mt-2">
-      <Icon className="w-4 h-4 text-muted-foreground" />
-      <span className="text-xs font-semibold tracking-[0.15em] text-muted-foreground uppercase">{label}</span>
-      {count !== undefined && count > 0 && (
-        <span className="text-[11px] font-medium rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{count}</span>
-      )}
+    <div className="min-w-0">
+      <div className="text-[11px] text-muted-foreground truncate">{label}</div>
+      <div className={`text-[15px] md:text-xl font-semibold tabular-nums truncate ${good ? "text-emerald-400" : ""}`}>{value}</div>
+      {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
     </div>
   );
 }
@@ -40,6 +38,7 @@ function Finance() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"paid" | "projection">("paid");
 
   async function load() {
     const [c, i, e] = await Promise.all([
@@ -145,142 +144,129 @@ function Finance() {
 
   if (loading) return <div className="p-6 text-muted-foreground">Loading finance…</div>;
 
+  const topPaid = revenuePerClient[0]?.total || 1;
+  const topProj = annualProjectionPerClient[0]?.total || 1;
+  const list = view === "paid" ? revenuePerClient : annualProjectionPerClient;
+  const listTop = view === "paid" ? topPaid : topProj;
+  const margin = mrr > 0 ? Math.round((netProfit / mrr) * 100) : null;
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-2">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-3xl font-bold tracking-tight">Finance</h1>
-        <div className="flex items-center gap-2">
-          <CurrencyToggle />
-        </div>
+      <div className="flex items-center justify-between mb-2 md:mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Finance</h1>
+        <CurrencyToggle />
       </div>
 
-      {/* FINANCIALS */}
-      <SectionHeader icon={TrendingUp} label="Financials" />
-
-      <Card className="bg-gradient-to-br from-white/[0.04] to-transparent">
-        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.15em] text-muted-foreground uppercase">
-          <TrendingUp className="w-3.5 h-3.5" /> Lifetime revenue
-        </div>
-        <div className="mt-1 text-4xl font-bold tracking-tight">{formatCurrency(lifetimeRevenue)}</div>
-        <div className="text-xs text-muted-foreground mt-1">Total received from paid invoices</div>
-      </Card>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Card>
-          <div className="text-sm text-muted-foreground">Total MRR</div>
-          <div className="text-3xl font-bold mt-1">{formatCurrency(mrr)}</div>
-          <div className="text-xs text-muted-foreground mt-1">{activeClients.length} active clients</div>
-        </Card>
-        <Card className="ring-1 ring-white/10">
-          <div className="text-sm text-muted-foreground">Net Profit</div>
-          <div className="text-3xl font-bold mt-1">{formatCurrency(netProfit)}</div>
-          <div className="text-xs text-muted-foreground mt-1">MRR {formatCurrency(mrr)} − Costs {formatCurrency(totalMonthlyExpenses)}</div>
-        </Card>
-      </div>
-
-      <Card>
-        <div className="text-sm text-muted-foreground">Yearly (JRR)</div>
-        <div className="text-3xl font-bold mt-1">{formatCurrency(jrr)}</div>
-        <div className="text-xs text-muted-foreground mt-1">Annual recurring</div>
-      </Card>
-
-      <Card>
-        <div className="text-sm text-muted-foreground">Pipeline Value</div>
-        <div className="text-3xl font-bold mt-1">{formatCurrency(pipelineValue)}</div>
-        <div className="text-xs text-muted-foreground mt-1">Proposal/Negotiating</div>
-      </Card>
-
-      <Card>
-        <div className="text-sm mb-3">Revenue per client (all paid invoices)</div>
-        {revenuePerClient.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No paid invoices yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {revenuePerClient.map((t, i) => (
-              <li key={t.id}>
-                <Link to="/clients/$id" params={{ id: t.id }} className="flex items-center justify-between text-sm hover:underline">
-                  <span>{i + 1}. {t.name}</span>
-                  <span className="tabular-nums text-muted-foreground">{formatCurrency(t.total)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card>
-        <div className="text-sm mb-1">Client annual projection</div>
-        <div className="text-xs text-muted-foreground mb-3">Recurring SEO and website payments annualised</div>
-        {annualProjectionPerClient.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No recurring client revenue yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {annualProjectionPerClient.map((client, index) => (
-              <li key={client.id}>
-                <Link to="/clients/$id" params={{ id: client.id }} className="flex items-center justify-between text-sm hover:underline">
-                  <span>{index + 1}. {client.name}</span>
-                  <span className="tabular-nums text-muted-foreground">{formatCurrency(client.total)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      {/* REVENUE REPORT */}
-      <SectionHeader icon={BarChart3} label="Revenue report" />
-
-      <div className="grid grid-cols-2 gap-2">
-        <Card>
-          <div className="text-sm text-muted-foreground">{year} (YTD)</div>
-          <div className="text-3xl font-bold mt-1">{formatCurrency(ytd)}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-muted-foreground">{year - 1} Total</div>
-          <div className="text-3xl font-bold mt-1">{formatCurrency(lastYearTotal)}</div>
-          <div className="text-xs text-muted-foreground mt-1">Full year</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-muted-foreground">This Month</div>
-          <div className="text-3xl font-bold mt-1">{formatCurrency(thisMonth)}</div>
-          {momChange !== null && (
-            <div className={`text-xs mt-1 ${momChange >= 0 ? "text-emerald-400" : "text-destructive"}`}>
-              {momChange >= 0 ? "▲" : "▼"} {Math.abs(momChange).toFixed(1)}% vs last month
+      {/* Hero: what came in, and what comes in every month */}
+      <div className="tone tone-gold rounded-2xl border p-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Received from paid invoices</div>
+            <div className="ink-gold text-[2.6rem] leading-none font-bold tracking-tight tabular-nums mt-1">
+              {formatCurrency(lifetimeRevenue)}
             </div>
-          )}
-        </Card>
-        <Card>
-          <div className="text-sm text-muted-foreground">Last Month</div>
-          <div className="text-3xl font-bold mt-1">{formatCurrency(lastMonth)}</div>
-          <div className="text-xs text-muted-foreground mt-1">Previous month</div>
-        </Card>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-lg font-semibold tabular-nums leading-none">{formatCurrency(thisMonth)}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">
+              this month
+              {momChange !== null && (
+                <span className={momChange >= 0 ? "text-emerald-400" : "text-red-400"}>
+                  {" "}
+                  {momChange >= 0 ? "▲" : "▼"} {Math.abs(momChange).toFixed(0)}%
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-white/10">
+          <Mini label="MRR" value={formatCurrency(mrr)} sub={`${activeClients.length} clients`} />
+          <Mini label="Net / month" value={formatCurrency(netProfit)} sub={margin !== null ? `${margin}% margin` : undefined} good={netProfit >= 0} />
+          <Mini label="Yearly" value={formatCurrency(jrr)} sub="recurring" />
+          <Mini label="Pipeline" value={formatCurrency(pipelineValue)} sub="in proposal" />
+        </div>
       </div>
 
+      {/* Who pays */}
       <Card>
-        <div className="h-64 -ml-2">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="text-sm font-medium">Revenue per client</div>
+          <div className="inline-flex rounded-full bg-muted p-0.5 text-xs">
+            {(["paid", "projection"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`rounded-full px-2.5 py-1 transition ${view === v ? "bg-white text-black" : "text-muted-foreground"}`}
+              >
+                {v === "paid" ? "Paid" : "Per year"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {list.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {view === "paid" ? "No paid invoices yet." : "No recurring client revenue yet."}
+          </p>
+        ) : (
+          <ul className={`space-y-2.5 ${view === "paid" ? "tone-gold" : "tone-violet"}`}>
+            {list.map((t) => (
+              <li key={t.id}>
+                <Link to="/clients/$id" params={{ id: t.id }} className="block">
+                  <div className="flex items-baseline justify-between text-sm gap-3">
+                    <span className="truncate">{t.name}</span>
+                    <span className="tabular-nums font-medium shrink-0">{formatCurrency(t.total)}</span>
+                  </div>
+                  <div className="meter mt-1">
+                    <i style={{ width: `${Math.max(3, (t.total / listTop) * 100)}%` }} />
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {/* Year view */}
+      <Card>
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <Mini label={`${year} so far`} value={formatCurrency(ytd)} />
+          <Mini label={`${year - 1} total`} value={formatCurrency(lastYearTotal)} />
+          <Mini label="Last month" value={formatCurrency(lastMonth)} />
+        </div>
+        <div className="h-36 md:h-64 -ml-2">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={revenueReport}>
+            <BarChart data={revenueReport} barGap={1}>
+              <defs>
+                <linearGradient id="finGold" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f0d489" />
+                  <stop offset="100%" stopColor="#a8792b" />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} axisLine={false} tickLine={false} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => formatCurrency(v)} axisLine={false} tickLine={false} width={60} />
+              <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={10} axisLine={false} tickLine={false} interval={0} tickFormatter={(v: string) => v.slice(0, 1)} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickFormatter={(v) => formatCurrency(v)} axisLine={false} tickLine={false} width={52} />
               <Tooltip
                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 formatter={(v: number) => formatCurrency(v)}
                 cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
               />
-              <Legend wrapperStyle={{ fontSize: 12 }} iconType="square" />
-              <Bar name="Last Year" dataKey="lastYear" fill="#4B5563" radius={[2, 2, 0, 0]} />
-              <Bar name="This Year" dataKey="thisYear" fill="#FFFFFF" radius={[2, 2, 0, 0]} />
+              <Bar name={`${year - 1}`} dataKey="lastYear" fill="#3f3f46" radius={[2, 2, 0, 0]} />
+              <Bar name={`${year}`} dataKey="thisYear" fill="url(#finGold)" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <div className="flex gap-4 text-[11px] text-muted-foreground mt-1">
+          <span className="inline-flex items-center gap-1.5"><i className="w-2 h-2 rounded-sm" style={{ background: "#d6b25e" }} /> {year}</span>
+          <span className="inline-flex items-center gap-1.5"><i className="w-2 h-2 rounded-sm bg-zinc-700" /> {year - 1}</span>
+        </div>
       </Card>
 
-      {/* BOOKKEEPING */}
-      <SectionHeader icon={BookOpen} label="Boekhouding" />
-      <Link to="/boekhouding" className="block rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
-        <div className="font-medium">Grootboek, resultatenrekening en exports</div>
-        <div className="text-xs text-muted-foreground mt-1">Facturen en kosten worden automatisch geboekt · vergelijk met vorige periode en vorig jaar</div>
+      <Link to="/boekhouding" className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 hover:border-white/20 transition">
+        <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="min-w-0">
+          <div className="text-sm font-medium">Boekhouding</div>
+          <div className="text-xs text-muted-foreground truncate">Grootboek, resultatenrekening en exports</div>
+        </div>
       </Link>
 
       <div className="h-4" />

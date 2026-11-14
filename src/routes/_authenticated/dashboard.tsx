@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  Activity, AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Film, Globe, Heart, Inbox, Plus, TrendingUp, Users, Wallet, XCircle,
+  Activity, AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Film, Globe, Heart, Inbox, Plus, TrendingUp, Users, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HealthDot } from "@/components/HealthDot";
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { clientMRR, type FeeClient } from "@/lib/fees";
 import { formatCurrency, todayISO } from "@/lib/format";
-import { PIPELINE_STAGES } from "@/lib/constants";
+import { PIPELINE_STAGES, STAGE_COLORS } from "@/lib/constants";
 import { useCurrency } from "@/components/CurrencyToggle";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({ component: Dashboard });
@@ -41,6 +41,7 @@ function Dashboard() {
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [loading, setLoading] = useState(true);
   const [quickAdd, setQuickAdd] = useState(false);
+  const [feed, setFeed] = useState<"agenda" | "nieuw" | "opvolgen">("agenda");
   const today = todayISO();
 
   useEffect(() => {
@@ -93,42 +94,53 @@ function Dashboard() {
   const hello = new Date().getHours() < 12 ? "Goedemorgen" : new Date().getHours() < 18 ? "Goedemiddag" : "Goedenavond";
   const bState = briefing?.status ?? (down.length ? "critical" : incidents.length ? "warning" : "ok");
 
+  const tone = bState === "critical" ? "tone-red" : bState === "warning" ? "tone-amber" : "tone-emerald";
+  const dot = (st: string) => (st === "up" ? "#1D9E75" : st === "down" ? "#DC2626" : st === "degraded" ? "#D97706" : "#6B7280");
+  const feeds = { agenda: upcoming.length, nieuw: latest.length, opvolgen: followups.length };
+
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-3 md:space-y-4">
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
           <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" })}</div>
-          <h1 className="text-3xl font-bold tracking-tight">{hello}{user?.email ? `, ${user.email.split("@")[0]}` : ""}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{hello}{user?.email ? `, ${user.email.split("@")[0]}` : ""}</h1>
         </div>
-        <Button onClick={() => setQuickAdd(true)} className="gap-2 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4"><Plus className="w-4 h-4" /> Nieuwe prospect</Button>
+        <Button onClick={() => setQuickAdd(true)} title="Nieuwe prospect" className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-3 md:px-4"><Plus className="w-4 h-4" /><span className="hidden md:inline">Nieuwe prospect</span></Button>
       </div>
 
       {/* status strip */}
-      <Link to="/briefing" className={`flex items-center gap-3 rounded-2xl border p-4 transition hover:brightness-110 ${bState === "critical" ? "border-red-500/40 bg-red-500/10" : bState === "warning" ? "border-amber-500/40 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"}`}>
-        {bState === "critical" ? <XCircle className="w-6 h-6 text-red-500" /> : bState === "warning" ? <AlertTriangle className="w-6 h-6 text-amber-500" /> : <CheckCircle2 className="w-6 h-6 text-emerald-500" />}
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold">{bState === "critical" ? `Kritiek: ${down.map((s) => s.name).join(", ") || "site down"}` : bState === "warning" ? `${incidents.length} open incident${incidents.length === 1 ? "" : "en"}` : "Alle websites werken"}</div>
-          <div className="text-xs text-muted-foreground truncate">{online}/{sites.length} online · {briefing ? `noon scan ${briefing.day.split("-").reverse().join("-")}` : "noon scan elke dag om 12:00"}</div>
+      <Link to="/briefing" className={`tone ${tone} block rounded-2xl border p-4 transition hover:brightness-110`}>
+        <div className="flex items-center gap-3">
+          {bState === "critical" ? <XCircle className="w-6 h-6 text-red-500 shrink-0" /> : bState === "warning" ? <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" /> : <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold truncate">{bState === "critical" ? `Kritiek: ${down.map((s) => s.name).join(", ") || "site down"}` : bState === "warning" ? `${incidents.length} open incident${incidents.length === 1 ? "" : "en"}` : "Alle websites werken"}</div>
+            <div className="text-xs text-muted-foreground truncate">{online}/{sites.length} online · {briefing ? `noon scan ${briefing.day.split("-").reverse().join("-")}` : "noon scan elke dag om 12:00"}</div>
+          </div>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0"><Film className="w-4 h-4" /><span className="hidden sm:inline">{briefing?.video_path ? "Bekijk video" : "Briefing"}</span><ArrowRight className="w-3.5 h-3.5" /></span>
         </div>
-        <span className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground"><Film className="w-4 h-4" />{briefing?.video_path ? "Bekijk video" : "Briefing"}<ArrowRight className="w-3.5 h-3.5" /></span>
+        {sites.length > 0 && (
+          <div className="flex gap-1 mt-3" aria-hidden>
+            {sites.map((x) => <span key={x.id} className="h-1.5 flex-1 rounded-full" style={{ backgroundColor: dot(x.last_status) }} />)}
+          </div>
+        )}
       </Link>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <Tile icon={<Globe className="w-4 h-4" />} label="Bezoekers gisteren" value={String(visY)} sub={visY2 ? <Delta a={visY} b={visY2} /> : "alle sites"} to="/status" />
-        <Tile icon={<Inbox className="w-4 h-4" />} label="Nieuw (24u)" value={String(fresh.length)} sub="aanvragen, afspraken, leads" to="/status" />
-        <Tile icon={<Wallet className="w-4 h-4" />} label="Openstaande facturen" value={formatCurrency(openTotal)} sub={`${open.length} verstuurd`} to="/invoices" />
-        <Tile icon={<TrendingUp className="w-4 h-4" />} label="MRR" value={formatCurrency(mrr)} sub={`${formatCurrency(monthPaid)} betaald deze maand`} to="/finance" />
+        <Tile tone="tone-gold" ink="ink-gold" label="MRR" value={formatCurrency(mrr)} sub={`${formatCurrency(monthPaid)} betaald deze maand`} to="/finance" />
+        <Tile tone={openTotal > 0 ? "tone-amber" : ""} label="Openstaande facturen" value={formatCurrency(openTotal)} sub={`${open.length} verstuurd`} to="/invoices" />
+        <Tile tone="tone-sky" label="Bezoekers gisteren" value={String(visY)} sub={visY2 ? <Delta a={visY} b={visY2} /> : "alle sites"} to="/status" />
+        <Tile tone={fresh.length ? "tone-violet" : ""} label="Nieuw in 24 uur" value={String(fresh.length)} sub="aanvragen, afspraken, leads" to="/status" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid lg:grid-cols-3 gap-3 md:gap-4">
         <Panel title="Websiteverkeer · 14 dagen" icon={<Activity className="w-4 h-4" />} className="lg:col-span-2" link={{ to: "/status", label: "Status" }}>
-          <div className="h-48">
+          <div className="h-28 md:h-48 -ml-2 md:ml-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chart}>
                 <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#C9A14A" stopOpacity={0.5} /><stop offset="100%" stopColor="#C9A14A" stopOpacity={0} /></linearGradient></defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval={1} />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={28} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval={2} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={28} allowDecimals={false} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
                 <Area type="monotone" dataKey="Bezoekers" stroke="#C9A14A" fill="url(#g)" strokeWidth={2} />
               </AreaChart>
@@ -141,7 +153,7 @@ function Dashboard() {
           </div>
         </Panel>
 
-        <Panel title="Websites" icon={<Globe className="w-4 h-4" />} link={{ to: "/status", label: "Alles" }}>
+        <Panel title="Websites" icon={<Globe className="w-4 h-4" />} link={{ to: "/status", label: "Alles" }} className="hidden lg:block">
           <div className="space-y-1.5">
             {sites.map((s) => (
               <Link key={s.id} to="/status/$id" params={{ id: s.id }} className="flex items-center gap-2 text-sm hover:text-primary">
@@ -155,7 +167,26 @@ function Dashboard() {
         </Panel>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      {/* mobile: one card, three lists */}
+      <div className="lg:hidden rounded-2xl border border-border bg-card p-4">
+        <div className="inline-flex rounded-full bg-muted p-0.5 text-xs mb-2">
+          {(["agenda", "nieuw", "opvolgen"] as const).map((k) => (
+            <button key={k} onClick={() => setFeed(k)} className={`rounded-full px-3 py-1 transition ${feed === k ? "bg-white text-black" : "text-muted-foreground"}`}>
+              {k === "agenda" ? "Agenda" : k === "nieuw" ? "Aanvragen" : "Opvolgen"}
+              {feeds[k] > 0 && <span className="ml-1 opacity-60">{feeds[k]}</span>}
+            </button>
+          ))}
+        </div>
+        {feed === "agenda" && (upcoming.length ? upcoming.slice(0, 5).map((r) => <RecRow key={r.id} r={r} site={siteName[r.site_id]} />) : <Empty>Niets gepland de komende dagen.</Empty>)}
+        {feed === "nieuw" && (latest.length ? latest.map((r) => <RecRow key={r.id} r={r} site={siteName[r.site_id]} created />) : <Empty>Nog geen aanvragen.</Empty>)}
+        {feed === "opvolgen" && (followups.length ? followups.map((c) => (
+          <Link key={c.id} to="/clients/$id" params={{ id: c.id }} className="flex justify-between text-sm py-1.5">
+            <span className="truncate">{c.name}</span><span className={`text-xs ${c.next_followup_date! < today ? "text-red-500" : "text-muted-foreground"}`}>{c.next_followup_date!.split("-").reverse().slice(0, 2).join("/")}</span>
+          </Link>
+        )) : <Empty>Geen opvolgingen vandaag.</Empty>)}
+      </div>
+
+      <div className="hidden lg:grid lg:grid-cols-3 gap-4">
         <Panel title="Komende afspraken & reservaties" icon={<CalendarClock className="w-4 h-4" />}>
           {upcoming.length ? upcoming.map((r) => <RecRow key={r.id} r={r} site={siteName[r.site_id]} />) : <Empty>Niets gepland de komende dagen.</Empty>}
         </Panel>
@@ -171,9 +202,20 @@ function Dashboard() {
         </Panel>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid lg:grid-cols-3 gap-3 md:gap-4">
         <Panel title="Pipeline" icon={<TrendingUp className="w-4 h-4" />} className="lg:col-span-2" link={{ to: "/pipeline", label: "Pipeline" }}>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <div className="lg:hidden">
+            <div className="flex gap-1 h-9 items-end">
+              {pipeline.filter((x) => x.s !== "Write-off").map(({ s, n }) => (
+                <div key={s} className="flex-1 flex flex-col items-center gap-1" title={`${s}: ${n}`}>
+                  <span className={`text-[11px] tabular-nums ${n ? "font-semibold" : "text-muted-foreground/50"}`}>{n}</span>
+                  <span className="w-full rounded-full" style={{ height: n ? 6 + Math.min(n, 4) * 3 : 3, backgroundColor: n ? STAGE_COLORS[s] : "hsl(var(--muted))" }} />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5"><span>Found</span><span>Negotiating</span></div>
+          </div>
+          <div className="hidden lg:grid grid-cols-3 sm:grid-cols-4 gap-2">
             {pipeline.map(({ s, n }) => (
               <Link key={s} to="/pipeline" className="rounded-xl bg-muted/40 p-2 hover:bg-muted"><div className="text-lg font-bold tabular-nums">{n}</div><div className="text-[10px] text-muted-foreground truncate">{s}</div></Link>
             ))}
@@ -195,20 +237,20 @@ function Delta({ a, b }: { a: number; b: number }) {
   const p = Math.round(((a - b) / b) * 100);
   return <span className={p >= 0 ? "text-emerald-500" : "text-red-500"}>{p >= 0 ? "▲" : "▼"} {Math.abs(p)}% vs eergisteren</span>;
 }
-function Tile({ icon, label, value, sub, to }: { icon: ReactNode; label: string; value: string; sub: ReactNode; to: string }) {
+function Tile({ label, value, sub, to, tone = "", ink = "" }: { label: string; value: string; sub: ReactNode; to: string; tone?: string; ink?: string }) {
   return (
-    <Link to={to} className="rounded-2xl border border-border bg-card p-4 hover:border-white/20 transition">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">{icon}{label}</div>
-      <div className="text-2xl font-bold mt-1 tabular-nums">{value}</div>
-      <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
+    <Link to={to} className={`rounded-2xl border bg-card px-3.5 py-3 md:p-4 hover:brightness-110 transition ${tone ? `tone ${tone}` : "border-border"}`}>
+      <div className="text-xs text-muted-foreground truncate">{label}</div>
+      <div className={`text-2xl font-bold mt-0.5 tabular-nums ${ink}`}>{value}</div>
+      <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</div>
     </Link>
   );
 }
 function Panel({ title, icon, children, className = "", link }: { title: string; icon: ReactNode; children: ReactNode; className?: string; link?: { to: string; label: string } }) {
   return (
     <div className={`rounded-2xl border border-border bg-card p-4 ${className}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">{icon}{title}</div>
+      <div className="flex items-center justify-between mb-2 md:mb-3">
+        <div className="flex items-center gap-2 text-sm font-medium">{icon}{title}</div>
         {link && <Link to={link.to} className="text-xs text-primary flex items-center gap-0.5">{link.label}<ArrowRight className="w-3 h-3" /></Link>}
       </div>
       {children}

@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * The noon-scan film of a day, for the /briefing player. Films are kept in a private GitHub repo
+ * The noon-scan film of a day, for the /briefing player. Served from the Hub's storage when it is there
+ * (a signed link); otherwise from the private GitHub repo
  * (daily_briefings.video_path = "github:<owner>/<repo>@<branch>:<path>"), read with the GITHUB_TOKEN secret
  * (fine-grained, read-only "Contents" on that one repo). Staff only.
  */
@@ -18,6 +19,14 @@ export const getBriefingVideo = createServerFn({ method: "POST" })
     if (!staff) throw new Error("Geen toegang");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: row } = await (supabase as any).from("daily_briefings").select("video_path").eq("day", data.day).maybeSingle();
+    // 1. The Hub's own storage (bucket "briefings", filled by /api/public/hooks/briefing-video): no token needed.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const store = (supabaseAdmin as any).storage.from("briefings");
+    const signed = await store.createSignedUrl(`${data.day}/noon-scan.mp4`, 60 * 60 * 6);
+    if (signed.data?.signedUrl) return { ok: true as const, url: signed.data.signedUrl as string };
+
+    // 2. Fallback: the film in the private GitHub repo, read with the GITHUB_TOKEN secret.
     const m = /^github:([\w.-]+\/[\w.-]+)@([\w./-]+):(.+)$/.exec(row?.video_path ?? "");
     if (!m) return { ok: false as const, reason: "no-video" };
     const token = process.env.GITHUB_TOKEN;

@@ -30,6 +30,7 @@ import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticat
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
 import { Route as ApiPublicWidgetRouteImport } from './routes/api/public/widget'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicHooksBriefingVideoRouteImport } from './routes/api/public/hooks/briefing-video'
 import { Route as ApiPublicHooksDailyBriefingRouteImport } from './routes/api/public/hooks/daily-briefing'
 import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api/public/hooks/invoice-reminders'
 import { Route as ApiPublicHooksInvoiceScheduleRouteImport } from './routes/api/public/hooks/invoice-schedule'
@@ -147,6 +148,12 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksBriefingVideoRoute =
+  ApiPublicHooksBriefingVideoRouteImport.update({
+    id: '/api/public/hooks/briefing-video',
+    path: '/api/public/hooks/briefing-video',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyBriefingRoute =
   ApiPublicHooksDailyBriefingRouteImport.update({
     id: '/api/public/hooks/daily-briefing',
@@ -228,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
+  '/api/public/hooks/briefing-video': typeof ApiPublicHooksBriefingVideoRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
@@ -259,6 +267,7 @@ export interface FileRoutesByTo {
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
+  '/api/public/hooks/briefing-video': typeof ApiPublicHooksBriefingVideoRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
@@ -293,6 +302,7 @@ export interface FileRoutesById {
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
+  '/api/public/hooks/briefing-video': typeof ApiPublicHooksBriefingVideoRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/api/public/widget'
     | '/lovable/email/suppression'
     | '/clients/'
+    | '/api/public/hooks/briefing-video'
     | '/api/public/hooks/daily-briefing'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/api/public/widget'
     | '/lovable/email/suppression'
     | '/clients'
+    | '/api/public/hooks/briefing-video'
     | '/api/public/hooks/daily-briefing'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
@@ -391,6 +403,7 @@ export interface FileRouteTypes {
     | '/api/public/widget'
     | '/lovable/email/suppression'
     | '/_authenticated/clients/'
+    | '/api/public/hooks/briefing-video'
     | '/api/public/hooks/daily-briefing'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
@@ -412,6 +425,7 @@ export interface RootRouteChildren {
   ApiPublicTRoute: typeof ApiPublicTRoute
   ApiPublicWidgetRoute: typeof ApiPublicWidgetRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicHooksBriefingVideoRoute: typeof ApiPublicHooksBriefingVideoRoute
   ApiPublicHooksDailyBriefingRoute: typeof ApiPublicHooksDailyBriefingRoute
   ApiPublicHooksInvoiceRemindersRoute: typeof ApiPublicHooksInvoiceRemindersRoute
   ApiPublicHooksInvoiceScheduleRoute: typeof ApiPublicHooksInvoiceScheduleRoute
@@ -573,6 +587,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/briefing-video': {
+      id: '/api/public/hooks/briefing-video'
+      path: '/api/public/hooks/briefing-video'
+      fullPath: '/api/public/hooks/briefing-video'
+      preLoaderRoute: typeof ApiPublicHooksBriefingVideoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-briefing': {
       id: '/api/public/hooks/daily-briefing'
       path: '/api/public/hooks/daily-briefing'
@@ -699,6 +720,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTRoute: ApiPublicTRoute,
   ApiPublicWidgetRoute: ApiPublicWidgetRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicHooksBriefingVideoRoute: ApiPublicHooksBriefingVideoRoute,
   ApiPublicHooksDailyBriefingRoute: ApiPublicHooksDailyBriefingRoute,
   ApiPublicHooksInvoiceRemindersRoute: ApiPublicHooksInvoiceRemindersRoute,
   ApiPublicHooksInvoiceScheduleRoute: ApiPublicHooksInvoiceScheduleRoute,

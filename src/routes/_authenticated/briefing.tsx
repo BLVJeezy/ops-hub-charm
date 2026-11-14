@@ -53,6 +53,7 @@ function BriefingPage() {
     fetchVideo({ data: { day: row.day } })
       .then((r) => {
         if (!r.ok) return setVideo({ reason: r.reason });
+        if ("url" in r) return setVideo({ url: r.url });
         const bin = atob(r.base64), arr = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         url = URL.createObjectURL(new Blob([arr], { type: r.mime }));
@@ -108,7 +109,7 @@ function BriefingPage() {
             <p className="text-sm text-muted-foreground px-6 text-center">
               {video.loading ? "Video laden…"
                 : video.reason === "no-video" ? (row.render_error ? `De video kon niet gemaakt worden: ${row.render_error}` : "De video van vandaag wordt nog gemaakt (klaar rond 12:00).")
-                : video.reason === "no-token" ? "Video staat klaar, maar de Hub mist het geheim GITHUB_TOKEN om hem te tonen."
+                : video.reason === "no-token" ? "De video wordt nog naar de Hub gestuurd. Kijk over een paar minuten opnieuw."
                 : "Video kon niet geladen worden."}
             </p>
           )}

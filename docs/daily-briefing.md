@@ -12,10 +12,11 @@ Each cron runs at two UTC times; the hook ignores the run that is not the right 
 
 ## Where the films are kept
 
-`daily_briefings.video_path = github:BLVJeezy/mission-control-hub@noon-scan:<day>/noon-scan.mp4` — a private repo, branch `noon-scan`
-(the render workspace can only push to GitHub). The `/briefing` page fetches the film through a server function with the
-Lovable secret **`GITHUB_TOKEN`**: a fine-grained GitHub token, repository access "Only select repositories → mission-control-hub",
-permission Contents: Read-only. Without it the page and email still work, only the player shows a notice.
+The render task pushes each film to the private repo `BLVJeezy/mission-control-hub`, branch `noon-scan` (the render workspace can only
+reach GitHub). A GitHub Action there (`.github/workflows/noon-scan-to-hub.yml`) then POSTs the mp4 to
+`/api/public/hooks/briefing-video?day=<day>` with the shared backup token (`BACKUP_TOKEN` secret), and the Hub keeps it in its own private
+storage bucket `briefings` (`<day>/noon-scan.mp4`). The `/briefing` page plays it through a 6-hour signed link: no GitHub token needed.
+If a film is not in storage yet, the page falls back to reading it from GitHub with an optional `GITHUB_TOKEN` secret.
 
 ## The page
 

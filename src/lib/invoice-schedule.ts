@@ -142,3 +142,49 @@ export function advanceMonthNames(text: string, months = 1): string {
     return `${matchCase(MONTHS[hit.lang][newIdx], name)}${space}${newYear}`;
   });
 }
+
+export type PlannedInvoice = {
+  status: string;
+  total: number | string | null;
+  scheduled_send_at?: string | null;
+  repeat_monthly?: boolean | null;
+  repeat_day?: number | null;
+  next_repeat_on?: string | null;
+};
+
+/** The date `months` months after `iso`, day clamped to the month's length. */
+export function addMonthsIso(iso: string, months: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = y * 12 + (m - 1) + months;
+  const year = Math.floor(t / 12), month0 = t % 12;
+  const day = Math.min(d, daysInMonth(year, month0));
+  return `${year}-${String(month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/**
+ * Everything that will be invoiced from today up to and including today + `months`:
+ * each scheduled draft once, and every monthly repeat once per month it falls in the window.
+ * Returns the number of invoices and their total.
+ */
+export function plannedForecast(rows: PlannedInvoice[], today: string, months = 6): { count: number; total: number; until: string } {
+  const until = addMonthsIso(today, months);
+  let count = 0, total = 0;
+  for (const r of rows) {
+    const amount = Number(r.total || 0);
+    let first: string | null = null;
+    if (r.status === "Draft" && r.scheduled_send_at) first = r.scheduled_send_at;
+    else if (r.repeat_monthly && (r.status === "Sent" || r.status === "Paid") && r.next_repeat_on) first = r.next_repeat_on;
+    if (!first) continue;
+    if (first < today) first = today; // overdue: goes out at the next run
+    if (first > until) continue;
+    count++; total += amount;
+    if (!r.repeat_monthly) continue;
+    const day = r.repeat_day ?? Number(first.slice(8, 10));
+    let d = nextMonthlyDate(first, day);
+    for (let i = 0; i < 240 && d <= until; i++) {
+      count++; total += amount;
+      d = nextMonthlyDate(d, day);
+    }
+  }
+  return { count, total: Math.round(total * 100) / 100, until };
+}

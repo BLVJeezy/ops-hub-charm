@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceMail } from "@/lib/invoice-send.functions";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
-import { hourLabel } from "@/lib/invoice-schedule";
+import { brusselsToday, hourLabel, plannedForecast } from "@/lib/invoice-schedule";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: Invoices,
@@ -134,7 +134,7 @@ function Invoices() {
 
   const counts = { All: rows.length, Draft: rows.filter(r => r.status === "Draft").length, Sent: rows.filter(r => r.status === "Sent").length, Paid: rows.filter(r => r.status === "Paid").length, Gepland: rows.filter(isPlanned).length };
 
-  const plannedTotal = rows.filter(isPlanned).reduce((a, r) => a + Number(r.total || 0), 0);
+  const forecast = plannedForecast(rows as never, brusselsToday(), 6);
 
   const statusColor: Record<string, string> = {
     Draft: "bg-muted text-muted-foreground",
@@ -156,7 +156,7 @@ function Invoices() {
       <div className="grid grid-cols-3 gap-2 mb-3">
         <Stat label="Paid" value={formatCurrency(totals.paid)} className="tone tone-emerald" ink="ink-emerald" />
         <Stat label="Outstanding" value={formatCurrency(totals.sent)} className={totals.sent > 0 ? "tone tone-amber" : ""} />
-        <Stat label="Scheduled" value={formatCurrency(plannedTotal)} sub={`${counts.Gepland} ${counts.Gepland === 1 ? "factuur" : "facturen"}`} className={counts.Gepland > 0 ? "tone tone-sky" : ""} />
+        <Stat label="Scheduled · 6 mnd" value={formatCurrency(forecast.total)} sub={`${forecast.count} ${forecast.count === 1 ? "factuur" : "facturen"} t/m ${formatDate(forecast.until)}`} className={forecast.count > 0 ? "tone tone-sky" : ""} />
       </div>
 
       <div className="space-y-2 mb-3">

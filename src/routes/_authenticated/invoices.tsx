@@ -134,6 +134,8 @@ function Invoices() {
 
   const counts = { All: rows.length, Draft: rows.filter(r => r.status === "Draft").length, Sent: rows.filter(r => r.status === "Sent").length, Paid: rows.filter(r => r.status === "Paid").length, Gepland: rows.filter(isPlanned).length };
 
+  const plannedTotal = rows.filter(isPlanned).reduce((a, r) => a + Number(r.total || 0), 0);
+
   const statusColor: Record<string, string> = {
     Draft: "bg-muted text-muted-foreground",
     Sent: "bg-amber-500/15 text-amber-400",
@@ -154,7 +156,7 @@ function Invoices() {
       <div className="grid grid-cols-3 gap-2 mb-3">
         <Stat label="Paid" value={formatCurrency(totals.paid)} className="tone tone-emerald" ink="ink-emerald" />
         <Stat label="Outstanding" value={formatCurrency(totals.sent)} className={totals.sent > 0 ? "tone tone-amber" : ""} />
-        <Stat label="Scheduled" value={String(counts.Gepland)} className={counts.Gepland > 0 ? "tone tone-sky" : ""} />
+        <Stat label="Scheduled" value={formatCurrency(plannedTotal)} sub={`${counts.Gepland} ${counts.Gepland === 1 ? "factuur" : "facturen"}`} className={counts.Gepland > 0 ? "tone tone-sky" : ""} />
       </div>
 
       <div className="space-y-2 mb-3">
@@ -282,11 +284,12 @@ function Invoices() {
   );
 }
 
-function Stat({ label, value, className = "", ink = "" }: { label: string; value: string; className?: string; ink?: string }) {
+function Stat({ label, value, sub, className = "", ink = "" }: { label: string; value: string; sub?: string; className?: string; ink?: string }) {
   return (
     <div className={`rounded-xl border bg-card px-3 py-2.5 ${className || "border-border"}`}>
       <div className="text-[11px] text-muted-foreground">{label}</div>
       <div className={`mt-0.5 text-lg font-bold tabular-nums ${ink}`}>{value}</div>
+      {sub && <div className="text-[11px] text-muted-foreground tabular-nums">{sub}</div>}
     </div>
   );
 }

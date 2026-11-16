@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBrain3D, facingYaw, project3, springStep } from "./brain3d";
+import { buildBrain3D, buildShape, facingYaw, orbitPos, project3, springStep } from "./brain3d";
 
 const input = [{ key: "riory" }, { key: "amano" }, { key: "dyna" }, { key: "tcsc", dim: true }];
 
@@ -40,5 +40,19 @@ describe("camera maths", () => {
     for (let i = 0; i < 300; i++) { [x, v] = springStep(x, v, 1, 1 / 120); max = Math.max(max, x); }
     expect(x).toBeCloseTo(1, 2);
     expect(max).toBeLessThanOrEqual(1.01);
+  });
+});
+
+describe("alternative looks", () => {
+  it("globe puts every client on the sphere", () => {
+    const g = buildShape("globe", input);
+    expect(g.neurons).toHaveLength(4);
+    for (const n of g.neurons) expect(Math.hypot(...n.pos)).toBeCloseTo(0.78 * 1.02, 2);
+  });
+  it("orbit gives every client its own ring, further out one by one, and keeps it on that ring", () => {
+    const o = buildShape("orbit", input);
+    const radii = o.neurons.map((n) => n.orbit!.r);
+    expect([...radii].sort((a, b) => a - b)).toEqual(radii);
+    expect(Math.hypot(...orbitPos(o.neurons[2].orbit!, 123))).toBeCloseTo(radii[2], 5);
   });
 });

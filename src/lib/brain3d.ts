@@ -33,6 +33,18 @@ function cerebellum(th: number, ph: number): P3 {
   return [x * 0.36 * f, y * 0.19 * f - 0.36, z * 0.25 * f - 0.5];
 }
 
+export type BrainMode = "brain" | "globe" | "orbit";
+/** A circular path around the core: radius, two tilts, where it starts and how fast it goes (radians per second). */
+export interface Orbit { r: number; tilt: number; node: number; phase: number; speed: number }
+
+/** Where something on an orbit is at time t (seconds). */
+export function orbitPos(o: Orbit, t: number): P3 {
+  const a = o.phase + o.speed * t;
+  const x = Math.cos(a) * o.r, z = Math.sin(a) * o.r;
+  const y = z * Math.sin(o.tilt), z2 = z * Math.cos(o.tilt);
+  return [x * Math.cos(o.node) + z2 * Math.sin(o.node), y, -x * Math.sin(o.node) + z2 * Math.cos(o.node)];
+}
+
 export interface Brain3D {
   /** xyz triples of the surface particles */
   points: Float32Array;
@@ -41,7 +53,7 @@ export interface Brain3D {
   tint: Float32Array;
   /** polylines that run over the surface like folds */
   folds: P3[][];
-  neurons: { key: string; dim: boolean; pos: P3; axon: P3[] }[];
+  neurons: { key: string; dim: boolean; pos: P3; axon: P3[]; orbit?: Orbit }[];
   core: P3;
 }
 
@@ -124,4 +136,77 @@ export function springStep(value: number, velocity: number, target: number, dt: 
   const k = ((Math.PI * 2) / response) ** 2, c = (4 * Math.PI * damping) / response;
   const v = velocity + (-k * (value - target) - c * velocity) * dt;
   return [value + v * dt, v];
+}
+
+function straight(a: P3, b: P3, n = 8): P3[] {
+  return Array.from({ length: n + 1 }, (_, i) => [a[0] + (b[0] - a[0]) * (i / n), a[1] + (b[1] - a[1]) * (i / n), a[2] + (b[2] - a[2]) * (i / n)] as P3);
+}
+
+function tintBy(points: Float32Array, neurons: { pos: P3; dim: boolean }[], reach: number) {
+  const count = points.length / 3;
+  const region = new Int16Array(count).fill(-1), tint = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    let best = Infinity, who = -1;
+    neurons.forEach((n, j) => {
+      if (n.dim) return;
+      const d = Math.hypot(points[i * 3] - n.pos[0], points[i * 3 + 1] - n.pos[1], points[i * 3 + 2] - n.pos[2]);
+      if (d < best) { best = d; who = j; }
+    });
+    region[i] = who;
+    tint[i] = who < 0 ? 0 : Math.max(0, 1 - best / reach);
+  }
+  return { region, tint };
+}
+
+/** Alternative look: a holographic globe. Clients are beacons on its surface, wired to the core. */
+export function buildGlobe3D(input: { key: string; dim?: boolean }[]): Brain3D {
+  const RAD = 0.78, core: P3 = [0, 0, 0];
+  const onSphere = (i: number, n: number, r = RAD): P3 => {
+    const y = 1 - (2 * (i + 0.5)) / n, s = Math.sqrt(1 - y * y), a = i * 2.399963;
+    return [Math.cos(a) * s * r, y * r, Math.sin(a) * s * r];
+  };
+  const pts: number[] = [];
+  for (let i = 0; i < 2600; i++) pts.push(...onSphere(i, 2600));
+  const folds: P3[][] = [];
+  for (let la = 1; la < 8; la++) { // parallels
+    const y = Math.cos((la / 8) * Math.PI) * RAD, r = Math.sin((la / 8) * Math.PI) * RAD;
+    folds.push(Array.from({ length: 49 }, (_, i) => [Math.cos((i / 48) * Math.PI * 2) * r, y, Math.sin((i / 48) * Math.PI * 2) * r] as P3));
+  }
+  for (let lo = 0; lo < 12; lo++) { // meridians
+    const a = (lo / 12) * Math.PI * 2;
+    folds.push(Array.from({ length: 33 }, (_, i) => { const t = (i / 32) * Math.PI; return [Math.cos(a) * Math.sin(t) * RAD, Math.cos(t) * RAD, Math.sin(a) * Math.sin(t) * RAD] as P3; }));
+  }
+  const ordered = [...input.filter((n) => !n.dim), ...input.filter((n) => n.dim)];
+  const neurons = ordered.map((n, i) => {
+    const pos = onSphere(i * 3 + 2, Math.max(8, ordered.length * 3 + 4), RAD * 1.02);
+    return { key: n.key, dim: !!n.dim, pos, axon: straight(core, pos) };
+  });
+  const points = new Float32Array(pts);
+  return { points, ...tintBy(points, neurons, 0.55), folds, neurons, core };
+}
+
+/** Alternative look: a small solar system. Solyn is the sun, every client a planet on its own orbit. */
+export function buildOrbit3D(input: { key: string; dim?: boolean }[]): Brain3D {
+  const rnd = seeded("orbit");
+  const core: P3 = [0, 0, 0];
+  const pts: number[] = [];
+  for (let i = 0; i < 1400; i++) { // stars, in a shell around everything
+    const y = 1 - 2 * rnd(), s = Math.sqrt(1 - y * y), a = rnd() * Math.PI * 2, r = 0.55 + rnd() * 0.5;
+    pts.push(Math.cos(a) * s * r, y * r * 0.7, Math.sin(a) * s * r);
+  }
+  const ordered = [...input.filter((n) => !n.dim), ...input.filter((n) => n.dim)];
+  const folds: P3[][] = [];
+  const neurons = ordered.map((n, i) => {
+    const r = seeded(n.key);
+    const orbit: Orbit = { r: 0.26 + (i / Math.max(1, ordered.length - 1)) * 0.66, tilt: (r() - 0.5) * 0.5, node: r() * Math.PI * 2, phase: r() * Math.PI * 2, speed: 0.34 / (1 + i * 0.45) };
+    folds.push(Array.from({ length: 73 }, (_, k) => orbitPos({ ...orbit, phase: (k / 72) * Math.PI * 2, speed: 0 }, 0)));
+    const pos = orbitPos(orbit, 0);
+    return { key: n.key, dim: !!n.dim, pos, axon: straight(core, pos, 2), orbit };
+  });
+  const points = new Float32Array(pts);
+  return { points, region: new Int16Array(points.length / 3).fill(-1), tint: new Float32Array(points.length / 3), folds, neurons, core };
+}
+
+export function buildShape(mode: BrainMode, input: { key: string; dim?: boolean }[]): Brain3D {
+  return mode === "globe" ? buildGlobe3D(input) : mode === "orbit" ? buildOrbit3D(input) : buildBrain3D(input);
 }

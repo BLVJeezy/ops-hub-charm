@@ -194,10 +194,9 @@ export type ForecastLine = { description?: string | null; qty?: number | null; u
 export type ForecastInvoice = PlannedInvoice & { line_items?: ForecastLine[] | null };
 export type ServiceMonth = { month: string; seo: number; website: number; social: number; oneoff: number; total: number };
 
-/** Which service an invoice line belongs to, from its description. Anything unrecognised counts as website. */
+/** Which service an invoice line belongs to, from its description. Website development and anything unrecognised count as website. */
 export function lineService(description: string): ServiceKey {
   const d = description.toLowerCase();
-  if (/ontwikkeling|development|opstart|setup|eenmalig/.test(d)) return "oneoff";
   if (/\bseo\b|zoekmachine/.test(d)) return "seo";
   if (/social|facebook|instagram|tiktok|video/.test(d)) return "social";
   return "website";

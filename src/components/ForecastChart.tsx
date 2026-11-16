@@ -6,7 +6,6 @@ export const SERVICE_COLS = [
   { key: "seo", label: "SEO", color: "#38bdf8" },
   { key: "website", label: "Websites", color: "#d6b25e" },
   { key: "social", label: "Social media", color: "#a78bfa" },
-  { key: "oneoff", label: "Eenmalig", color: "#9ca3af" },
 ] as const;
 
 export const monthLabel = (m: string) => new Date(m + "-15").toLocaleDateString("nl-BE", { month: "short" });

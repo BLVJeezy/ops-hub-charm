@@ -45,7 +45,7 @@ describe("forecastByService", () => {
   it("classifies lines", () => {
     expect(lineService("SEO")).toBe("seo");
     expect(lineService("Social media (Facebook/Instagram) – maand 2")).toBe("social");
-    expect(lineService("Ontwikkeling website en platform – termijn 1")).toBe("oneoff");
+    expect(lineService("Ontwikkeling website en platform – termijn 1")).toBe("website");
     expect(lineService("Onderhoud website – maand 2")).toBe("website");
   });
   it("spreads drafts and repeats over the months, per service", () => {
@@ -58,7 +58,7 @@ describe("forecastByService", () => {
     expect(f.map((m) => m.month)).toEqual(["2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04", "2027-05"]);
     expect(f[0]).toMatchObject({ seo: 0, social: 150, total: 150 });
     expect(f[1]).toMatchObject({ seo: 500, social: 150, total: 650 });
-    expect(f[2]).toMatchObject({ seo: 500, website: 85, social: 450, oneoff: 533.33, total: 1568.33 });
+    expect(f[2]).toMatchObject({ seo: 500, website: 618.33, social: 450, oneoff: 0, total: 1568.33 });
     expect(f[6]).toMatchObject({ seo: 500, social: 150 });
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { buildBrain3D, facingYaw, project3, springStep, type P3 } from "@/lib/brain3d";
+import { buildShape, facingYaw, orbitPos, project3, springStep, type BrainMode, type P3 } from "@/lib/brain3d";
 import { isPrivate } from "@/lib/privacy";
 
 export type BrainNeuron = { key: string; label: string; value: string; color: string; weight: number; dim?: boolean; alert?: boolean; badge?: number };
@@ -15,12 +15,12 @@ const BASE: [number, number, number] = [110, 160, 255];
  * A living 3D brain: thousands of particles on a procedural cortex, folds, and one glowing neuron per client,
  * wired to the core. Drag to turn it (it keeps your momentum), pinch to zoom, tap a neuron to select it.
  */
-export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect }: {
-  neurons: BrainNeuron[]; coreLabel: string; coreValue: string; selected: string | null; onSelect: (key: string | null) => void;
+export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect, mode = "brain" }: {
+  mode?: BrainMode; neurons: BrainNeuron[]; coreLabel: string; coreValue: string; selected: string | null; onSelect: (key: string | null) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const shape = useMemo(() => buildBrain3D(neurons.map((n) => ({ key: n.key, dim: n.dim }))), [neurons.map((n) => n.key + (n.dim ? "d" : "")).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shape = useMemo(() => buildShape(mode, neurons.map((n) => ({ key: n.key, dim: n.dim }))), [mode, neurons.map((n) => n.key + (n.dim ? "d" : "")).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
   const byKey = useMemo(() => Object.fromEntries(neurons.map((n) => [n.key, n])), [neurons]);
 
   // particle colours: every region of the cortex takes the colour of the client that lives there
@@ -34,8 +34,10 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect 
     return out;
   }, [shape, byKey]);
 
-  const live = useRef({ shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect });
-  live.current = { shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect };
+  const live = useRef({ shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect, mode });
+  live.current = { shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect, mode };
+  // a new look grows in again
+  useEffect(() => { view.current.born = performance.now(); view.current.pitch = mode === "orbit" ? 0.62 : 0.22; }, [mode]); // the solar system is seen from above
 
   const view = useRef({ yaw: 1.1, vyaw: 0, pitch: 0.22, vpitch: 0, zoom: 1, vzoom: 0, zoomTarget: 1, hover: null as string | null, press: null as string | null, born: 0 });
 
@@ -128,10 +130,10 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect 
 
       if (!dragging) {
         if (sel) { // turn the selected neuron to the front, the short way round
-          const target = facingYaw(sel.pos);
+          const target = facingYaw(sel.orbit ? orbitPos(sel.orbit, t * 0.25) : sel.pos);
           const diff = Math.atan2(Math.sin(target - v.yaw), Math.cos(target - v.yaw));
           [v.yaw, v.vyaw] = springStep(v.yaw, v.vyaw, v.yaw + diff, dt, 1, 0.7);
-          [v.pitch, v.vpitch] = springStep(v.pitch, v.vpitch, 0.18, dt, 1, 0.7);
+          [v.pitch, v.vpitch] = springStep(v.pitch, v.vpitch, L.mode === "orbit" ? 0.62 : 0.18, dt, 1, 0.7);
         } else {
           const idle = calm ? 0 : 0.14; // a slow, constant turn; a flick decays back into it
           v.vyaw += (idle - v.vyaw) * Math.min(1, dt * 1.6);
@@ -174,10 +176,11 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect 
         if (fi > L.shape.folds.length * ease) return;
         const a0 = P(line[0]);
         const near = (a0.z + 1) / 2;
-        ctx.strokeStyle = `rgba(120,170,255,${(0.06 + 0.42 * near * near) * dimAll})`;
+        ctx.strokeStyle = `rgba(120,170,255,${(L.mode === "brain" ? 0.06 + 0.42 * near * near : 0.1 + 0.22 * near) * dimAll})`;
         ctx.lineWidth = (0.5 + near) * (R / 320);
         ctx.beginPath(); ctx.moveTo(a0.x, a0.y);
         for (let s = 1; s < line.length; s++) { const q = P(line[s]); ctx.lineTo(q.x, q.y); }
+        if (L.mode !== "brain") ctx.lineWidth = Math.max(0.6, R / 520);
         ctx.stroke();
       });
 
@@ -190,7 +193,7 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect 
         const [r, g, b] = hexRgb(info.color);
         const focus = !sel || sel.key === sn.key;
         const a = (sn.dim ? 0.45 : 1) * (focus ? 1 : 0.25);
-        const path = sn.axon.map(P);
+        const path = (sn.orbit ? [L.shape.core, orbitPos(sn.orbit, t * (sel ? 0.25 : 1))] : sn.axon).map(P);
         const upto = Math.max(1, Math.floor(path.length * Math.min(1, ease * 1.4)));
         ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
         for (let s = 1; s < upto; s++) ctx.lineTo(path[s].x, path[s].y);

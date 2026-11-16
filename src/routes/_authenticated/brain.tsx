@@ -4,6 +4,7 @@ import { ArrowRight, BrainCircuit, Check, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
+import type { BrainMode } from "@/lib/brain3d";
 import { ForecastChart, ForecastLegend } from "@/components/ForecastChart";
 import { clientMRR, type FeeClient } from "@/lib/fees";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -26,6 +27,7 @@ type Task = { id: string; client_id: string | null; title: string; assignee: "me
 type Video = { id: string; client_id: string; month: string; slot: number; status: "verstuurd" | "geplaatst"; sent_at: string | null; posted_at: string | null };
 type Data = { clients: ClientRow[]; sites: SiteRow[]; invoices: InvoiceRow[]; records: RecordRow[]; tasks: Task[]; videos: Video[] };
 
+const MODES: [BrainMode, string][] = [["brain", "Brein"], ["globe", "Bol"], ["orbit", "Stelsel"]];
 const FALLBACK = ["#38bdf8", "#f472b6", "#34d399", "#c084fc", "#fbbf24", "#fb7185", "#2dd4bf"];
 const card = "rounded-2xl border border-sky-300/10 bg-[rgba(10,14,30,0.72)] backdrop-blur-xl p-4";
 const isPlanned = (v: InvoiceRow) => (v.status === "Draft" && !!v.scheduled_send_at) || (!!v.repeat_monthly && !!v.next_repeat_on);
@@ -39,6 +41,10 @@ const ago = (iso: string) => {
 function BrainPage() {
   const [data, setData] = useState<Data | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [mode, setMode] = useState<BrainMode>(() => {
+    try { const v = localStorage.getItem("brain-mode"); return v === "globe" || v === "orbit" ? v : "brain"; } catch { return "brain"; }
+  });
+  const pickMode = (k: BrainMode) => { setMode(k); try { localStorage.setItem("brain-mode", k); } catch { /* storage unavailable */ } };
   const today = brusselsToday();
   const month = today.slice(0, 7) + "-01";
 
@@ -146,8 +152,14 @@ function BrainPage() {
           {/* centre: the brain */}
           <div className="space-y-3 lg:col-start-2 lg:row-start-1">
             <div className="relative h-[52vh] min-h-[340px] lg:h-[min(64vh,680px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.25), rgba(2,3,10,0.6))" }}>
-              <BrainCanvas neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} />
-              <div className="pointer-events-none absolute left-4 top-3 text-[11px] text-white/40">Sleep om te draaien · tik op een neuron</div>
+              <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} />
+              <div className="pointer-events-none absolute left-4 top-3.5 text-[11px] text-white/40 max-sm:hidden">Sleep om te draaien · tik op een klant</div>
+              {/* switch the look; the data stays the same */}
+              <div className="absolute right-3 top-3 inline-flex rounded-full border border-white/10 bg-[rgba(10,14,30,0.7)] backdrop-blur-xl p-0.5 text-xs" role="group" aria-label="Weergave">
+                {MODES.map(([k, label]) => (
+                  <button key={k} type="button" onClick={() => pickMode(k)} aria-pressed={mode === k} className={`press px-3 h-8 rounded-full transition-colors ${mode === k ? "bg-white text-black font-semibold" : "text-white/65 hover:text-white"}`}>{label}</button>
+                ))}
+              </div>
             </div>
             {/* every client one tap away */}
             <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Kies een klant">

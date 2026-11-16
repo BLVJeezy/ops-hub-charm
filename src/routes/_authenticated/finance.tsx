@@ -325,7 +325,7 @@ function ServiceSplit({ clients, total }: { clients: FeeClient[]; total: number 
 
 function ForecastTable({ invoices }: { invoices: unknown[] }) {
   const rows = forecastByService(invoices as ForecastInvoice[], brusselsToday(), 6);
-  const sum = (k: "seo" | "website" | "social" | "oneoff" | "total") => rows.reduce((a, r) => a + r[k], 0);
+  const sum = (k: "seo" | "website" | "social" | "total") => rows.reduce((a, r) => a + r[k], 0);
   const cols = SERVICE_COLS;
   const cell = (n: number) => (n ? formatCurrency(n) : <span className="text-muted-foreground/50">—</span>);
   return (

@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import type { BrainNeuron } from "@/components/BrainCanvas";
+
+/** A medal on the ring: a client (its logo) or a page of the app (its icon). */
+export type PerkItem = BrainNeuron & { icon?: LucideIcon };
 
 /** Logo for a client: a file in /public/logos named after the client id ("core" for Solyn). */
 const logoUrl = (key: string) => `/logos/${key}.png`;
 const initials = (name: string) => name.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
-function Emblem({ id, label, color, size, dim }: { id: string; label: string; color: string; size: number; dim?: boolean }) {
+function Emblem({ id, label, color, size, dim, icon: Icon }: { id: string; label: string; color: string; size: number; dim?: boolean; icon?: LucideIcon }) {
   const [broken, setBroken] = useState(false);
   return (
     <span className="relative grid place-items-center rounded-full" style={{
@@ -16,7 +20,9 @@ function Emblem({ id, label, color, size, dim }: { id: string; label: string; co
       opacity: dim ? 0.6 : 1,
     }}>
       <span className="grid place-items-center rounded-full overflow-hidden" style={{ width: size - 8, height: size - 8, background: "radial-gradient(circle at 35% 28%, #1b2340, #05070f 75%)", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.8)" }}>
-        {broken ? (
+        {Icon ? (
+          <Icon style={{ width: size * 0.42, height: size * 0.42, color, filter: `drop-shadow(0 0 10px ${color}88)` }} strokeWidth={1.6} />
+        ) : broken ? (
           <span className="font-semibold" style={{ color, fontSize: size * 0.3, letterSpacing: "-0.02em", textShadow: `0 0 14px ${color}88` }}>{initials(label)}</span>
         ) : (
           <img src={logoUrl(id)} alt="" draggable={false} onError={() => setBroken(true)} className="w-full h-full object-cover" />
@@ -28,7 +34,7 @@ function Emblem({ id, label, color, size, dim }: { id: string; label: string; co
 
 /** Solyn in the middle, every client evenly spread on one circle, each tied to the centre with a line. */
 export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: {
-  neurons: BrainNeuron[]; coreLabel: string; coreValue: string; selected: string | null; onSelect: (key: string | null) => void;
+  neurons: PerkItem[]; coreLabel: string; coreValue: string; selected: string | null; onSelect: (key: string | null) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -87,7 +93,7 @@ export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: 
                 onClick={(e) => { e.stopPropagation(); onSelect(on ? null : p.key); }}
                 className="perk absolute rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white"
                 style={{ left: q.x, top: q.y, opacity: off ? 0.4 : 1, transform: `translate(-50%,-50%) scale(${on ? 1.12 : 1})` }}>
-                <Emblem id={p.key} label={p.label} color={p.color} size={perk} dim={p.dim} />
+                <Emblem id={p.key} label={p.label} color={p.color} size={perk} dim={p.dim} icon={p.icon} />
                 {p.alert && <span className="absolute right-0 top-0 w-3.5 h-3.5 rounded-full bg-red-500 ring-2 ring-[#05070f]" />}
                 {p.badge ? <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-white text-black text-[11px] font-semibold grid place-items-center">{p.badge}</span> : null}
                 <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center pointer-events-none" style={{ top: perk + 6 }}>

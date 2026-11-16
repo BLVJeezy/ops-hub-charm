@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BrainCircuit, Check, ChevronLeft, ChevronRight, GripVertical, LayoutGrid, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
+import { Activity, ArrowRight, BookOpen, BrainCircuit, Check, FileText, Film, GitBranch, LayoutDashboard, TrendingUp, Users, Wallet, ChevronLeft, ChevronRight, GripVertical, LayoutGrid, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
-import { PerkRing } from "@/components/PerkRing";
+import { PerkRing, type PerkItem } from "@/components/PerkRing";
+import { ClientProfileDialog, type ProfileClient } from "@/components/ClientProfileDialog";
 import type { BrainMode } from "@/lib/brain3d";
 
 type View = BrainMode | "perks";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/brain")({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
-type ClientRow = FeeClient & { id: string; name: string; status: string; pipeline_stage?: string | null; social_videos_per_month?: number | null };
+type ClientRow = ProfileClient;
 type SiteRow = { id: string; client_id: string | null; name: string; last_status: string | null };
 type InvoiceRow = ForecastInvoice & { id: string; client: string | null; client_name: string | null; invoice_number: number; date: string; sent_at: string | null; updated_at: string };
 type RecordRow = { id: string; site_id: string; kind: string; title: string | null; customer_name: string | null; source_created_at: string | null };
@@ -48,6 +49,11 @@ function BrainPage() {
   const [mode, setMode] = useState<View>(() => {
     try { const v = localStorage.getItem("brain-mode"); return v === "globe" || v === "brain" || v === "perks" ? v : "orbit"; } catch { return "orbit"; }
   });
+  // what stands on the ring: the clients, or the pages of the Hub
+  const [ring, setRing] = useState<"clients" | "pages">(() => { try { return localStorage.getItem("brain-ring") === "pages" ? "pages" : "clients"; } catch { return "clients"; } });
+  const pickRing = (k: "clients" | "pages") => { setRing(k); try { localStorage.setItem("brain-ring", k); } catch { /* storage unavailable */ } };
+  const [profile, setProfile] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [layout, setLayout] = useState<WidgetState[]>(readLayout);
   const [editing, setEditing] = useState(false);
   const [dragId, setDragId] = useState<WidgetId | null>(null);
@@ -56,7 +62,7 @@ function BrainPage() {
   const swap = (a: WidgetId, b: WidgetId) => { const next = [...layout]; const i = next.findIndex((w) => w.id === a), j = next.findIndex((w) => w.id === b); if (i < 0 || j < 0) return; next.splice(j, 0, next.splice(i, 1)[0]); saveLayout(next); };
   const move = (id: WidgetId, d: -1 | 1) => { const vis = layout.filter((w) => !w.hidden); const i = vis.findIndex((w) => w.id === id), o = vis[i + d]; if (o) swap(id, o.id); };
   const resize = (id: WidgetId, d: -1 | 1) => { const w = layout.find((x) => x.id === id)!; const s = SPANS[Math.max(0, Math.min(SPANS.length - 1, SPANS.indexOf(w.span) + d))]; patch(id, { span: s }); };
-  const pickMode = (k: View) => { setMode(k); try { localStorage.setItem("brain-mode", k); } catch { /* storage unavailable */ } };
+  const pickMode = (k: View) => { setMode(k); setRing("clients"); try { localStorage.setItem("brain-mode", k); } catch { /* storage unavailable */ } };
   const today = brusselsToday();
   const month = today.slice(0, 7) + "-01";
 
@@ -117,6 +123,22 @@ function BrainPage() {
   const forecastTotal = forecast.reduce((a, r) => a + r.total, 0);
   const upcoming = invoices.filter(isPlanned).map((v) => ({ v, at: (v.status === "Draft" ? v.scheduled_send_at : v.next_repeat_on) as string })).filter((x) => !!x.at).sort((a, b) => a.at.localeCompare(b.at));
   const services = serviceMRR(sel ? [sel] : m.active);
+  // a tap on a client opens its profile; closing it shows everyone again
+  const openClient = (key: string | null) => { setSelected(key); setProfile(key); };
+  const prof = profile ? data.clients.find((c) => c.id === profile) ?? null : null;
+  const profVideos = prof ? data.videos.filter((v) => v.client_id === prof.id && v.month === month) : [];
+  const PAGE = (to: string, label: string, icon: PerkItem["icon"], color: string, value: string): PerkItem => ({ key: to, label, color, weight: 1, dim: false, value, icon });
+  const pages: PerkItem[] = [
+    PAGE("/dashboard", "Dashboard", LayoutDashboard, "#5EC8FF", "overzicht"),
+    PAGE("/pipeline", "Pipeline", GitBranch, "#C08BFF", `${m.prospects.length} prospects`),
+    PAGE("/clients", "Clients", Users, "#F97316", `${m.active.length} actief`),
+    PAGE("/invoices", "Invoices", FileText, "#D8B45A", `${data.invoices.filter((v) => v.status === "Sent").length} open`),
+    PAGE("/finance", "Finance", TrendingUp, "#3DDC84", `${formatCurrency(m.mrr)}/mnd`),
+    PAGE("/boekhouding", "Boekhouding", BookOpen, "#19E6C4", "boeken"),
+    PAGE("/expenses", "Expenses", Wallet, "#FF7EB6", "kosten"),
+    PAGE("/status", "Status", Activity, up < data.sites.length ? "#FF4D4D" : "#7CF5D0", `${up}/${data.sites.length} online`),
+    PAGE("/briefing", "Briefing", Film, "#A9B4FF", "films"),
+  ];
   const planetUrls: Record<string, string> = Object.fromEntries([...m.neurons.map((n) => [n.key, planetUrl(n.dim ? "prospect" : n.key)] as const), ["core", planetUrl("sun")]]);
   const openTasks = tasks.filter((t) => !t.done_at).sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
 
@@ -144,18 +166,18 @@ function BrainPage() {
             <h1 className="text-xl font-semibold tracking-tight">Brain</h1>
             <span className="inline-flex items-center gap-1 text-[11px] text-sky-300"><span className="w-1.5 h-1.5 rounded-full bg-sky-300" />live</span>
           </div>
-          <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+          <dl className="hidden lg:flex flex-wrap gap-x-6 gap-y-1 text-xs">
             <Stat label="Per maand" value={formatCurrency(sel ? clientMRR(sel) : m.mrr)} />
             {!sel && <Stat label="Klanten" value={`${m.active.length} + ${m.prospects.length} prospects`} />}
             <Stat label="Open taken" value={String(openTasks.length)} />
             <Stat label="Openstaand" value={formatCurrency(openTotal)} warn={openTotal > 0} />
             {!sel && <Stat label="Sites online" value={`${up}/${data.sites.length}`} warn={up < data.sites.length} />}
           </dl>
-          <button onClick={() => setEditing(!editing)} aria-pressed={editing} className={`press ml-auto h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-sm border transition-colors ${editing ? "bg-white text-black border-white font-semibold" : "border-white/15 text-white/75 hover:text-white"}`}>
+          <button onClick={() => setEditing(!editing)} aria-pressed={editing} className={`press ml-auto h-9 px-3 rounded-full hidden lg:inline-flex items-center gap-1.5 text-sm border transition-colors ${editing ? "bg-white text-black border-white font-semibold" : "border-white/15 text-white/75 hover:text-white"}`}>
             <LayoutGrid className="w-4 h-4" />{editing ? "Klaar" : "Indelen"}
           </button>
           {sel && (
-            <div className="flex items-center gap-2 pop-in">
+            <div className="hidden lg:flex items-center gap-2 pop-in">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 pl-3 pr-1 h-9 text-sm font-medium">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.colorOf[sel.id] }} />{sel.name}
                 <button onClick={() => setSelected(null)} aria-label="Toon alle klanten" className="press w-7 h-7 rounded-full grid place-items-center hover:bg-white/10"><X className="w-3.5 h-3.5" /></button>
@@ -183,20 +205,27 @@ function BrainPage() {
               onDragStart={() => setDragId(w.id)} onDragOver={() => { if (dragId && dragId !== w.id) swap(dragId, w.id); }} onDragEnd={() => setDragId(null)} dragging={dragId === w.id}>
               {w.id === "brain" && (
                 <div className="space-y-3">
-                  <div className="relative h-[52vh] min-h-[340px] lg:h-[min(74vh,900px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.22), rgba(2,3,10,0.6))" }}>
-                    {mode === "perks"
-                      ? <PerkRing neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} />
-                      : <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} images={planetUrls} />}
-                    <div className="pointer-events-none absolute left-4 top-3.5 text-[11px] text-white/40 max-sm:hidden">{mode === "perks" ? "Tik op een klant" : "Sleep om te draaien · tik op een klant"}</div>
+                  <div className="relative h-[calc(100dvh-14rem)] min-h-[380px] lg:h-[min(74vh,900px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.22), rgba(2,3,10,0.6))" }}>
+                    {ring === "pages"
+                      ? <PerkRing neurons={pages} coreLabel="Solyn" coreValue="Hub OS" selected={null} onSelect={(k) => { if (k) void navigate({ to: k }); }} />
+                      : mode === "perks"
+                        ? <PerkRing neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} />
+                        : <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} images={planetUrls} />}
+                    {/* clients or pages on the ring */}
+                    <div className="absolute left-3 top-3 max-lg:top-auto max-lg:bottom-3 max-lg:left-1/2 max-lg:-translate-x-1/2 inline-flex rounded-full border border-white/10 bg-[rgba(10,14,30,0.7)] backdrop-blur-xl p-0.5 text-xs" role="group" aria-label="Wat staat er op de ring">
+                      {([["clients", "Klanten"], ["pages", "Pagina's"]] as const).map(([k, label]) => (
+                        <button key={k} type="button" onClick={() => pickRing(k)} aria-pressed={ring === k} className={`press px-3 h-8 rounded-full transition-colors ${ring === k ? "bg-white text-black font-semibold" : "text-white/65 hover:text-white"}`}>{label}</button>
+                      ))}
+                    </div>
               {/* switch the look; the data stays the same */}
               <div className="absolute right-3 top-3 inline-flex rounded-full border border-white/10 bg-[rgba(10,14,30,0.7)] backdrop-blur-xl p-0.5 text-xs" role="group" aria-label="Weergave">
                 {MODES.map(([k, label]) => (
-                  <button key={k} type="button" onClick={() => pickMode(k)} aria-pressed={mode === k} className={`press px-3 h-8 rounded-full transition-colors ${mode === k ? "bg-white text-black font-semibold" : "text-white/65 hover:text-white"}`}>{label}</button>
+                  <button key={k} type="button" onClick={() => pickMode(k)} aria-pressed={mode === k} className={`press px-3 h-8 rounded-full transition-colors ${mode === k && ring === "clients" ? "bg-white text-black font-semibold" : "text-white/65 hover:text-white"}`}>{label}</button>
                 ))}
               </div>
                   </div>
             {/* every client one tap away */}
-                  <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Kies een klant">
+                  <div className="hidden lg:flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Kies een klant">
                     {m.neurons.map((n) => (
                       <button key={n.key} onClick={() => setSelected(selected === n.key ? null : n.key)} aria-pressed={selected === n.key}
                         className={`press shrink-0 inline-flex items-center gap-2 rounded-full h-9 px-3 text-xs border transition-colors ${selected === n.key ? "bg-white text-black border-white font-semibold" : "border-white/10 bg-white/5 text-white/80"} ${n.dim ? "opacity-70" : ""}`}>
@@ -296,6 +325,12 @@ function BrainPage() {
           ))}
         </div>
       </div>
+      <ClientProfileDialog client={prof} color={prof ? m.colorOf[prof.id] ?? "#8A93A6" : "#8A93A6"}
+        sites={prof ? data.sites.filter((s) => s.client_id === prof.id) : []}
+        invoices={prof ? data.invoices.filter((v) => v.client === prof.id) : []}
+        tasks={prof ? data.tasks.filter((t) => t.client_id === prof.id) : []}
+        videos={prof && Number(prof.social_videos_per_month) > 0 ? { sent: profVideos.length, posted: profVideos.filter((v) => v.status === "geplaatst").length } : null}
+        onClose={() => { setProfile(null); setSelected(null); }} />
     </div>
   );
 }
@@ -341,7 +376,7 @@ function WidgetFrame({ w, editing, tall, dragging, children, onMove, onSize, onR
   void tall;
   return (
     <div
-      className={`relative min-w-0 lg:[grid-column:span_var(--span)] lg:[grid-row-end:span_var(--rows)] ${editing ? "rounded-3xl ring-1 ring-sky-300/40 ring-offset-4 ring-offset-[#02030a]" : ""} ${dragging ? "opacity-50" : ""} transition-opacity`}
+      className={`relative min-w-0 ${w.id === "brain" ? "" : "max-lg:hidden"} lg:[grid-column:span_var(--span)] lg:[grid-row-end:span_var(--rows)] ${editing ? "rounded-3xl ring-1 ring-sky-300/40 ring-offset-4 ring-offset-[#02030a]" : ""} ${dragging ? "opacity-50" : ""} transition-opacity`}
       style={{ "--span": w.span, "--rows": rows } as React.CSSProperties}
       onDragOver={editing ? (e) => { e.preventDefault(); onDragOver(); } : undefined}
     >

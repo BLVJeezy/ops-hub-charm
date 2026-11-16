@@ -51,20 +51,24 @@ export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: 
   const { w, h } = size;
   const n = Math.max(1, neurons.length);
   // the label hangs under each medal, so the circle sits a little above the middle
-  const cx = w / 2, cy = h / 2 - 18;
+  const cx = w / 2, cy = h / 2 - 18 + (w < 520 ? 30 : 0);   // on a phone the view switch sits above the ring
   const small = w < 520;
-  const R = Math.max(60, Math.min((w / 2 - (small ? 30 : 56)) / 1.18, (h / 2 - 34) / 1.18));
+  // on a narrow screen the circle becomes an upright oval, so the medals can be big enough to tap
+  const Rx = Math.max(60, Math.min((w / 2 - (small ? 44 : 56)) / (small ? 1 : 1.18), (h / 2 - 34) / 1.18));
+  const Ry = small ? Math.max(Rx, Math.min(Rx * 1.55, h / 2 - 112)) : Rx;
+  const R = Math.min(Rx, Ry);
   // medals as large as the circle allows without touching each other
-  const perk = Math.round(Math.max(44, Math.min(R * 0.36, (2 * Math.PI * R) / n * 0.62, 132)));
-  const core = Math.round(Math.max(72, Math.min(R * 0.62, 210)));
-  const at = (i: number) => { const a = -Math.PI / 2 + (i / n) * Math.PI * 2; return { x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R, a }; };
+  const round = Math.PI * (3 * (Rx + Ry) - Math.sqrt((3 * Rx + Ry) * (Rx + 3 * Ry)));   // length of the oval
+  const perk = Math.round(Math.max(44, Math.min(small ? 76 : R * 0.36, (round / n) * 0.62, 132)));
+  const core = Math.round(Math.max(72, Math.min(R * (small ? 0.74 : 0.62), 210)));
+  const at = (i: number) => { const a = -Math.PI / 2 + (i / n) * Math.PI * 2; return { x: cx + Math.cos(a) * Rx, y: cy + Math.sin(a) * Ry, a: Math.atan2(Math.sin(a) * Ry, Math.cos(a) * Rx) }; };
 
   return (
     <div ref={box} className="absolute inset-0 select-none" onClick={() => onSelect(null)}>
       {w > 0 && (
         <>
           <svg className="absolute inset-0 w-full h-full" aria-hidden>
-            <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(160,190,255,0.10)" strokeWidth={1} strokeDasharray="2 7" />
+            <ellipse cx={cx} cy={cy} rx={Rx} ry={Ry} fill="none" stroke="rgba(160,190,255,0.10)" strokeWidth={1} strokeDasharray="2 7" />
             {neurons.map((p, i) => {
               const q = at(i), on = selected === p.key, off = selected && !on;
               const x1 = cx + Math.cos(q.a) * (core / 2 + 4), y1 = cy + Math.sin(q.a) * (core / 2 + 4);
@@ -80,7 +84,7 @@ export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: 
 
           <div className="absolute -translate-x-1/2 -translate-y-1/2 text-center" style={{ left: cx, top: cy }}>
             <Emblem id="core" label={coreLabel} color="#D8B45A" size={core} />
-            <div className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap" style={{ top: core + 6 }}>
+            <div className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2 bg-[rgba(5,7,15,0.72)]" style={{ top: core + 4 }}>
               <div className="text-sm font-semibold text-white">{coreLabel}</div>
               <div className="text-xs text-white/60 money">{coreValue}</div>
             </div>

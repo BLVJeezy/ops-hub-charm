@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { TaskAgenda } from "@/components/TaskAgenda";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
@@ -107,6 +108,9 @@ function Dashboard() {
         </div>
         <Button onClick={() => setQuickAdd(true)} title="Nieuwe prospect" className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-3 md:px-4"><Plus className="w-4 h-4" /><span className="hidden md:inline">Nieuwe prospect</span></Button>
       </div>
+
+      {/* the tasks first: late, today, this week */}
+      <TaskAgenda className="rounded-2xl border border-border bg-card p-4 md:order-none" />
 
       {/* status strip */}
       <Link to="/briefing" className={`tone ${tone} block rounded-2xl border p-4 transition hover:brightness-110`}>

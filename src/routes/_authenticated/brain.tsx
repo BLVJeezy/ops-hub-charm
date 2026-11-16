@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceMail } from "@/lib/invoice-send.functions";
 import { ownerAlerts } from "@/lib/alerts";
+import { TaskAgenda } from "@/components/TaskAgenda";
+import { RecurringTasks } from "@/components/RecurringTasks";
 import { supabase } from "@/integrations/supabase/client";
 import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
 import { PerkRing, type PerkItem } from "@/components/PerkRing";
@@ -72,6 +74,7 @@ function BrainPage() {
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
+    await db.rpc("generate_recurring_tasks").then(() => null, () => null);   // plan the fixed tasks ahead
     const [c, s, i, r, t, v] = await Promise.all([
       supabase.from("clients").select("*"),
       db.from("monitored_sites").select("id,client_id,name,last_status").eq("enabled", true),
@@ -227,7 +230,7 @@ function BrainPage() {
               onDragStart={() => setDragId(w.id)} onDragOver={() => { if (dragId && dragId !== w.id) swap(dragId, w.id); }} onDragEnd={() => setDragId(null)} dragging={dragId === w.id}>
               {w.id === "brain" && (
                 <div className="space-y-3">
-                  <div className="relative h-[calc(100dvh-14rem)] min-h-[380px] lg:h-[min(74vh,900px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.22), rgba(2,3,10,0.6))" }}>
+                  <div className="relative h-[min(62dvh,128vw)] min-h-[380px] lg:h-[min(74vh,900px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.22), rgba(2,3,10,0.6))" }}>
                     {ring === "pages"
                       ? <PerkRing neurons={pages} coreLabel="Solyn" coreValue="Hub OS" selected={null} onSelect={(k) => { if (k) void navigate({ to: k }); }} />
                       : mode === "perks"
@@ -347,6 +350,8 @@ function BrainPage() {
           ))}
         </div>
       </div>
+      {/* on a phone: the tasks, right under the Brain */}
+      <TaskAgenda className="lg:hidden mt-3 rounded-3xl border border-white/10 bg-white/[0.04] p-4 text-white" onChange={load} />
       <ClientProfileDialog client={prof} color={prof ? m.colorOf[prof.id] ?? "#8A93A6" : "#8A93A6"}
         sites={prof ? data.sites.filter((s) => s.client_id === prof.id) : []}
         invoices={prof ? data.invoices.filter((v) => v.client === prof.id) : []}
@@ -356,6 +361,7 @@ function BrainPage() {
         {prof && (
           <div className="space-y-3">
             <Tasks tasks={data.tasks.filter((t) => t.client_id === prof.id)} open={data.tasks.filter((t) => t.client_id === prof.id && !t.done_at)} clients={[prof]} colorOf={m.colorOf} nameOf={m.nameOf} selected={prof.id} today={today} onChange={load} />
+            <RecurringTasks clientId={prof.id} onChange={load} />
             {Number(prof.social_videos_per_month) > 0 && <Videos clients={[prof]} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />}
           </div>
         )}

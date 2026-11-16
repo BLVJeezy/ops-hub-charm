@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AgreementsTab } from "@/components/AgreementsTab";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Download, Landmark, Link2, Lock, LockOpen, Plus, RefreshCw, Scale, Trash2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
@@ -94,13 +95,14 @@ function Bookkeeping() {
       <PeriodPicker P={P} kind={kind} setKind={setKind} setAnchor={setAnchor} />
 
       <Tabs defaultValue="overzicht">
-        <TabsList className="w-full grid grid-cols-6 [&>button]:px-1 [&>button]:text-[11px] md:[&>button]:text-xs">
+        <TabsList className="w-full grid grid-cols-7 [&>button]:px-1 [&>button]:text-[11px] md:[&>button]:text-xs">
           <TabsTrigger value="overzicht" className="text-xs">Overzicht</TabsTrigger>
           <TabsTrigger value="bank" className="text-xs">Bank</TabsTrigger>
           <TabsTrigger value="dagboek" className="text-xs">Dagboek</TabsTrigger>
           <TabsTrigger value="rekeningen" className="text-xs">Rekeningen</TabsTrigger>
           <TabsTrigger value="periodes" className="text-xs">Periodes</TabsTrigger>
           <TabsTrigger value="export" className="text-xs">Export</TabsTrigger>
+          <TabsTrigger value="contracten" className="text-xs">Contracten</TabsTrigger>
         </TabsList>
         <TabsContent value="overzicht"><Overview P={P} accounts={accounts} entries={entries} lines={lines} /></TabsContent>
         <TabsContent value="bank"><BankTab P={P} accounts={accounts} onChange={load} /></TabsContent>
@@ -108,6 +110,7 @@ function Bookkeeping() {
         <TabsContent value="rekeningen"><Accounts P={P} accounts={accounts} entries={entries} lines={lines} onChange={load} /></TabsContent>
         <TabsContent value="periodes"><Periods accounts={accounts} entries={entries} lines={lines} periods={periods} onChange={load} /></TabsContent>
         <TabsContent value="export"><Exports P={P} accounts={accounts} entries={entries} lines={lines} /></TabsContent>
+        <TabsContent value="contracten"><AgreementsTab /></TabsContent>
       </Tabs>
 
       <NewEntryDialog open={newEntry} onClose={() => setNewEntry(false)} accounts={accounts} onSaved={load} />

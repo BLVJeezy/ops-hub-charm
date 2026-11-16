@@ -68,16 +68,33 @@ export function socialMonthly(c: FeeClient): number {
   return socialEnded(c) ? 0 : Number(c.social_monthly_fee || 0);
 }
 
+/** MRR per service for one client: SEO (unless ended), website, social media; yearly fees /12. */
+export function clientMRRBreakdown(c: FeeClient): { seo: number; website: number; social: number } {
+  let seo = 0;
+  if (!seoEnded(c)) {
+    if (c.billing_frequency === "Yearly" && Number(c.yearly_fee)) seo = Number(c.yearly_fee) / 12;
+    else seo = Number(c.monthly_fee || 0);
+  }
+  const website = c.website_billing_frequency === "Yearly" && Number(c.website_yearly_fee)
+    ? Number(c.website_yearly_fee) / 12
+    : Number(c.website_monthly_fee || 0);
+  return { seo, website, social: socialMonthly(c) };
+}
+
 /** §4.8 — MRR per client: SEO (unless ended) + Website + Social media, yearly fees /12 */
 export function clientMRR(c: FeeClient): number {
-  let mrr = 0;
-  if (!seoEnded(c)) {
-    if (c.billing_frequency === "Yearly" && Number(c.yearly_fee)) mrr += Number(c.yearly_fee) / 12;
-    else mrr += Number(c.monthly_fee || 0);
+  const b = clientMRRBreakdown(c);
+  return b.seo + b.website + b.social;
+}
+
+/** MRR per service across clients, with how many clients pay for each. */
+export function serviceMRR(clients: FeeClient[]) {
+  const out = { seo: { mrr: 0, clients: 0 }, website: { mrr: 0, clients: 0 }, social: { mrr: 0, clients: 0 } };
+  for (const c of clients) {
+    const b = clientMRRBreakdown(c);
+    (["seo", "website", "social"] as const).forEach((k) => { if (b[k] > 0) { out[k].mrr += b[k]; out[k].clients++; } });
   }
-  if (c.website_billing_frequency === "Yearly" && Number(c.website_yearly_fee)) mrr += Number(c.website_yearly_fee) / 12;
-  else mrr += Number(c.website_monthly_fee || 0);
-  return mrr + socialMonthly(c);
+  return out;
 }
 
 /** Recurring yearly projection: all active SEO and website fees annualised. */

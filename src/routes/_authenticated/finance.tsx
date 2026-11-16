@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
-import { clientAnnualProjection, clientMRR, type FeeClient } from "@/lib/fees";
+import { clientAnnualProjection, clientMRR, serviceMRR, type FeeClient } from "@/lib/fees";
 import { BookOpen } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/finance")({
@@ -187,6 +187,9 @@ function Finance() {
         </div>
       </div>
 
+      {/* What earns what: MRR per service */}
+      <ServiceSplit clients={activeClients} total={mrr} />
+
       <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-3 lg:items-start">
       {/* Who pays */}
       <Card>
@@ -273,6 +276,43 @@ function Finance() {
       </Link>
 
       <div className="h-4" />
+    </div>
+  );
+}
+
+const SERVICES = [
+  { key: "seo", label: "SEO", tone: "tone-sky", bar: "#38bdf8" },
+  { key: "website", label: "Websites", tone: "tone-gold", bar: "#d6b25e" },
+  { key: "social", label: "Social media", tone: "tone-violet", bar: "#a78bfa" },
+] as const;
+
+function ServiceSplit({ clients, total }: { clients: FeeClient[]; total: number }) {
+  const s = serviceMRR(clients);
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-medium">Per dienst · per maand</div>
+        <div className="text-xs text-muted-foreground tabular-nums">{formatCurrency(total)} MRR</div>
+      </div>
+      {/* one bar, three colours: the share of each service */}
+      <div className="flex h-2.5 rounded-full overflow-hidden bg-muted mb-3" role="img" aria-label="Verdeling MRR per dienst">
+        {SERVICES.map((x) => s[x.key].mrr > 0 && (
+          <span key={x.key} style={{ width: `${(s[x.key].mrr / Math.max(1, total)) * 100}%`, backgroundColor: x.bar }} />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {SERVICES.map((x) => {
+          const v = s[x.key];
+          const pct = total > 0 ? Math.round((v.mrr / total) * 100) : 0;
+          return (
+            <div key={x.key} className={`tone ${v.mrr > 0 ? x.tone : ""} rounded-xl border px-3 py-2.5`}>
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: x.bar }} />{x.label}</div>
+              <div className="text-lg lg:text-2xl font-bold tabular-nums mt-0.5">{formatCurrency(v.mrr)}</div>
+              <div className="text-[11px] text-muted-foreground tabular-nums">{pct}% · {v.clients} {v.clients === 1 ? "klant" : "klanten"} · {formatCurrency(v.mrr * 12)}/jaar</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

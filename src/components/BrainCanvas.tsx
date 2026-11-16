@@ -11,12 +11,51 @@ const hexRgb = (hex: string): [number, number, number] => {
 };
 const BASE: [number, number, number] = [110, 160, 255];
 
+/** A planet picture, plus where the sphere sits in it (found by scanning for the non-black pixels). */
+type Planet = { img: HTMLImageElement; cx: number; cy: number; r: number; ready: boolean };
+const planetCache = new Map<string, Planet>();
+function planet(url: string | undefined): Planet | null {
+  if (!url || typeof Image === "undefined") return null;
+  let p = planetCache.get(url);
+  if (!p) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    p = { img, cx: 0, cy: 0, r: 0, ready: false };
+    const entry = p;
+    img.onload = () => {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      entry.cx = w / 2; entry.cy = h / 2; entry.r = Math.min(w, h) * 0.39;
+      try { // measure the sphere so it can be cut out exactly
+        const s = 160, c = document.createElement("canvas");
+        c.width = s; c.height = s;
+        const g = c.getContext("2d", { willReadFrequently: true })!;
+        g.drawImage(img, 0, 0, s, s);
+        const d = g.getImageData(0, 0, s, s).data;
+        let x0 = s, x1 = 0, y0 = s, y1 = 0;
+        for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+          const i = (y * s + x) * 4;
+          if (d[i] + d[i + 1] + d[i + 2] > 110) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+        if (x1 > x0 && y1 > y0) {
+          entry.cx = ((x0 + x1 + 1) / 2 / s) * w; entry.cy = ((y0 + y1 + 1) / 2 / s) * h;
+          entry.r = (Math.min(x1 - x0, y1 - y0) / 2 / s) * Math.min(w, h) * 0.985;
+        }
+      } catch { /* picture is not readable: keep the default cut-out */ }
+      entry.ready = true;
+    };
+    img.src = url;
+    planetCache.set(url, p);
+  }
+  return p.ready ? p : null;
+}
+
 /**
  * A living 3D brain: thousands of particles on a procedural cortex, folds, and one glowing neuron per client,
  * wired to the core. Drag to turn it (it keeps your momentum), pinch to zoom, tap a neuron to select it.
  */
-export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect, mode = "brain" }: {
-  mode?: BrainMode; neurons: BrainNeuron[]; coreLabel: string; coreValue: string; selected: string | null; onSelect: (key: string | null) => void;
+export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect, mode = "brain", images }: {
+  /** planet pictures for the Stelsel look, by client key; "core" is the sun */
+  images?: Record<string, string>; mode?: BrainMode; neurons: BrainNeuron[]; coreLabel: string; coreValue: string; selected: string | null; onSelect: (key: string | null) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,8 +73,8 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
     return out;
   }, [shape, byKey]);
 
-  const live = useRef({ shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect, mode });
-  live.current = { shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect, mode };
+  const live = useRef({ shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect, mode, images });
+  live.current = { shape, colors, byKey, neurons, selected, coreLabel, coreValue, onSelect, mode, images };
   // a new look grows in again
   useEffect(() => { view.current.born = performance.now(); view.current.pitch = mode === "orbit" ? 0.62 : 0.22; }, [mode]); // the solar system is seen from above
 
@@ -147,7 +186,7 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
       ctx.clearRect(0, 0, W, H);
       const grow = calm ? 1 : Math.max(0, Math.min(1, (now - v.born) / 1800));
       const ease = 1 - Math.pow(1 - grow, 3);
-      const R = Math.min(W * 0.5, H * 0.6) * v.zoom * (0.86 + 0.14 * ease);
+      const R = Math.min(W * (L.mode === "orbit" ? 0.39 : 0.5), H * (L.mode === "orbit" ? 0.82 : 0.6)) * v.zoom * (0.86 + 0.14 * ease);
       const cx = W / 2, cy = H / 2 + R * 0.04;
       const P = (p: P3) => { const q = project3(p, v.yaw, v.pitch); return { x: cx + q.x * R, y: cy + q.y * R, z: q.z, s: q.s }; };
       const dimAll = sel ? 0.45 : 1;
@@ -156,7 +195,7 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
       // soft glow behind the whole brain
       const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.25);
       halo.addColorStop(0, "rgba(60,110,255,0.20)"); halo.addColorStop(0.6, "rgba(50,70,255,0.06)"); halo.addColorStop(1, "rgba(40,60,255,0)");
-      ctx.fillStyle = halo; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = halo; ctx.globalAlpha = L.mode === "orbit" ? 0.45 : 1; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
 
       // cortex particles
       const pts = L.shape.points, col = L.colors, n = pts.length / 3;
@@ -165,7 +204,7 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
         const shimmer = calm ? 1 : 0.75 + 0.25 * Math.sin(t * 1.7 + i * 12.9898);
         const q = P([pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2]]);
         const near = (q.z + 1) / 2; // 0 = far side, 1 = facing us
-        const a = (0.14 + 0.82 * near * near) * shimmer * dimAll;
+        const a = (L.mode === "orbit" ? 0.1 + 0.3 * near : 0.14 + 0.82 * near * near) * shimmer * dimAll;
         const sz = (0.8 + 1.5 * near) * q.s * Math.max(1, R / 300);
         ctx.fillStyle = `rgba(${col[i * 3]},${col[i * 3 + 1]},${col[i * 3 + 2]},${a})`;
         ctx.fillRect(q.x - sz / 2, q.y - sz / 2, sz, sz);
@@ -187,6 +226,7 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
       // axons, signals, neurons
       screen = [];
       const labels: { x: number; y: number; near: number; n: BrainNeuron; r: number }[] = [];
+      const planets: { key: string; x: number; y: number; z: number; rad: number; color: [number, number, number]; a: number; alert: boolean }[] = [];
       L.shape.neurons.forEach((sn, idx) => {
         const info = L.byKey[sn.key];
         if (!info) return;
@@ -194,6 +234,15 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
         const focus = !sel || sel.key === sn.key;
         const a = (sn.dim ? 0.45 : 1) * (focus ? 1 : 0.25);
         const path = (sn.orbit ? [L.shape.core, orbitPos(sn.orbit, t * (sel ? 0.25 : 1))] : sn.axon).map(P);
+        if (L.mode === "orbit") { // real planets: no beams, no glow; they are drawn afterwards, back to front
+          const q = path[path.length - 1];
+          const press = v.press === sn.key ? 0.9 : 1;
+          const rad = (sn.dim ? 13 : 24 + info.weight * 22) * q.s * (R / 300) * press * Math.min(1, ease * 1.3);
+          planets.push({ key: sn.key, x: q.x, y: q.y, z: q.z, rad, color: [r, g, b], a: focus ? 1 : 0.4, alert: !!info.alert });
+          screen.push({ key: sn.key, x: q.x, y: q.y, r: rad, z: q.z });
+          labels.push({ x: q.x, y: q.y, near: (q.z + 1) / 2, n: info, r: rad * 0.72 });
+          return;
+        }
         const upto = Math.max(1, Math.floor(path.length * Math.min(1, ease * 1.4)));
         ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
         for (let s = 1; s < upto; s++) ctx.lineTo(path[s].x, path[s].y);
@@ -233,14 +282,49 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
         labels.push({ x: q.x, y: q.y, near, n: info, r: rad });
       });
 
-      // the core: a bright vertical seam of light
       const c = P(L.shape.core);
       const pulse = calm ? 1 : 1 + Math.sin(t * 0.9) * 0.05;
-      ctx.save(); ctx.translate(c.x, c.y); ctx.scale(0.5, 1);
-      const seam = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.17 * pulse);
-      seam.addColorStop(0, `rgba(255,255,255,${0.95 * dimAll})`); seam.addColorStop(0.3, `rgba(170,225,255,${0.7 * dimAll})`); seam.addColorStop(1, "rgba(60,140,255,0)");
-      ctx.fillStyle = seam; ctx.beginPath(); ctx.arc(0, 0, R * 0.17 * pulse, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
+      if (L.mode === "orbit") {
+        // sun and planets as solid bodies, far ones first so near ones pass in front
+        ctx.globalCompositeOperation = "source-over";
+        const sunR = R * 0.17 * Math.min(1, ease * 1.3);
+        const bodies = [...planets.map((b) => ({ ...b, sun: false })), { key: "core", x: c.x, y: c.y, z: 0, rad: sunR, color: [255, 210, 120] as [number, number, number], a: dimAll < 1 ? 0.75 : 1, alert: false, sun: true }].sort((a, b) => a.z - b.z);
+        for (const b of bodies) {
+          const pic = planet(L.images?.[b.key]);
+          const [r, g, bl] = b.color;
+          ctx.globalAlpha = b.a;
+          // thin atmosphere, a touch stronger for the sun
+          const atm = ctx.createRadialGradient(b.x, b.y, b.rad * 0.9, b.x, b.y, b.rad * (b.sun ? 1.9 * pulse : 1.28));
+          atm.addColorStop(0, `rgba(${r},${g},${bl},${b.sun ? 0.55 : 0.32})`); atm.addColorStop(1, `rgba(${r},${g},${bl},0)`);
+          ctx.fillStyle = atm; ctx.beginPath(); ctx.arc(b.x, b.y, b.rad * (b.sun ? 1.9 * pulse : 1.28), 0, Math.PI * 2); ctx.fill();
+          if (pic) {
+            ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, b.rad, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(pic.img, pic.cx - pic.r, pic.cy - pic.r, pic.r * 2, pic.r * 2, b.x - b.rad, b.y - b.rad, b.rad * 2, b.rad * 2);
+            ctx.restore();
+          } else { // picture still loading: a shaded sphere in the client's colour
+            const ball = ctx.createRadialGradient(b.x - b.rad * 0.35, b.y - b.rad * 0.4, b.rad * 0.1, b.x, b.y, b.rad);
+            ball.addColorStop(0, `rgb(${Math.min(255, r + 60)},${Math.min(255, g + 60)},${Math.min(255, bl + 60)})`); ball.addColorStop(1, `rgb(${Math.round(r * 0.25)},${Math.round(g * 0.25)},${Math.round(bl * 0.25)})`);
+            ctx.fillStyle = ball; ctx.beginPath(); ctx.arc(b.x, b.y, b.rad, 0, Math.PI * 2); ctx.fill();
+          }
+          if (b.alert && !calm) {
+            const ph = (t % 1.5) / 1.5;
+            ctx.strokeStyle = `rgba(255,90,90,${0.9 * (1 - ph)})`; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.rad * (1.15 + ph * 0.9), 0, Math.PI * 2); ctx.stroke();
+          }
+          if (L.selected === b.key || v.hover === b.key) {
+            ctx.strokeStyle = L.selected === b.key ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.rad + 6, 0, Math.PI * 2); ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        // the core: a bright vertical seam of light
+        ctx.save(); ctx.translate(c.x, c.y); ctx.scale(0.5, 1);
+        const seam = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.17 * pulse);
+        seam.addColorStop(0, `rgba(255,255,255,${0.95 * dimAll})`); seam.addColorStop(0.3, `rgba(170,225,255,${0.7 * dimAll})`); seam.addColorStop(1, "rgba(60,140,255,0)");
+        ctx.fillStyle = seam; ctx.beginPath(); ctx.arc(0, 0, R * 0.17 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
 
       // labels, crisp on top
       ctx.globalCompositeOperation = "source-over";

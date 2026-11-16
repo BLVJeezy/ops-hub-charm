@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, BrainCircuit, Check, Plus, Trash2, X } from "lucide-react";
+import { ArrowRight, BrainCircuit, Check, ChevronLeft, ChevronRight, GripVertical, LayoutGrid, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
 import type { BrainMode } from "@/lib/brain3d";
 import { ForecastChart, ForecastLegend } from "@/components/ForecastChart";
-import { clientMRR, type FeeClient } from "@/lib/fees";
+import { clientMRR, serviceMRR, type FeeClient } from "@/lib/fees";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
 import { brusselsToday, forecastByService, type ForecastInvoice } from "@/lib/invoice-schedule";
@@ -27,7 +27,8 @@ type Task = { id: string; client_id: string | null; title: string; assignee: "me
 type Video = { id: string; client_id: string; month: string; slot: number; status: "verstuurd" | "geplaatst"; sent_at: string | null; posted_at: string | null };
 type Data = { clients: ClientRow[]; sites: SiteRow[]; invoices: InvoiceRow[]; records: RecordRow[]; tasks: Task[]; videos: Video[] };
 
-const MODES: [BrainMode, string][] = [["brain", "Brein"], ["globe", "Bol"], ["orbit", "Stelsel"]];
+const MODES: [BrainMode, string][] = [["orbit", "Stelsel"], ["brain", "Brein"], ["globe", "Bol"]];
+const planetUrl = (name: string) => supabase.storage.from("planets").getPublicUrl(`${name}.png`).data.publicUrl;
 const FALLBACK = ["#38bdf8", "#f472b6", "#34d399", "#c084fc", "#fbbf24", "#fb7185", "#2dd4bf"];
 const card = "rounded-2xl border border-sky-300/10 bg-[rgba(10,14,30,0.72)] backdrop-blur-xl p-4";
 const isPlanned = (v: InvoiceRow) => (v.status === "Draft" && !!v.scheduled_send_at) || (!!v.repeat_monthly && !!v.next_repeat_on);
@@ -42,8 +43,16 @@ function BrainPage() {
   const [data, setData] = useState<Data | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [mode, setMode] = useState<BrainMode>(() => {
-    try { const v = localStorage.getItem("brain-mode"); return v === "globe" || v === "orbit" ? v : "brain"; } catch { return "brain"; }
+    try { const v = localStorage.getItem("brain-mode"); return v === "globe" || v === "brain" ? v : "orbit"; } catch { return "orbit"; }
   });
+  const [layout, setLayout] = useState<WidgetState[]>(readLayout);
+  const [editing, setEditing] = useState(false);
+  const [dragId, setDragId] = useState<WidgetId | null>(null);
+  const saveLayout = (next: WidgetState[]) => { setLayout(next); try { localStorage.setItem("brain-layout-v1", JSON.stringify(next)); } catch { /* storage unavailable */ } };
+  const patch = (id: WidgetId, change: Partial<WidgetState>) => saveLayout(layout.map((w) => (w.id === id ? { ...w, ...change } : w)));
+  const swap = (a: WidgetId, b: WidgetId) => { const next = [...layout]; const i = next.findIndex((w) => w.id === a), j = next.findIndex((w) => w.id === b); if (i < 0 || j < 0) return; next.splice(j, 0, next.splice(i, 1)[0]); saveLayout(next); };
+  const move = (id: WidgetId, d: -1 | 1) => { const vis = layout.filter((w) => !w.hidden); const i = vis.findIndex((w) => w.id === id), o = vis[i + d]; if (o) swap(id, o.id); };
+  const resize = (id: WidgetId, d: -1 | 1) => { const w = layout.find((x) => x.id === id)!; const s = SPANS[Math.max(0, Math.min(SPANS.length - 1, SPANS.indexOf(w.span) + d))]; patch(id, { span: s }); };
   const pickMode = (k: BrainMode) => { setMode(k); try { localStorage.setItem("brain-mode", k); } catch { /* storage unavailable */ } };
   const today = brusselsToday();
   const month = today.slice(0, 7) + "-01";
@@ -104,6 +113,8 @@ function BrainPage() {
   const forecast = forecastByService(invoices, today, 6);
   const forecastTotal = forecast.reduce((a, r) => a + r.total, 0);
   const upcoming = invoices.filter(isPlanned).map((v) => ({ v, at: (v.status === "Draft" ? v.scheduled_send_at : v.next_repeat_on) as string })).filter((x) => !!x.at).sort((a, b) => a.at.localeCompare(b.at));
+  const services = serviceMRR(sel ? [sel] : m.active);
+  const planetUrls: Record<string, string> = Object.fromEntries([...m.neurons.map((n) => [n.key, planetUrl(n.dim ? "prospect" : n.key)] as const), ["core", planetUrl("sun")]]);
   const openTasks = tasks.filter((t) => !t.done_at).sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
 
   // what happened lately, newest first
@@ -122,7 +133,7 @@ function BrainPage() {
 
   return (
     <div className="min-h-screen -mb-28 lg:mb-0 pb-28 lg:pb-6" style={{ background: "radial-gradient(70% 50% at 50% 30%, rgba(40,70,255,0.14), transparent 70%), #02030a" }}>
-      <div className="p-3 md:p-5 max-w-[1500px] 3xl:max-w-[2100px] mx-auto space-y-3">
+      <div className="p-3 md:p-5 space-y-3">
         {/* where am I + the numbers that matter */}
         <header className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-2">
@@ -137,8 +148,11 @@ function BrainPage() {
             <Stat label="Openstaand" value={formatCurrency(openTotal)} warn={openTotal > 0} />
             {!sel && <Stat label="Sites online" value={`${up}/${data.sites.length}`} warn={up < data.sites.length} />}
           </dl>
+          <button onClick={() => setEditing(!editing)} aria-pressed={editing} className={`press ml-auto h-9 px-3 rounded-full inline-flex items-center gap-1.5 text-sm border transition-colors ${editing ? "bg-white text-black border-white font-semibold" : "border-white/15 text-white/75 hover:text-white"}`}>
+            <LayoutGrid className="w-4 h-4" />{editing ? "Klaar" : "Indelen"}
+          </button>
           {sel && (
-            <div className="ml-auto flex items-center gap-2 pop-in">
+            <div className="flex items-center gap-2 pop-in">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 pl-3 pr-1 h-9 text-sm font-medium">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.colorOf[sel.id] }} />{sel.name}
                 <button onClick={() => setSelected(null)} aria-label="Toon alle klanten" className="press w-7 h-7 rounded-full grid place-items-center hover:bg-white/10"><X className="w-3.5 h-3.5" /></button>
@@ -148,46 +162,48 @@ function BrainPage() {
           )}
         </header>
 
-        <div className="grid gap-3 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start">
-          {/* centre: the brain */}
-          <div className="space-y-3 lg:col-start-2 lg:row-start-1">
-            <div className="relative h-[52vh] min-h-[340px] lg:h-[min(64vh,680px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.25), rgba(2,3,10,0.6))" }}>
-              <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} />
-              <div className="pointer-events-none absolute left-4 top-3.5 text-[11px] text-white/40 max-sm:hidden">Sleep om te draaien · tik op een klant</div>
+        {/* widgets: move, resize, remove and add them in "Indelen" */}
+        {editing && (
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-sky-300/20 bg-sky-400/5 px-3 py-2 text-xs pop-in">
+            <span className="text-white/60">Sleep een widget om hem te verplaatsen. Toevoegen:</span>
+            {layout.filter((w) => w.hidden).map((w) => (
+              <button key={w.id} onClick={() => patch(w.id, { hidden: false })} className="press inline-flex items-center gap-1 rounded-full bg-white/10 hover:bg-white/15 h-8 px-3"><Plus className="w-3.5 h-3.5" />{WIDGETS[w.id].title}</button>
+            ))}
+            {!layout.some((w) => w.hidden) && <span className="text-white/40">alles staat erop</span>}
+            <button onClick={() => saveLayout(DEFAULT_LAYOUT)} className="press ml-auto rounded-full h-8 px-3 text-white/70 hover:bg-white/10">Standaard</button>
+          </div>
+        )}
+        <div className="grid gap-3 grid-cols-[minmax(0,1fr)] lg:grid-cols-12 lg:[grid-auto-flow:dense] lg:items-start">
+          {layout.filter((w) => !w.hidden).map((w) => (
+            <WidgetFrame key={w.id} w={w} editing={editing} tall={w.id === "brain"}
+              onMove={(d) => move(w.id, d)} onSize={(d) => resize(w.id, d)} onRemove={() => patch(w.id, { hidden: true })}
+              onDragStart={() => setDragId(w.id)} onDragOver={() => { if (dragId && dragId !== w.id) swap(dragId, w.id); }} onDragEnd={() => setDragId(null)} dragging={dragId === w.id}>
+              {w.id === "brain" && (
+                <div className="space-y-3">
+                  <div className="relative h-[52vh] min-h-[340px] lg:h-[min(74vh,900px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.22), rgba(2,3,10,0.6))" }}>
+                    <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} images={planetUrls} />
+                    <div className="pointer-events-none absolute left-4 top-3.5 text-[11px] text-white/40 max-sm:hidden">Sleep om te draaien · tik op een klant</div>
               {/* switch the look; the data stays the same */}
               <div className="absolute right-3 top-3 inline-flex rounded-full border border-white/10 bg-[rgba(10,14,30,0.7)] backdrop-blur-xl p-0.5 text-xs" role="group" aria-label="Weergave">
                 {MODES.map(([k, label]) => (
                   <button key={k} type="button" onClick={() => pickMode(k)} aria-pressed={mode === k} className={`press px-3 h-8 rounded-full transition-colors ${mode === k ? "bg-white text-black font-semibold" : "text-white/65 hover:text-white"}`}>{label}</button>
                 ))}
               </div>
-            </div>
+                  </div>
             {/* every client one tap away */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Kies een klant">
-              {m.neurons.map((n) => (
-                <button key={n.key} onClick={() => setSelected(selected === n.key ? null : n.key)} aria-pressed={selected === n.key}
-                  className={`press shrink-0 inline-flex items-center gap-2 rounded-full h-9 px-3 text-xs border transition-colors ${selected === n.key ? "bg-white text-black border-white font-semibold" : "border-white/10 bg-white/5 text-white/80"} ${n.dim ? "opacity-70" : ""}`}>
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: n.color, boxShadow: `0 0 8px ${n.color}` }} />{n.label}
-                </button>
-              ))}
-            </div>
-            <section className={card}>
-              <div className="flex items-baseline justify-between mb-2">
-                <h2 className="text-sm font-medium">Projectie · 6 maanden</h2>
-                <span className="text-sm font-semibold tabular-nums">{formatCurrency(forecastTotal)}</span>
-              </div>
-              <ForecastChart rows={forecast} height={170} />
-              <div className="mt-2"><ForecastLegend /></div>
-            </section>
-          </div>
-
-          {/* left: what has to happen */}
-          <div className="space-y-3 lg:col-start-1 lg:row-start-1">
-            <Tasks tasks={tasks} open={openTasks} clients={[...m.active, ...m.prospects]} colorOf={m.colorOf} nameOf={m.nameOf} selected={sel?.id ?? null} today={today} onChange={load} />
-            <Videos clients={videoClients} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />
-          </div>
-
-          {/* right: money and what happened */}
-          <div className="space-y-3 lg:col-start-3 lg:row-start-1">
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Kies een klant">
+                    {m.neurons.map((n) => (
+                      <button key={n.key} onClick={() => setSelected(selected === n.key ? null : n.key)} aria-pressed={selected === n.key}
+                        className={`press shrink-0 inline-flex items-center gap-2 rounded-full h-9 px-3 text-xs border transition-colors ${selected === n.key ? "bg-white text-black border-white font-semibold" : "border-white/10 bg-white/5 text-white/80"} ${n.dim ? "opacity-70" : ""}`}>
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: n.color, boxShadow: `0 0 8px ${n.color}` }} />{n.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {w.id === "tasks" && <Tasks tasks={tasks} open={openTasks} clients={[...m.active, ...m.prospects]} colorOf={m.colorOf} nameOf={m.nameOf} selected={sel?.id ?? null} today={today} onChange={load} />}
+              {w.id === "videos" && <Videos clients={videoClients} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />}
+              {w.id === "payments" && (
             <section className={card}>
               <h2 className="text-sm font-medium mb-2">Betalingen</h2>
               <div className="grid grid-cols-3 gap-2 mb-3">
@@ -205,6 +221,18 @@ function BrainPage() {
                 {!upcoming.length && !openTotal && <li className="py-2 text-white/45 text-xs">Geen geplande of openstaande facturen.</li>}
               </ul>
             </section>
+              )}
+              {w.id === "forecast" && (
+            <section className={card}>
+              <div className="flex items-baseline justify-between mb-2">
+                <h2 className="text-sm font-medium">Projectie · 6 maanden</h2>
+                <span className="text-sm font-semibold tabular-nums">{formatCurrency(forecastTotal)}</span>
+              </div>
+              <ForecastChart rows={forecast} height={170} />
+              <div className="mt-2"><ForecastLegend /></div>
+            </section>
+              )}
+              {w.id === "activity" && (
             <section className={card}>
               <h2 className="text-sm font-medium mb-2">Wat er gebeurd is</h2>
               <ul className="space-y-2">
@@ -214,9 +242,104 @@ function BrainPage() {
                 {!events.length && <li className="text-xs text-white/45">Nog niets gebeurd in de laatste 30 dagen.</li>}
               </ul>
             </section>
-          </div>
+              )}
+              {w.id === "clients" && (
+                <section className={card}>
+                  <h2 className="text-sm font-medium mb-2">Klanten</h2>
+                  <ul className="divide-y divide-white/5 text-sm">
+                    {m.neurons.map((n) => (
+                      <li key={n.key}>
+                        <button onClick={() => setSelected(selected === n.key ? null : n.key)} className={`press w-full flex items-center gap-2.5 py-2 text-left ${n.dim ? "opacity-60" : ""}`}>
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: n.color }} />
+                          <span className={`flex-1 truncate ${selected === n.key ? "font-semibold" : ""}`}>{n.label}</span>
+                          <span className="text-xs text-white/55 tabular-nums">{n.value}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {w.id === "sites" && (
+                <section className={card}>
+                  <div className="flex items-baseline justify-between mb-2"><h2 className="text-sm font-medium">Websites</h2><Link to="/status" className="text-[11px] text-white/50 hover:text-white">Status →</Link></div>
+                  <ul className="divide-y divide-white/5 text-sm">
+                    {(sel ? data.sites.filter((s) => s.client_id === sel.id) : data.sites).map((s) => (
+                      <li key={s.id} className="py-1.5 flex items-center gap-2.5">
+                        <span className={`w-2 h-2 rounded-full ${s.last_status === "up" ? "bg-emerald-400" : s.last_status === "down" ? "bg-red-400" : s.last_status === "degraded" ? "bg-amber-400" : "bg-white/30"}`} />
+                        <span className="flex-1 truncate">{s.name}</span>
+                        <span className="text-[11px] text-white/50">{s.last_status === "up" ? "online" : s.last_status === "down" ? "offline" : s.last_status === "degraded" ? "traag" : "onbekend"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {w.id === "services" && (
+                <section className={card}>
+                  <h2 className="text-sm font-medium mb-2">Per dienst · per maand</h2>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([["seo", "SEO", "#38bdf8"], ["website", "Websites", "#d6b25e"], ["social", "Social media", "#a78bfa"]] as const).map(([k, label, color]) => (
+                      <div key={k} className="rounded-xl bg-white/5 px-2.5 py-2">
+                        <div className="flex items-center gap-1.5 text-[10px] text-white/50"><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />{label}</div>
+                        <div className="text-sm font-semibold tabular-nums">{formatCurrency(services[k].mrr)}</div>
+                        <div className="text-[10px] text-white/40 tabular-nums">{services[k].clients} {services[k].clients === 1 ? "klant" : "klanten"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </WidgetFrame>
+          ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+type WidgetId = "brain" | "tasks" | "videos" | "payments" | "forecast" | "activity" | "clients" | "sites" | "services";
+type WidgetState = { id: WidgetId; span: number; hidden?: boolean };
+const WIDGETS: Record<WidgetId, { title: string }> = {
+  brain: { title: "Stelsel" }, tasks: { title: "Taken" }, videos: { title: "Video's" }, payments: { title: "Betalingen" }, forecast: { title: "Projectie" },
+  activity: { title: "Wat er gebeurd is" }, clients: { title: "Klanten" }, sites: { title: "Websites" }, services: { title: "Per dienst" },
+};
+const SPANS = [3, 4, 6, 8, 9, 12];
+const DEFAULT_LAYOUT: WidgetState[] = [
+  { id: "brain", span: 8 }, { id: "tasks", span: 4 }, { id: "payments", span: 4 }, { id: "videos", span: 4 }, { id: "forecast", span: 4 }, { id: "activity", span: 4 },
+  { id: "clients", span: 4, hidden: true }, { id: "sites", span: 4, hidden: true }, { id: "services", span: 4, hidden: true },
+];
+function readLayout(): WidgetState[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem("brain-layout-v1") ?? "null") as WidgetState[] | null;
+    if (!Array.isArray(saved)) return DEFAULT_LAYOUT;
+    const known = saved.filter((w) => w && w.id in WIDGETS && SPANS.includes(w.span));
+    // widgets added in a later version join at the end, hidden
+    return [...known, ...DEFAULT_LAYOUT.filter((d) => !known.some((k) => k.id === d.id)).map((d) => ({ ...d, hidden: true }))];
+  } catch { return DEFAULT_LAYOUT; }
+}
+
+function WidgetFrame({ w, editing, tall, dragging, children, onMove, onSize, onRemove, onDragStart, onDragOver, onDragEnd }: {
+  w: WidgetState; editing: boolean; tall?: boolean; dragging: boolean; children: React.ReactNode;
+  onMove: (d: -1 | 1) => void; onSize: (d: -1 | 1) => void; onRemove: () => void; onDragStart: () => void; onDragOver: () => void; onDragEnd: () => void;
+}) {
+  const btn = "press hit w-7 h-7 rounded-full grid place-items-center hover:bg-white/15";
+  return (
+    <div
+      className={`relative min-w-0 lg:[grid-column:span_var(--span)] ${tall && w.span < 12 ? "lg:row-span-3" : ""} ${editing ? "rounded-3xl ring-1 ring-sky-300/40 ring-offset-4 ring-offset-[#02030a]" : ""} ${dragging ? "opacity-50" : ""} transition-opacity`}
+      style={{ "--span": w.span } as React.CSSProperties}
+      onDragOver={editing ? (e) => { e.preventDefault(); onDragOver(); } : undefined}
+    >
+      {editing && (
+        <div draggable onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", w.id); onDragStart(); }} onDragEnd={onDragEnd}
+          className="absolute z-20 -top-2.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full border border-white/15 bg-[rgba(14,18,36,0.95)] px-1.5 h-9 text-white/85 shadow-lg cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-white/50" aria-hidden />
+          <span className="px-1 text-[11px] font-medium whitespace-nowrap">{WIDGETS[w.id].title}</span>
+          <button className={btn} onClick={() => onMove(-1)} aria-label="Naar voren"><ChevronLeft className="w-4 h-4" /></button>
+          <button className={btn} onClick={() => onMove(1)} aria-label="Naar achteren"><ChevronRight className="w-4 h-4" /></button>
+          <button className={`${btn} max-lg:hidden`} onClick={() => onSize(-1)} aria-label="Smaller"><Minus className="w-3.5 h-3.5" /></button>
+          <button className={`${btn} max-lg:hidden`} onClick={() => onSize(1)} aria-label="Breder"><Maximize2 className="w-3.5 h-3.5" /></button>
+          <button className={`${btn} hover:text-red-400`} onClick={onRemove} aria-label="Widget weghalen"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+      {children}
     </div>
   );
 }

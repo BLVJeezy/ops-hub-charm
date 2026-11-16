@@ -26,8 +26,8 @@ function AutomationsPage() {
         backup: { at: latest(sites.data, "last_backup_at") },
         analytics: { at: latest(sites.data, "analytics_synced_at") },
         briefing: { at: brief.data?.[0]?.rendered_at ?? brief.data?.[0]?.created_at ?? null },
-        tasks: { at: null, note: rec.count != null ? `${rec.count} vaste taken` : undefined },
-        scheduled: { at: null, note: inv.count != null ? `${inv.count} ingepland` : undefined },
+        tasks: { at: null, note: Number.isFinite(rec.count) ? `${rec.count} vaste taken` : undefined },
+        scheduled: { at: null, note: Number.isFinite(inv.count) ? `${inv.count} ingepland` : undefined },
       });
     })();
   }, []);

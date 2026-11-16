@@ -2,15 +2,19 @@ import { useEffect, useState } from "react";
 import { PIN_STORAGE_KEY } from "@/lib/constants";
 import { verifyPin } from "@/lib/pin.functions";
 import { SolynLogo } from "./SolynLogo";
+import { EyeOff } from "lucide-react";
+import { initPrivacy, setPrivacy, usePrivacy } from "@/lib/privacy";
 
 export function PinGate({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [entered, setEntered] = useState("");
   const [shake, setShake] = useState(false);
+  const hidden = usePrivacy();
 
   useEffect(() => {
     setMounted(true);
+    initPrivacy();
     if (typeof window !== "undefined" && sessionStorage.getItem(PIN_STORAGE_KEY) === "true") {
       setUnlocked(true);
     }
@@ -92,6 +96,22 @@ export function PinGate({ children }: { children: React.ReactNode }) {
           <button onClick={() => press("0")} className="h-14 rounded-lg bg-card hover:bg-muted text-lg font-medium transition active:scale-95">0</button>
           <button onClick={back} className="h-14 rounded-lg hover:bg-muted text-sm text-muted-foreground transition">←</button>
         </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={hidden}
+          onClick={() => setPrivacy(!hidden)}
+          className="press mt-6 w-full flex items-center gap-3 rounded-2xl bg-card px-4 min-h-12 text-left"
+        >
+          <EyeOff className={`w-4 h-4 shrink-0 ${hidden ? "text-[#C9A14A]" : "text-muted-foreground"}`} />
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-medium">Cijfers verbergen</span>
+            <span className="block text-[11px] text-muted-foreground">Bedragen wazig, om de Hub te tonen</span>
+          </span>
+          <span className={`relative w-11 h-6 rounded-full transition-colors ${hidden ? "bg-[#C9A14A]" : "bg-muted"}`}>
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${hidden ? "translate-x-5" : ""}`} />
+          </span>
+        </button>
       </div>
     </div>
   );

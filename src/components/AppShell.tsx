@@ -1,13 +1,15 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet,
-  FileText, Search as SearchIcon, LogOut, Activity, Film, TrendingUp, BookOpen, MoreHorizontal, X,
+  FileText, Search as SearchIcon, LogOut, Activity, Film, TrendingUp, BookOpen, MoreHorizontal, X, Hexagon, Eye, EyeOff,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
 import { useAuth } from "@/hooks/use-auth";
+import { togglePrivacy, usePrivacy } from "@/lib/privacy";
 
 const NAV_ITEMS = [
+  { to: "/hive", label: "Hive Mind", icon: Hexagon },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/clients", label: "Clients", icon: Users },
@@ -104,6 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="w-full pl-9 pr-3 h-9 rounded-md bg-card border border-input text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </form>
+        <PrivacyButton className="ml-auto" />
       </header>
 
       {/* Content */}
@@ -173,14 +176,33 @@ function MobileNav() {
           style={{ backgroundColor: search ? "hsl(var(--primary) / 0.15)" : "transparent", color: search ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
           {search ? <X className="w-5 h-5" /> : <SearchIcon className="w-5 h-5" />}
         </button>
-        <button onClick={() => { setMenu(!menu); setSearch(false); }} className="h-11 px-4 rounded-full flex items-center gap-2 text-sm font-medium" style={{ backgroundColor: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
+        <button onClick={() => { setMenu(!menu); setSearch(false); }} className="h-11 px-4 rounded-full flex items-center gap-2 text-sm font-medium whitespace-nowrap" style={{ backgroundColor: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
           <Here className="w-4 h-4" /> {here.label}
         </button>
+        <PrivacyButton className="w-11 h-11" />
         <button aria-label="Menu" aria-expanded={menu} onClick={() => { setMenu(!menu); setSearch(false); }} className="w-11 h-11 rounded-full flex items-center justify-center"
           style={{ backgroundColor: menu ? "hsl(var(--primary) / 0.15)" : "transparent", color: menu ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
           {menu ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
         </button>
       </nav>
     </div>
+  );
+}
+
+function PrivacyButton({ className = "" }: { className?: string }) {
+  const hidden = usePrivacy();
+  const Icon = hidden ? EyeOff : Eye;
+  return (
+    <button
+      type="button"
+      onClick={togglePrivacy}
+      aria-pressed={hidden}
+      aria-label={hidden ? "Cijfers tonen" : "Cijfers verbergen"}
+      title={hidden ? "Cijfers tonen" : "Cijfers verbergen"}
+      className={`press hit shrink-0 rounded-full flex items-center justify-center gap-2 lg:h-9 lg:px-3 lg:border lg:border-border text-sm transition-colors ${hidden ? "text-[#C9A14A] lg:border-[#C9A14A]/50 lg:bg-[#C9A14A]/10" : "text-foreground lg:text-muted-foreground hover:text-foreground"} ${className}`}
+    >
+      <Icon className="w-5 h-5 lg:w-4 lg:h-4" />
+      <span className="hidden lg:inline">{hidden ? "Cijfers verborgen" : "Cijfers verbergen"}</span>
+    </button>
   );
 }

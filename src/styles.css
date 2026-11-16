@@ -187,3 +187,15 @@ main a[class*="rounded-"]:active, main button[class*="rounded-"]:active, nav but
   .ink-gold { background: none; color: #f0d489; }
   .ink-emerald { background: none; color: #6ee7b7; }
 }
+
+/* Privacy mode ("Cijfers verbergen"): blur amounts and numbers for showcasing. Set by src/lib/privacy.ts. */
+.money, .tabular-nums, .recharts-cartesian-axis-tick-value, .recharts-tooltip-wrapper, [data-private] {
+  transition: filter 220ms ease-out;
+}
+html.privacy :is(.money, .tabular-nums, .recharts-cartesian-axis-tick-value, .recharts-tooltip-wrapper, .recharts-label, [data-private]) {
+  filter: blur(7px);
+  user-select: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .money, .tabular-nums, .recharts-cartesian-axis-tick-value, .recharts-tooltip-wrapper, [data-private] { transition: none; }
+}

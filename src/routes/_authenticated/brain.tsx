@@ -4,7 +4,10 @@ import { ArrowRight, BrainCircuit, Check, ChevronLeft, ChevronRight, GripVertica
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
+import { PerkRing } from "@/components/PerkRing";
 import type { BrainMode } from "@/lib/brain3d";
+
+type View = BrainMode | "perks";
 import { ForecastChart, ForecastLegend } from "@/components/ForecastChart";
 import { clientMRR, serviceMRR, type FeeClient } from "@/lib/fees";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -27,7 +30,7 @@ type Task = { id: string; client_id: string | null; title: string; assignee: "me
 type Video = { id: string; client_id: string; month: string; slot: number; status: "verstuurd" | "geplaatst"; sent_at: string | null; posted_at: string | null };
 type Data = { clients: ClientRow[]; sites: SiteRow[]; invoices: InvoiceRow[]; records: RecordRow[]; tasks: Task[]; videos: Video[] };
 
-const MODES: [BrainMode, string][] = [["orbit", "Stelsel"], ["brain", "Brein"], ["globe", "Bol"]];
+const MODES: [View, string][] = [["orbit", "Stelsel"], ["perks", "Perks"], ["brain", "Brein"], ["globe", "Bol"]];
 const planetUrl = (name: string) => supabase.storage.from("planets").getPublicUrl(`${name}.png`).data.publicUrl;
 const FALLBACK = ["#38bdf8", "#f472b6", "#34d399", "#c084fc", "#fbbf24", "#fb7185", "#2dd4bf"];
 const card = "rounded-2xl border border-sky-300/10 bg-[rgba(10,14,30,0.72)] backdrop-blur-xl p-4";
@@ -42,8 +45,8 @@ const ago = (iso: string) => {
 function BrainPage() {
   const [data, setData] = useState<Data | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [mode, setMode] = useState<BrainMode>(() => {
-    try { const v = localStorage.getItem("brain-mode"); return v === "globe" || v === "brain" ? v : "orbit"; } catch { return "orbit"; }
+  const [mode, setMode] = useState<View>(() => {
+    try { const v = localStorage.getItem("brain-mode"); return v === "globe" || v === "brain" || v === "perks" ? v : "orbit"; } catch { return "orbit"; }
   });
   const [layout, setLayout] = useState<WidgetState[]>(readLayout);
   const [editing, setEditing] = useState(false);
@@ -53,7 +56,7 @@ function BrainPage() {
   const swap = (a: WidgetId, b: WidgetId) => { const next = [...layout]; const i = next.findIndex((w) => w.id === a), j = next.findIndex((w) => w.id === b); if (i < 0 || j < 0) return; next.splice(j, 0, next.splice(i, 1)[0]); saveLayout(next); };
   const move = (id: WidgetId, d: -1 | 1) => { const vis = layout.filter((w) => !w.hidden); const i = vis.findIndex((w) => w.id === id), o = vis[i + d]; if (o) swap(id, o.id); };
   const resize = (id: WidgetId, d: -1 | 1) => { const w = layout.find((x) => x.id === id)!; const s = SPANS[Math.max(0, Math.min(SPANS.length - 1, SPANS.indexOf(w.span) + d))]; patch(id, { span: s }); };
-  const pickMode = (k: BrainMode) => { setMode(k); try { localStorage.setItem("brain-mode", k); } catch { /* storage unavailable */ } };
+  const pickMode = (k: View) => { setMode(k); try { localStorage.setItem("brain-mode", k); } catch { /* storage unavailable */ } };
   const today = brusselsToday();
   const month = today.slice(0, 7) + "-01";
 
@@ -181,8 +184,10 @@ function BrainPage() {
               {w.id === "brain" && (
                 <div className="space-y-3">
                   <div className="relative h-[52vh] min-h-[340px] lg:h-[min(74vh,900px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.22), rgba(2,3,10,0.6))" }}>
-                    <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} images={planetUrls} />
-                    <div className="pointer-events-none absolute left-4 top-3.5 text-[11px] text-white/40 max-sm:hidden">Sleep om te draaien · tik op een klant</div>
+                    {mode === "perks"
+                      ? <PerkRing neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} />
+                      : <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} images={planetUrls} />}
+                    <div className="pointer-events-none absolute left-4 top-3.5 text-[11px] text-white/40 max-sm:hidden">{mode === "perks" ? "Tik op een klant" : "Sleep om te draaien · tik op een klant"}</div>
               {/* switch the look; the data stays the same */}
               <div className="absolute right-3 top-3 inline-flex rounded-full border border-white/10 bg-[rgba(10,14,30,0.7)] backdrop-blur-xl p-0.5 text-xs" role="group" aria-label="Weergave">
                 {MODES.map(([k, label]) => (

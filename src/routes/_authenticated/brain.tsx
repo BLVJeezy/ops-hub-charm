@@ -1,12 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BrainCircuit, Maximize2, Minus, Plus } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowRight, BrainCircuit, Check, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { clientMRR, clientMRRBreakdown, type FeeClient } from "@/lib/fees";
-import { formatCurrency } from "@/lib/format";
-import { isPrivate } from "@/lib/privacy";
-import { R_SOMA, bez, brainBounds, buildBrain, hitBrain, project, stepSpring, type Brain, type Curve, type Neuron, type NeuronInput, type Spring, type TipInput, type Tone } from "@/lib/brain";
+import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
+import { ForecastChart, ForecastLegend } from "@/components/ForecastChart";
+import { clientMRR, type FeeClient } from "@/lib/fees";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { formatInvoiceNumber } from "@/lib/invoice-code";
+import { brusselsToday, forecastByService, type ForecastInvoice } from "@/lib/invoice-schedule";
 
 export const Route = createFileRoute("/_authenticated/brain")({
   component: BrainPage,
@@ -16,592 +18,325 @@ export const Route = createFileRoute("/_authenticated/brain")({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
-type ClientRow = FeeClient & { id: string; name: string; status: string; pipeline_stage?: string | null; location?: string | null };
-type SiteRow = { id: string; client_id: string | null; name: string; last_status: string | null; last_response_ms: number | null };
-type InvoiceRow = { id: string; client: string | null; total: number; status: string; scheduled_send_at: string | null; repeat_monthly: boolean; next_repeat_on: string | null };
-type RecordRow = { id: string; site_id: string; source_created_at: string | null };
-type AgreementRow = { id: string; client_id: string; status: string };
-type Data = { clients: ClientRow[]; sites: SiteRow[]; invoices: InvoiceRow[]; records: RecordRow[]; agreements: AgreementRow[] };
+type ClientRow = FeeClient & { id: string; name: string; status: string; pipeline_stage?: string | null; social_videos_per_month?: number | null };
+type SiteRow = { id: string; client_id: string | null; name: string; last_status: string | null };
+type InvoiceRow = ForecastInvoice & { id: string; client: string | null; client_name: string | null; invoice_number: number; date: string; sent_at: string | null; updated_at: string };
+type RecordRow = { id: string; site_id: string; kind: string; title: string | null; customer_name: string | null; source_created_at: string | null };
+type Task = { id: string; client_id: string | null; title: string; assignee: "me" | "client"; due_date: string | null; done_at: string | null; created_at: string };
+type Video = { id: string; client_id: string; month: string; slot: number; status: "verstuurd" | "geplaatst"; sent_at: string | null; posted_at: string | null };
+type Data = { clients: ClientRow[]; sites: SiteRow[]; invoices: InvoiceRow[]; records: RecordRow[]; tasks: Task[]; videos: Video[] };
 
-const TONE: Record<Tone, string> = {
-  gold: "236,200,110", green: "74,222,160", amber: "251,176,40", red: "255,110,110", sky: "80,200,255",
-  violet: "180,150,255", pink: "255,120,190", teal: "60,225,205", grey: "150,160,180",
+const FALLBACK = ["#38bdf8", "#f472b6", "#34d399", "#c084fc", "#fbbf24", "#fb7185", "#2dd4bf"];
+const card = "rounded-2xl border border-sky-300/10 bg-[rgba(10,14,30,0.72)] backdrop-blur-xl p-4";
+const isPlanned = (v: InvoiceRow) => (v.status === "Draft" && !!v.scheduled_send_at) || (!!v.repeat_monthly && !!v.next_repeat_on);
+const ago = (iso: string) => {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 60) return `${Math.max(1, m)} min`;
+  if (m < 60 * 24) return `${Math.round(m / 60)} u`;
+  return `${Math.round(m / 1440)} d`;
 };
-const K_MIN = 0.12, K_MAX = 7;
-const AGENT_SLOTS = 2;
-
-const isPlanned = (v: InvoiceRow) => (v.status === "Draft" && !!v.scheduled_send_at) || (v.repeat_monthly && !!v.next_repeat_on);
-const siteTone = (s: string | null): Tone => (s === "up" ? "green" : s === "degraded" ? "amber" : s === "down" ? "red" : "grey");
-
-/** One neuron per client; its dendrites are the client's websites, services, money, leads, contract and agent slots. */
-function toNeurons(d: Data): { neurons: NeuronInput[]; mrr: number } {
-  const active = d.clients.filter((c) => c.status === "Active").sort((a, b) => clientMRR(b) - clientMRR(a) || a.name.localeCompare(b.name));
-  const prospects = d.clients.filter((c) => c.status === "Prospect").sort((a, b) => a.name.localeCompare(b.name));
-  const mrr = active.reduce((a, c) => a + clientMRR(c), 0);
-  const top = Math.max(1, ...active.map(clientMRR));
-  const week = Date.now() - 7 * 864e5;
-  const one = (c: ClientRow, prospect: boolean): NeuronInput => {
-    const sites = d.sites.filter((s) => s.client_id === c.id);
-    const ids = new Set(sites.map((s) => s.id));
-    const inv = d.invoices.filter((v) => v.client === c.id);
-    const paid = inv.filter((v) => v.status === "Paid").reduce((a, v) => a + Number(v.total || 0), 0);
-    const due = inv.filter((v) => v.status === "Sent").reduce((a, v) => a + Number(v.total || 0), 0);
-    const planned = inv.filter(isPlanned).length;
-    const leads = d.records.filter((r) => ids.has(r.site_id) && r.source_created_at && new Date(r.source_created_at).getTime() > week).length;
-    const agr = d.agreements.find((a) => a.client_id === c.id);
-    const b = clientMRRBreakdown(c);
-    const tips: TipInput[] = [];
-    for (const s of sites) tips.push({ id: `s${s.id}`, label: s.name, sub: s.last_status === "down" ? "offline" : s.last_response_ms != null ? `${s.last_response_ms} ms` : "website", tone: siteTone(s.last_status), ref: { type: "site", id: s.id } });
-    if (b.seo) tips.push({ id: "seo", label: "SEO", sub: formatCurrency(b.seo), tone: "sky" });
-    if (b.website) tips.push({ id: "web", label: "Website", sub: formatCurrency(b.website), tone: "gold" });
-    if (b.social) tips.push({ id: "social", label: "Social", sub: formatCurrency(b.social), tone: "violet" });
-    if (due) tips.push({ id: "due", label: "Open", sub: formatCurrency(due), tone: "amber" });
-    if (paid) tips.push({ id: "paid", label: "Betaald", sub: formatCurrency(paid), tone: "green" });
-    if (planned) tips.push({ id: "plan", label: "Gepland", sub: `${planned}×`, tone: "sky" });
-    if (leads) tips.push({ id: "leads", label: "Aanvragen", sub: `${leads} · 7 d`, tone: "pink" });
-    if (agr) tips.push({ id: "agr", label: "Contract", sub: agr.status.toLowerCase(), tone: "teal" });
-    for (let i = 0; i < AGENT_SLOTS; i++) tips.push({ id: `agent${i}`, label: "Agent", sub: "vrij", tone: "grey", slot: true });
-    const m = clientMRR(c);
-    return {
-      key: c.id, label: c.name, value: prospect ? (c.pipeline_stage ?? "prospect") : m ? `${formatCurrency(m)}/mnd` : (c.location ?? "klant"),
-      sub: prospect ? "prospect" : "klant", weight: prospect ? 0 : m / top, dim: prospect, alert: sites.some((s) => s.last_status === "down"), tips,
-    };
-  };
-  return { neurons: [...active.map((c) => one(c, false)), ...prospects.map((c) => one(c, true))], mrr };
-}
 
 function BrainPage() {
-  const navigate = useNavigate();
   const [data, setData] = useState<Data | null>(null);
-  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const today = brusselsToday();
+  const month = today.slice(0, 7) + "-01";
 
+  const load = useCallback(async () => {
+    const since = new Date(Date.now() - 30 * 864e5).toISOString();
+    const [c, s, i, r, t, v] = await Promise.all([
+      supabase.from("clients").select("*"),
+      db.from("monitored_sites").select("id,client_id,name,last_status").eq("enabled", true),
+      db.from("invoices").select("id,client,client_name,invoice_number,total,status,date,sent_at,updated_at,line_items,scheduled_send_at,repeat_monthly,repeat_day,next_repeat_on"),
+      db.from("site_records").select("id,site_id,kind,title,customer_name,source_created_at").neq("kind", "blokkade").gte("source_created_at", since).order("source_created_at", { ascending: false }).limit(60),
+      db.from("client_tasks").select("*").order("created_at", { ascending: false }).limit(300),
+      db.from("client_videos").select("*").gte("month", new Date(Date.now() - 62 * 864e5).toISOString().slice(0, 10)),
+    ]);
+    setData({ clients: (c.data as unknown as ClientRow[]) ?? [], sites: s.data ?? [], invoices: i.data ?? [], records: r.data ?? [], tasks: t.data ?? [], videos: v.data ?? [] });
+  }, []);
   useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      const since = new Date(Date.now() - 30 * 864e5).toISOString();
-      const [c, s, i, r, a] = await Promise.all([
-        supabase.from("clients").select("*"),
-        db.from("monitored_sites").select("id,client_id,name,last_status,last_response_ms").eq("enabled", true).order("name"),
-        db.from("invoices").select("id,client,total,status,scheduled_send_at,repeat_monthly,next_repeat_on"),
-        db.from("site_records").select("id,site_id,source_created_at").neq("kind", "blokkade").gte("source_created_at", since).limit(1000),
-        db.from("client_agreements").select("id,client_id,status"),
-      ]);
-      if (!alive) return;
-      setData({ clients: (c.data as unknown as ClientRow[]) ?? [], sites: s.data ?? [], invoices: i.data ?? [], records: r.data ?? [], agreements: a.data ?? [] });
-    };
     load();
     const t = setInterval(load, 60_000);
-    return () => { alive = false; clearInterval(t); };
-  }, []);
+    return () => clearInterval(t);
+  }, [load]);
 
-  const model = useMemo(() => {
+  const m = useMemo(() => {
     if (!data) return null;
-    const { neurons, mrr } = toNeurons(data);
-    return { brain: buildBrain(neurons), mrr };
+    const customers = data.clients.filter((c) => !c.is_internal);
+    const active = customers.filter((c) => c.status === "Active").sort((a, b) => clientMRR(b) - clientMRR(a) || a.name.localeCompare(b.name));
+    const prospects = customers.filter((c) => c.status === "Prospect").sort((a, b) => a.name.localeCompare(b.name));
+    const top = Math.max(1, ...active.map(clientMRR));
+    const colorOf: Record<string, string> = {};
+    [...active, ...prospects].forEach((c, i) => { colorOf[c.id] = c.brand_color || FALLBACK[i % FALLBACK.length]; });
+    const nameOf: Record<string, string> = Object.fromEntries(data.clients.map((c) => [c.id, c.name]));
+    const openTasks = data.tasks.filter((t) => !t.done_at);
+    const neurons: BrainNeuron[] = [...active, ...prospects].map((c) => {
+      const mrr = clientMRR(c), prospect = c.status === "Prospect";
+      return {
+        key: c.id, label: c.name.replace(/\s*\(.*\)$/, ""), color: colorOf[c.id], weight: prospect ? 0 : mrr / top, dim: prospect,
+        value: prospect ? (c.pipeline_stage ?? "prospect") : mrr ? `${formatCurrency(mrr)}/mnd` : "klant",
+        alert: data.sites.some((s) => s.client_id === c.id && s.last_status === "down"),
+        badge: openTasks.filter((t) => t.client_id === c.id).length || undefined,
+      };
+    });
+    return { active, prospects, colorOf, nameOf, neurons, mrr: active.reduce((a, c) => a + clientMRR(c), 0) };
   }, [data]);
-  const brain = model?.brain ?? null;
-  const focus = brain?.neurons.find((n) => n.key === focusKey) ?? null;
 
-  // ---------- canvas world ----------
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const cam = useRef({ x: { value: 0, velocity: 0, target: 0 } as Spring, y: { value: 0, velocity: 0, target: 0 } as Spring, k: { value: 0.6, velocity: 0, target: 0.6 } as Spring, dim: { value: 0, velocity: 0, target: 0 } as Spring });
-  const modelRef = useRef(model);
-  const focusRef = useRef<string | null>(null);
-  const hoverRef = useRef<string | null>(null);
-  const pressRef = useRef<{ id: string | null; s: Spring }>({ id: null, s: { value: 1, velocity: 0, target: 1 } });
-  const fitK = useRef(0.6);
-  const reduced = useRef(false);
-  const born = useRef(0);
-  modelRef.current = model;
-  focusRef.current = focusKey;
+  if (!data || !m) return <div className="min-h-[60vh] grid place-items-center text-sm text-white/50" style={{ background: "#02030a" }}>Het brein wordt opgebouwd…</div>;
 
-  const size = () => {
-    const el = wrapRef.current;
-    return { w: el?.clientWidth ?? 1, h: el?.clientHeight ?? 1 };
-  };
-  const sidePanel = () => (size().w >= 1024 ? 300 : 0);
-  const snap = () => { const c = cam.current; c.x.value = c.x.target; c.y.value = c.y.target; c.k.value = c.k.target; c.x.velocity = c.y.velocity = c.k.velocity = 0; };
+  const sel = selected ? data.clients.find((c) => c.id === selected) ?? null : null;
+  const mine = <T extends { client_id?: string | null; client?: string | null }>(rows: T[]) => (sel ? rows.filter((r) => (r.client_id ?? r.client) === sel.id) : rows);
+  const invoices = mine(data.invoices);
+  const tasks = mine(data.tasks);
+  const siteClient: Record<string, string | null> = Object.fromEntries(data.sites.map((s) => [s.id, s.client_id]));
+  const siteName: Record<string, string> = Object.fromEntries(data.sites.map((s) => [s.id, s.name]));
+  const records = sel ? data.records.filter((r) => siteClient[r.site_id] === sel.id) : data.records;
+  const videoClients = (sel ? [sel] : m.active).filter((c) => Number(c.social_videos_per_month) > 0);
+  const up = data.sites.filter((s) => s.last_status !== "down").length;
+  const openTotal = invoices.filter((v) => v.status === "Sent").reduce((a, v) => a + Number(v.total || 0), 0);
+  const paidMonth = invoices.filter((v) => v.status === "Paid" && v.date.slice(0, 7) === today.slice(0, 7)).reduce((a, v) => a + Number(v.total || 0), 0);
+  const forecast = forecastByService(invoices, today, 6);
+  const forecastTotal = forecast.reduce((a, r) => a + r.total, 0);
+  const upcoming = invoices.filter(isPlanned).map((v) => ({ v, at: (v.status === "Draft" ? v.scheduled_send_at : v.next_repeat_on) as string })).filter((x) => !!x.at).sort((a, b) => a.at.localeCompare(b.at));
+  const openTasks = tasks.filter((t) => !t.done_at).sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
 
-  const fit = useCallback((instant = false) => {
-    const b = modelRef.current?.brain;
-    if (!b) return;
-    const bb = brainBounds(b);
-    const { w, h } = size();
-    const side = sidePanel();
-    const k = Math.min(1.5, Math.max(K_MIN, Math.min((w - side - 60) / (bb.maxX - bb.minX), (h - 150) / (bb.maxY - bb.minY))));
-    fitK.current = k;
-    const c = cam.current;
-    c.x.target = (bb.minX + bb.maxX) / 2 + side / 2 / k; c.y.target = (bb.minY + bb.maxY) / 2 - 10 / k; c.k.target = k; c.dim.target = 0;
-    if (instant || reduced.current) snap();
-  }, []);
-
-  /** Dendrite labels fade in as you zoom past the overview. */
-  const tipAlpha = () => Math.max(0, Math.min(1, (cam.current.k.value / fitK.current - 1.5) / 0.5));
-
-  const flyTo = useCallback((n: Neuron | null) => {
-    setFocusKey(n?.key ?? null);
-    if (!n) { fit(); return; }
-    const { w, h } = size();
-    const side = sidePanel();
-    const c = cam.current;
-    const k = Math.max(fitK.current * 2.1, Math.min((w - side) / (side ? 420 : 290), (h - 160) / 330));
-    // aim a little beyond the cell body, where its dendrites are
-    c.k.target = k; c.x.target = n.x + Math.cos(n.angle) * 45 + side / 2 / k; c.y.target = n.y + Math.sin(n.angle) * 45; c.dim.target = 1;
-    if (reduced.current) snap();
-  }, [fit]);
-
-  const fitted = useRef(false);
-  useEffect(() => {
-    if (model && !fitted.current) { fitted.current = true; fit(true); born.current = performance.now(); }
-  }, [model, fit]);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    reduced.current = mq.matches;
-    const on = () => { reduced.current = mq.matches; };
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    let raf = 0, last = performance.now(), dpr = 1;
-    const resize = () => {
-      const { w, h } = size();
-      dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
-      canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
-      if (fitted.current && !focusRef.current) fit(true);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(wrapRef.current!);
-    const frame = (now: number) => {
-      const dt = Math.min(0.033, (now - last) / 1000);
-      last = now;
-      const c = cam.current;
-      if (!dragging.current) { c.x = stepSpring(c.x, dt, 1, 0.55); c.y = stepSpring(c.y, dt, 1, 0.55); }
-      if (!pinching.current) c.k = stepSpring(c.k, dt, 1, 0.55);
-      c.dim = stepSpring(c.dim, dt, 1, 0.35);
-      pressRef.current.s = stepSpring(pressRef.current.s, dt, 1, 0.18);
-      draw(ctx, now, dpr);
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function draw(ctx: CanvasRenderingContext2D, now: number, dpr: number) {
-    const { w, h } = size();
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.globalCompositeOperation = "source-over";
-    ctx.clearRect(0, 0, w, h);
-    const m = modelRef.current;
-    if (!m) return;
-    const b: Brain = m.brain;
-    const c = cam.current;
-    const k = c.k.value;
-    const calm = reduced.current;
-    const t = calm ? 0 : now / 1000;
-    const grow = calm ? 1 : Math.max(0, Math.min(1, (now - born.current) / 1600)); // the brain grows out of the core on arrival
-    const ease = 1 - Math.pow(1 - grow, 3);
-    const f = focusRef.current;
-    const dimOf = (key: string) => (f && f !== key ? 1 - 0.8 * c.dim.value : 1);
-    const sx = (x: number) => (x - c.x.value) * k + w / 2;
-    const sy = (y: number) => (y - c.y.value) * k + h / 2;
-
-    // world space, light adds up where filaments cross
-    ctx.save();
-    ctx.translate(w / 2, h / 2); ctx.scale(k, k); ctx.translate(-c.x.value, -c.y.value);
-    ctx.globalCompositeOperation = "lighter";
-    ctx.lineCap = "round";
-    const px = 1 / k;
-
-    const strand = (cv: Curve, color: string, width: number, alpha: number, phase: number, progress = 1, glow = true) => {
-      const s1 = Math.sin(t * 0.55 + phase) * 5, s2 = Math.cos(t * 0.45 + phase * 1.7) * 7; // slow sway, like something alive
-      ctx.beginPath();
-      ctx.moveTo(cv.p0[0], cv.p0[1]);
-      ctx.bezierCurveTo(cv.p1[0] + s1, cv.p1[1] + s2, cv.p2[0] + s2, cv.p2[1] + s1, cv.p3[0], cv.p3[1]);
-      if (progress < 1) ctx.setLineDash([cv.len * 1.25 * progress, cv.len * 3]);
-      if (glow) { ctx.strokeStyle = `hsla(${color},${alpha * 0.16})`; ctx.lineWidth = width * 5 + 3 * px; ctx.stroke(); }
-      ctx.strokeStyle = `hsla(${color},${alpha})`; ctx.lineWidth = width; ctx.stroke();
-      ctx.setLineDash([]);
-    };
-
-    // core filaments
-    b.coreWisps.forEach((wsp, i) => strand(wsp.curve, `${wsp.hue},100%,68%`, 0.7 * Math.max(px, 0.7), 0.32 * (f ? 1 - 0.6 * c.dim.value : 1), i * 1.3, ease, false));
-
-    for (const n of b.neurons) {
-      const a = dimOf(n.key) * (n.dim ? 0.5 : 1);
-      const col = `${n.hue},100%,${n.dim ? 70 : 64}%`;
-      const p1 = Math.min(1, ease * 1.6), p2 = Math.max(0, Math.min(1, (grow - 0.45) / 0.55));
-      strand(n.axon, col, (1 + n.weight * 1.6) * Math.max(px, 0.8), 0.9 * a, n.index, p1);
-      if (p2 > 0) {
-        n.wisps.forEach((wsp, i) => strand(wsp, col, 0.6 * Math.max(px, 0.7), 0.4 * a, n.index + i * 2.1, p2, false));
-        n.tips.forEach((tp, i) => strand(tp.curve, tp.slot ? "215,25%,70%" : col, 0.9 * Math.max(px, 0.75), (tp.slot ? 0.35 : 0.8) * a, n.index * 3 + i, p2, !tp.slot));
-      }
-      // signals travelling along the axon: busier clients fire more often
-      if (!calm && grow >= 1 && !n.dim) {
-        const count = 1 + Math.round(n.weight * 3);
-        for (let i = 0; i < count; i++) {
-          const u = (t * (0.16 + n.weight * 0.14) + i / count + n.index * 0.37) % 1;
-          for (let tr = 0; tr < 4; tr++) {
-            const [qx, qy] = bez(n.axon, Math.max(0, u - tr * 0.012));
-            ctx.fillStyle = `hsla(${n.hue},100%,${88 - tr * 6}%,${(0.9 - tr * 0.2) * a * Math.sin(u * Math.PI)})`;
-            ctx.beginPath(); ctx.arc(qx, qy, (2.4 - tr * 0.4) * Math.max(px, 0.9), 0, Math.PI * 2); ctx.fill();
-          }
-        }
-      }
-      // cell body
-      const press = pressRef.current.id === n.key ? pressRef.current.s.value : 1;
-      const breathe = calm ? 1 : 1 + Math.sin(t * 1.3 + n.index) * 0.05;
-      const r = R_SOMA * (n.dim ? 0.62 : 0.8 + n.weight * 0.45) * press * breathe * Math.min(1, p1 * 1.2);
-      const hot = hoverRef.current === n.key || f === n.key;
-      const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 3.2);
-      g.addColorStop(0, `hsla(${n.hue},100%,92%,${a})`);
-      g.addColorStop(0.16, `hsla(${n.hue},100%,66%,${0.85 * a})`);
-      g.addColorStop(0.45, `hsla(${n.hue},100%,55%,${(hot ? 0.34 : 0.2) * a})`);
-      g.addColorStop(1, `hsla(${n.hue},100%,50%,0)`);
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(n.x, n.y, r * 3.2, 0, Math.PI * 2); ctx.fill();
-      if (n.alert && !calm) {
-        const ph = (t % 1.5) / 1.5;
-        ctx.strokeStyle = `rgba(255,90,90,${0.9 * (1 - ph)})`; ctx.lineWidth = 2 * px;
-        ctx.beginPath(); ctx.arc(n.x, n.y, r * (1.2 + ph * 2.2), 0, Math.PI * 2); ctx.stroke();
-      }
-      // dendrite tips
-      if (p2 > 0.9) for (const tp of n.tips) {
-        if (tp.slot) {
-          ctx.strokeStyle = `rgba(190,205,230,${0.6 * a})`; ctx.lineWidth = 1 * Math.max(px, 0.8); ctx.setLineDash([2.5, 2.5]);
-          ctx.beginPath(); ctx.arc(tp.x, tp.y, 4.2, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-        } else {
-          const tg = ctx.createRadialGradient(tp.x, tp.y, 0, tp.x, tp.y, 9);
-          tg.addColorStop(0, `rgba(255,255,255,${a})`); tg.addColorStop(0.3, `rgba(${TONE[tp.tone]},${0.9 * a})`); tg.addColorStop(1, `rgba(${TONE[tp.tone]},0)`);
-          ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(tp.x, tp.y, 9, 0, Math.PI * 2); ctx.fill();
-        }
-      }
-    }
-
-    // the core: a bright vertical seam of light
-    const cb = calm ? 1 : 1 + Math.sin(t * 0.9) * 0.04;
-    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 210 * cb);
-    halo.addColorStop(0, "rgba(120,200,255,0.5)"); halo.addColorStop(0.3, "rgba(70,120,255,0.2)"); halo.addColorStop(1, "rgba(40,60,255,0)");
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, 210 * cb, 0, Math.PI * 2); ctx.fill();
-    ctx.save(); ctx.scale(0.42, 1);
-    const seam = ctx.createRadialGradient(0, 0, 0, 0, 0, 92 * cb);
-    seam.addColorStop(0, "rgba(255,255,255,1)"); seam.addColorStop(0.35, "rgba(170,230,255,0.95)"); seam.addColorStop(1, "rgba(60,150,255,0)");
-    ctx.fillStyle = seam; ctx.beginPath(); ctx.arc(0, 0, 92 * cb, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    ctx.restore();
-
-    // ---------- labels, in screen space so they stay crisp ----------
-    ctx.globalCompositeOperation = "source-over";
-    const hide = isPrivate();
-    const show = (s: string) => (hide && s.includes("€") ? "€ •••" : s);
-    ctx.shadowColor = "rgba(0,0,0,0.95)"; ctx.shadowBlur = 8;
-    if (grow >= 0.5) {
-      ctx.globalAlpha = Math.min(1, (grow - 0.5) * 2) * (f ? 1 - 0.6 * c.dim.value : 1);
-      label(ctx, "Solyn", sx(0), sy(0) + 112 * k + 6, Math.max(11, Math.min(20, 15 * k + 4)), "#ffffff", 700, "center");
-      label(ctx, show(`${formatCurrency(m.mrr)}/mnd`), sx(0), sy(0) + 112 * k + 6 + Math.max(13, Math.min(22, 15 * k + 6)), Math.max(10, Math.min(15, 11 * k + 4)), "rgba(170,225,255,0.9)", 600, "center");
-    }
-    const ta = tipAlpha();
-    for (const n of b.neurons) {
-      const a = dimOf(n.key) * Math.max(0, Math.min(1, (grow - 0.6) / 0.4));
-      if (a <= 0.02) continue;
-      const x = sx(n.x), y = sy(n.y);
-      if (x < -200 || x > w + 200 || y < -80 || y > h + 80) continue;
-      // name sits on the inner side of the cell body, away from its dendrites
-      const inward = n.angle + Math.PI, off = R_SOMA * k * 1.5 + 16;
-      const lx = x + Math.cos(inward) * off, ly = y + Math.sin(inward) * off * 0.8;
-      const fs = Math.max(10.5, Math.min(16, 11 * Math.sqrt(k) + 3));
-      const visible = !n.dim || k / fitK.current > 1.25 || hoverRef.current === n.key || f === n.key;
-      if (visible) {
-        ctx.globalAlpha = a * (n.dim ? 0.7 : 1);
-        label(ctx, n.label, lx, ly, fs, "#fff", 650, "center");
-        if (k > 0.7 || f === n.key) label(ctx, show(n.value), lx, ly + fs * 1.15, fs * 0.82, `hsla(${n.hue},100%,78%,0.95)`, 550, "center");
-      }
-      if (ta > 0.02) for (const tp of n.tips) {
-        const tx = sx(tp.x), ty = sy(tp.y);
-        const right = Math.cos(tp.angle) >= 0;
-        ctx.globalAlpha = a * ta * (tp.slot ? 0.6 : 1);
-        const fst = Math.max(9.5, Math.min(13, 4 * k + 2));
-        label(ctx, tp.label, tx + (right ? 12 : -12), ty - 1, fst, "#fff", 600, right ? "left" : "right");
-        if (tp.sub) label(ctx, show(tp.sub), tx + (right ? 12 : -12), ty + fst * 1.05, fst * 0.88, `rgba(${TONE[tp.tone]},0.95)`, 500, right ? "left" : "right");
-      }
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  // what happened lately, newest first
+  const events: { at: string; text: string; color: string }[] = [];
+  for (const v of invoices) {
+    if (v.sent_at) events.push({ at: v.sent_at, text: `Factuur ${formatInvoiceNumber(v.invoice_number)} verstuurd naar ${v.client_name ?? "klant"}`, color: "#38bdf8" });
+    if (v.status === "Paid") events.push({ at: v.updated_at ?? v.date, text: `Betaling ontvangen van ${v.client_name ?? "klant"} · ${formatCurrency(Number(v.total))}`, color: "#34d399" });
   }
-
-  // ---------- gestures: pan with momentum, pinch and wheel zoom around the pointer, tap to fly in ----------
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const dragging = useRef(false);
-  const pinching = useRef(false);
-  const gesture = useRef({ sx: 0, sy: 0, moved: false, hist: [] as { x: number; y: number; t: number }[], pinch: { d: 0, k: 0, wx: 0, wy: 0 } });
-
-  const toWorld = (px: number, py: number) => {
-    const { w, h } = size();
-    const c = cam.current;
-    return { x: (px - w / 2) / c.k.value + c.x.value, y: (py - h / 2) / c.k.value + c.y.value };
-  };
-  const local = (e: { clientX: number; clientY: number }) => {
-    const r = canvasRef.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  };
-  const hitAt = (px: number, py: number) => {
-    const b = modelRef.current?.brain;
-    if (!b) return null;
-    const p = toWorld(px, py);
-    return hitBrain(b, p.x, p.y, 14 / cam.current.k.value, tipAlpha() > 0.5);
-  };
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    canvasRef.current!.setPointerCapture(e.pointerId);
-    const p = local(e);
-    pointers.current.set(e.pointerId, p);
-    const c = cam.current;
-    c.x.target = c.x.value; c.y.target = c.y.value; c.x.velocity = c.y.velocity = 0; // grabbing stops any flight on the spot
-    if (pointers.current.size === 1) {
-      gesture.current = { ...gesture.current, sx: p.x, sy: p.y, moved: false, hist: [{ ...p, t: performance.now() }] };
-      const hit = hitAt(p.x, p.y);
-      pressRef.current.id = hit && !hit.tip ? hit.neuron.key : null;
-      pressRef.current.s.target = pressRef.current.id ? 0.86 : 1; // feedback on press, not on release
-    } else if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()];
-      const wp = toWorld((a.x + b.x) / 2, (a.y + b.y) / 2);
-      gesture.current.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: c.k.value, wx: wp.x, wy: wp.y };
-      pinching.current = true; dragging.current = true; gesture.current.moved = true;
-      pressRef.current.s.target = 1;
-    }
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const p = local(e);
-    if (!pointers.current.has(e.pointerId)) {
-      if (e.pointerType === "mouse") { const hit = hitAt(p.x, p.y); hoverRef.current = hit?.neuron.key ?? null; canvasRef.current!.style.cursor = hit ? "pointer" : "grab"; }
-      return;
-    }
-    const prev = pointers.current.get(e.pointerId)!;
-    pointers.current.set(e.pointerId, p);
-    const c = cam.current, g = gesture.current;
-    if (pointers.current.size >= 2) {
-      const [a, b] = [...pointers.current.values()];
-      let k = g.pinch.k * (Math.hypot(a.x - b.x, a.y - b.y) / Math.max(1, g.pinch.d));
-      if (k > K_MAX) k = K_MAX + (k - K_MAX) * 0.25; else if (k < K_MIN) k = K_MIN - (K_MIN - k) * 0.25; // soft limits
-      const { w, h } = size();
-      c.k.value = c.k.target = k;
-      c.x.value = c.x.target = g.pinch.wx - ((a.x + b.x) / 2 - w / 2) / k;
-      c.y.value = c.y.target = g.pinch.wy - ((a.y + b.y) / 2 - h / 2) / k;
-      return;
-    }
-    if (!g.moved && Math.hypot(p.x - g.sx, p.y - g.sy) < 6) return;
-    if (!g.moved) { g.moved = true; dragging.current = true; pressRef.current.s.target = 1; canvasRef.current!.style.cursor = "grabbing"; }
-    c.x.value -= (p.x - prev.x) / c.k.value; c.y.value -= (p.y - prev.y) / c.k.value; // 1:1 with the finger
-    c.x.target = c.x.value; c.y.target = c.y.value;
-    g.hist.push({ ...p, t: performance.now() });
-    if (g.hist.length > 6) g.hist.shift();
-  };
-
-  const onPointerUp = (e: React.PointerEvent) => {
-    const p = local(e);
-    pointers.current.delete(e.pointerId);
-    const c = cam.current, g = gesture.current;
-    pressRef.current.s.target = 1;
-    if (pinching.current) {
-      if (pointers.current.size < 2) {
-        pinching.current = false;
-        c.k.target = Math.min(K_MAX, Math.max(K_MIN, c.k.value));
-        if (pointers.current.size === 1) g.hist = [{ ...[...pointers.current.values()][0], t: performance.now() }];
-      }
-      if (pointers.current.size === 0) dragging.current = false;
-      return;
-    }
-    if (pointers.current.size > 0) return;
-    canvasRef.current!.style.cursor = "grab";
-    if (!g.moved) {
-      dragging.current = false;
-      const hit = hitAt(p.x, p.y);
-      if (!hit) { flyTo(null); return; }
-      if (hit.tip?.ref) navigate({ to: "/status/$id", params: { id: hit.tip.ref.id } });
-      else if (hit.tip?.slot) toast("Vrije plaats voor een agent", { description: `Hier koppel je straks een agent aan ${hit.neuron.label}.` });
-      else flyTo(hit.neuron);
-      return;
-    }
-    dragging.current = false;
-    // hand the finger's speed to the camera and let it glide to where the flick was heading
-    const hs = g.hist, a = hs[0], b = hs[hs.length - 1];
-    if (performance.now() - b.t < 80 && hs.length > 1) {
-      const dt = Math.max(1, b.t - a.t);
-      const vx = ((b.x - a.x) / dt) * 1000, vy = ((b.y - a.y) / dt) * 1000;
-      c.x.velocity = -vx / c.k.value; c.y.velocity = -vy / c.k.value;
-      c.x.target = c.x.value - project(vx, 0.996) / c.k.value;
-      c.y.target = c.y.value - project(vy, 0.996) / c.k.value;
-    }
-  };
-
-  useEffect(() => {
-    const el = canvasRef.current!;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const c = cam.current;
-      const r = el.getBoundingClientRect();
-      const px = e.clientX - r.left, py = e.clientY - r.top;
-      const mouseWheel = e.deltaMode !== 0 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 40);
-      if (e.ctrlKey || e.metaKey || mouseWheel) {
-        const before = toWorld(px, py);
-        const k = Math.min(K_MAX, Math.max(K_MIN, c.k.value * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018))));
-        const { w, h } = size();
-        c.k.value = c.k.target = k; c.k.velocity = 0;
-        c.x.value = c.x.target = before.x - (px - w / 2) / k;
-        c.y.value = c.y.target = before.y - (py - h / 2) / k;
-      } else {
-        c.x.value = c.x.target = c.x.value + e.deltaX / c.k.value;
-        c.y.value = c.y.target = c.y.value + e.deltaY / c.k.value;
-      }
-      c.x.velocity = c.y.velocity = 0;
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const zoomBy = (f: number) => { const c = cam.current; c.k.target = Math.min(K_MAX, Math.max(K_MIN, c.k.target * f)); };
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.closest("input,textarea,select")) return;
-      const c = cam.current, step = 80 / c.k.target;
-      if (e.key === "Escape" || e.key === "0") flyTo(null);
-      else if (e.key === "+" || e.key === "=") zoomBy(1.4);
-      else if (e.key === "-") zoomBy(1 / 1.4);
-      else if (e.key === "ArrowLeft") c.x.target -= step;
-      else if (e.key === "ArrowRight") c.x.target += step;
-      else if (e.key === "ArrowUp") c.y.target -= step;
-      else if (e.key === "ArrowDown") c.y.target += step;
-      else return;
-      e.preventDefault();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [flyTo]);
-
-  const stats = useMemo(() => {
-    if (!data || !brain) return null;
-    const up = data.sites.filter((s) => s.last_status === "up" || s.last_status === "degraded").length;
-    return {
-      clients: brain.neurons.filter((n) => !n.dim).length, prospects: brain.neurons.filter((n) => n.dim).length,
-      sites: `${up}/${data.sites.length}`, down: up < data.sites.length,
-      slots: brain.neurons.reduce((a, n) => a + n.tips.filter((t) => t.slot).length, 0),
-    };
-  }, [data, brain]);
-
-  const glass = "border border-sky-300/15 bg-[rgba(8,12,28,0.62)] backdrop-blur-2xl backdrop-saturate-150 shadow-[0_10px_40px_rgba(0,0,0,0.5)]";
+  for (const r of records) if (r.source_created_at) events.push({ at: r.source_created_at, text: `Nieuwe ${r.kind} via ${siteName[r.site_id] ?? "website"}: ${r.customer_name || r.title || ""}`, color: "#f472b6" });
+  for (const v of mine(data.videos)) {
+    if (v.sent_at) events.push({ at: v.sent_at, text: `Video ${v.slot} verstuurd naar ${m.nameOf[v.client_id] ?? "klant"}`, color: "#a78bfa" });
+    if (v.posted_at) events.push({ at: v.posted_at, text: `Video ${v.slot} geplaatst voor ${m.nameOf[v.client_id] ?? "klant"}`, color: "#34d399" });
+  }
+  for (const t of tasks) if (t.done_at) events.push({ at: t.done_at, text: `Taak afgerond: ${t.title}`, color: "#9ca3af" });
+  events.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
   return (
-    <div ref={wrapRef} className="fixed inset-0 lg:left-56 lg:top-16 overflow-hidden select-none" style={{ background: "#02030a" }}>
-      <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(60% 60% at 45% 50%, rgba(40,70,255,0.16), transparent 70%), radial-gradient(35% 40% at 80% 15%, rgba(190,60,255,0.07), transparent 70%)" }} />
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 touch-none cursor-grab"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        onPointerLeave={() => { hoverRef.current = null; }}
-        aria-label="Brain: elke klant is een neuron rond de kern van Solyn"
-        role="img"
-      />
-
-      {/* core read-out */}
-      <div className={`absolute left-3 top-[calc(0.75rem+env(safe-area-inset-top))] lg:left-5 lg:top-5 rounded-2xl px-4 py-3 ${glass} pop-in`}>
-        <div className="flex items-center gap-2">
-          <BrainCircuit className="w-4 h-4 text-sky-300" />
-          <h1 className="text-base font-semibold tracking-tight">Brain</h1>
-          <span className="ml-1 inline-flex items-center gap-1 text-[11px] text-sky-300"><span className="w-1.5 h-1.5 rounded-full bg-sky-300" />live</span>
-        </div>
-        {stats && model ? (
-          <dl className="mt-2 grid grid-cols-4 lg:grid-cols-2 gap-x-5 gap-y-1.5 text-xs">
-            <Stat label="Per maand" value={formatCurrency(model.mrr)} />
-            <Stat label="Neuronen" value={`${stats.clients} + ${stats.prospects}`} />
-            <Stat label="Sites online" value={stats.sites} warn={stats.down} />
-            <Stat label="Agents" value={`0 / ${stats.slots}`} />
+    <div className="min-h-screen -mb-28 lg:mb-0 pb-28 lg:pb-6" style={{ background: "radial-gradient(70% 50% at 50% 30%, rgba(40,70,255,0.14), transparent 70%), #02030a" }}>
+      <div className="p-3 md:p-5 max-w-[1500px] 3xl:max-w-[2100px] mx-auto space-y-3">
+        {/* where am I + the numbers that matter */}
+        <header className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="w-5 h-5 text-sky-300" />
+            <h1 className="text-xl font-semibold tracking-tight">Brain</h1>
+            <span className="inline-flex items-center gap-1 text-[11px] text-sky-300"><span className="w-1.5 h-1.5 rounded-full bg-sky-300" />live</span>
+          </div>
+          <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+            <Stat label="Per maand" value={formatCurrency(sel ? clientMRR(sel) : m.mrr)} />
+            {!sel && <Stat label="Klanten" value={`${m.active.length} + ${m.prospects.length} prospects`} />}
+            <Stat label="Open taken" value={String(openTasks.length)} />
+            <Stat label="Openstaand" value={formatCurrency(openTotal)} warn={openTotal > 0} />
+            {!sel && <Stat label="Sites online" value={`${up}/${data.sites.length}`} warn={up < data.sites.length} />}
           </dl>
-        ) : <div className="text-xs text-white/55 mt-1">Het brein wordt opgebouwd…</div>}
-      </div>
+          {sel && (
+            <div className="ml-auto flex items-center gap-2 pop-in">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 pl-3 pr-1 h-9 text-sm font-medium">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.colorOf[sel.id] }} />{sel.name}
+                <button onClick={() => setSelected(null)} aria-label="Toon alle klanten" className="press w-7 h-7 rounded-full grid place-items-center hover:bg-white/10"><X className="w-3.5 h-3.5" /></button>
+              </span>
+              <Link to="/clients/$id" params={{ id: sel.id }} className="press h-9 px-4 rounded-full bg-white text-black text-sm font-semibold inline-flex items-center gap-1.5">Open klant <ArrowRight className="w-4 h-4" /></Link>
+            </div>
+          )}
+        </header>
 
-      {/* neuron index (desktop): every client, one tap away */}
-      {brain && (
-        <aside className={`hidden lg:flex absolute right-5 top-5 bottom-5 w-[17.5rem] flex-col rounded-3xl ${glass}`}>
-          <div className="px-4 pt-4 pb-2 text-xs font-medium text-white/50">Neuronen</div>
-          <ul className="flex-1 overflow-y-auto px-2 pb-2 overscroll-contain">
-            {brain.neurons.map((n) => (
-              <li key={n.key}>
-                <button type="button" onClick={() => flyTo(n)} aria-current={focusKey === n.key}
-                  className={`press w-full flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${focusKey === n.key ? "bg-white/10" : "hover:bg-white/5"}`}>
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: `hsl(${n.hue} 100% 64%)`, boxShadow: `0 0 10px hsl(${n.hue} 100% 60%)`, opacity: n.dim ? 0.5 : 1 }} />
-                  <span className="min-w-0 flex-1">
-                    <span className={`block text-sm truncate ${n.dim ? "text-white/60" : "font-medium"}`}>{n.label}</span>
-                    <span className="block text-[11px] text-white/45 tabular-nums truncate">{n.value}</span>
-                  </span>
-                  <span className="shrink-0 text-[11px] text-white/35">0 agents</span>
+        <div className="grid gap-3 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start">
+          {/* centre: the brain */}
+          <div className="space-y-3 lg:col-start-2 lg:row-start-1">
+            <div className="relative h-[52vh] min-h-[340px] lg:h-[min(64vh,680px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.25), rgba(2,3,10,0.6))" }}>
+              <BrainCanvas neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={setSelected} />
+              <div className="pointer-events-none absolute left-4 top-3 text-[11px] text-white/40">Sleep om te draaien · tik op een neuron</div>
+            </div>
+            {/* every client one tap away */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Kies een klant">
+              {m.neurons.map((n) => (
+                <button key={n.key} onClick={() => setSelected(selected === n.key ? null : n.key)} aria-pressed={selected === n.key}
+                  className={`press shrink-0 inline-flex items-center gap-2 rounded-full h-9 px-3 text-xs border transition-colors ${selected === n.key ? "bg-white text-black border-white font-semibold" : "border-white/10 bg-white/5 text-white/80"} ${n.dim ? "opacity-70" : ""}`}>
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: n.color, boxShadow: `0 0 8px ${n.color}` }} />{n.label}
                 </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
+              ))}
+            </div>
+            <section className={card}>
+              <div className="flex items-baseline justify-between mb-2">
+                <h2 className="text-sm font-medium">Projectie · 6 maanden</h2>
+                <span className="text-sm font-semibold tabular-nums">{formatCurrency(forecastTotal)}</span>
+              </div>
+              <ForecastChart rows={forecast} height={170} />
+              <div className="mt-2"><ForecastLegend /></div>
+            </section>
+          </div>
 
-      <div className={`absolute right-3 lg:right-[19.5rem] bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-5 rounded-full p-1 flex lg:flex-col gap-1 ${glass} ${focus ? "max-lg:hidden" : ""}`}>
-        <HudButton label="Inzoomen" onClick={() => zoomBy(1.4)}><Plus className="w-4 h-4" /></HudButton>
-        <HudButton label="Uitzoomen" onClick={() => zoomBy(1 / 1.4)}><Minus className="w-4 h-4" /></HudButton>
-        <HudButton label="Alles tonen" onClick={() => flyTo(null)}><Maximize2 className="w-4 h-4" /></HudButton>
+          {/* left: what has to happen */}
+          <div className="space-y-3 lg:col-start-1 lg:row-start-1">
+            <Tasks tasks={tasks} open={openTasks} clients={[...m.active, ...m.prospects]} colorOf={m.colorOf} nameOf={m.nameOf} selected={sel?.id ?? null} today={today} onChange={load} />
+            <Videos clients={videoClients} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />
+          </div>
+
+          {/* right: money and what happened */}
+          <div className="space-y-3 lg:col-start-3 lg:row-start-1">
+            <section className={card}>
+              <h2 className="text-sm font-medium mb-2">Betalingen</h2>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <Tile label="Ontvangen · maand" value={formatCurrency(paidMonth)} className="text-emerald-400" />
+                <Tile label="Openstaand" value={formatCurrency(openTotal)} className={openTotal ? "text-amber-400" : ""} />
+                <Tile label="Gepland" value={String(upcoming.length)} className="text-sky-400" />
+              </div>
+              <ul className="divide-y divide-white/5 text-sm">
+                {invoices.filter((v) => v.status === "Sent").map((v) => (
+                  <li key={v.id} className="py-1.5 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /><span className="flex-1 truncate">{v.client_name}</span><span className="text-[11px] text-amber-400">wacht op betaling</span><span className="tabular-nums font-medium">{formatCurrency(Number(v.total))}</span></li>
+                ))}
+                {upcoming.slice(0, 6).map(({ v, at }) => (
+                  <li key={v.id} className="py-1.5 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: (v.client && m.colorOf[v.client]) || "#38bdf8" }} /><span className="flex-1 truncate">{v.client_name}</span><span className="text-[11px] text-white/45 tabular-nums">{formatDate(at)}{v.repeat_monthly ? " · mnd" : ""}</span><span className="tabular-nums font-medium">{formatCurrency(Number(v.total))}</span></li>
+                ))}
+                {!upcoming.length && !openTotal && <li className="py-2 text-white/45 text-xs">Geen geplande of openstaande facturen.</li>}
+              </ul>
+            </section>
+            <section className={card}>
+              <h2 className="text-sm font-medium mb-2">Wat er gebeurd is</h2>
+              <ul className="space-y-2">
+                {events.slice(0, 10).map((e, i) => (
+                  <li key={i} className="flex gap-2.5 text-sm"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: e.color }} /><span className="flex-1 min-w-0 text-white/80 leading-snug">{e.text}</span><span className="shrink-0 text-[11px] text-white/40 tabular-nums">{ago(e.at)}</span></li>
+                ))}
+                {!events.length && <li className="text-xs text-white/45">Nog niets gebeurd in de laatste 30 dagen.</li>}
+              </ul>
+            </section>
+          </div>
+        </div>
       </div>
-
-      {/* where am I, and the way out */}
-      <div
-        aria-hidden={!focus}
-        className={`absolute left-1/2 lg:left-[calc(50%-9.5rem)] -translate-x-1/2 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-5 max-w-[calc(100vw-1.5rem)] rounded-full p-1 flex items-center gap-1 ${glass}
-          transition-[transform,opacity,filter] duration-300 ease-out motion-reduce:transition-opacity
-          ${focus ? "opacity-100 translate-y-0 blur-0" : "pointer-events-none opacity-0 translate-y-4 blur-sm"}`}
-      >
-        <button type="button" onClick={() => flyTo(null)} className="press h-10 px-3 rounded-full inline-flex items-center gap-1.5 text-sm text-white/80 hover:bg-white/10 whitespace-nowrap">
-          <ArrowLeft className="w-4 h-4" /> Brein
-        </button>
-        <span className="px-2 text-sm font-semibold truncate min-w-0">{focus?.label}</span>
-        {focus && <Link to="/clients/$id" params={{ id: focus.key }} className="press h-10 px-4 rounded-full bg-white text-black text-sm font-semibold inline-flex items-center gap-1.5 whitespace-nowrap">Open klant <ArrowRight className="w-4 h-4" /></Link>}
-      </div>
-
-      {brain && (
-        <nav className="sr-only lg:hidden" aria-label="Neuronen">
-          {brain.neurons.map((n) => <button key={n.key} onClick={() => flyTo(n)}>{n.label}: {n.value}</button>)}
-        </nav>
-      )}
     </div>
   );
-}
-
-function label(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, weight: number, align: CanvasTextAlign) {
-  ctx.font = `${weight} ${size}px system-ui, -apple-system, "SF Pro Text", Inter, sans-serif`;
-  ctx.fillStyle = color;
-  ctx.textAlign = align;
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText(s.length > 24 ? s.slice(0, 23) + "…" : s, x, y);
 }
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  return <div><dt className="text-[11px] text-white/45">{label}</dt><dd className={`font-semibold tabular-nums ${warn ? "text-amber-400" : "text-white"}`}>{value}</dd></div>;
+}
+function Tile({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+  return <div className="rounded-xl bg-white/5 px-2.5 py-2"><div className="text-[10px] text-white/45 truncate">{label}</div><div className={`text-sm font-semibold tabular-nums ${className}`}>{value}</div></div>;
+}
+
+function Tasks({ tasks, open, clients, colorOf, nameOf, selected, today, onChange }: {
+  tasks: Task[]; open: Task[]; clients: ClientRow[]; colorOf: Record<string, string>; nameOf: Record<string, string>; selected: string | null; today: string; onChange: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [assignee, setAssignee] = useState<"me" | "client">("me");
+  const [due, setDue] = useState("");
+  useEffect(() => { setClientId(selected ?? ""); }, [selected]);
+  const doneWeek = tasks.filter((t) => t.done_at && Date.now() - new Date(t.done_at).getTime() < 7 * 864e5).length;
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await db.from("client_tasks").insert({ title: title.trim(), client_id: clientId || null, assignee, due_date: due || null, created_by: u.user?.id });
+    if (error) return toast.error(error.message);
+    setTitle(""); setDue(""); onChange();
+  }
+  async function toggle(t: Task) {
+    const { error } = await db.from("client_tasks").update({ done_at: t.done_at ? null : new Date().toISOString() }).eq("id", t.id);
+    if (error) toast.error(error.message); else onChange();
+  }
+  async function remove(t: Task) {
+    const { error } = await db.from("client_tasks").delete().eq("id", t.id);
+    if (error) toast.error(error.message); else onChange();
+  }
+
   return (
-    <div>
-      <dt className="text-[11px] text-white/45">{label}</dt>
-      <dd className={`font-semibold tabular-nums ${warn ? "text-red-400" : "text-white"}`}>{value}</dd>
-    </div>
+    <section className={card}>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-sm font-medium">Taken</h2>
+        <span className="text-[11px] text-white/45 tabular-nums">{open.length} open · {doneWeek} afgerond deze week</span>
+      </div>
+      <form onSubmit={add} className="space-y-1.5 mb-3">
+        <div className="flex gap-1.5">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nieuwe taak…" aria-label="Nieuwe taak" className="flex-1 min-w-0 h-9 rounded-lg bg-white/5 border border-white/10 px-3 text-sm outline-none focus:border-sky-300/50" />
+          <button type="submit" aria-label="Taak toevoegen" className="press hit shrink-0 w-9 h-9 rounded-lg bg-white text-black grid place-items-center disabled:opacity-40" disabled={!title.trim()}><Plus className="w-4 h-4" /></button>
+        </div>
+        <div className="flex gap-1.5 text-xs">
+          <select value={clientId} onChange={(e) => setClientId(e.target.value)} aria-label="Klant" className="flex-1 min-w-0 h-8 rounded-lg bg-white/5 border border-white/10 px-2 outline-none">
+            <option value="">Algemeen</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <div className="inline-flex rounded-lg border border-white/10 p-0.5" role="group" aria-label="Wie doet dit">
+            {(["me", "client"] as const).map((a) => (
+              <button key={a} type="button" onClick={() => setAssignee(a)} aria-pressed={assignee === a} className={`px-2.5 rounded-md ${assignee === a ? "bg-white text-black font-medium" : "text-white/60"}`}>{a === "me" ? "Ik" : "Klant"}</button>
+            ))}
+          </div>
+          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Deadline" className="h-8 w-[7.5rem] rounded-lg bg-white/5 border border-white/10 px-2 outline-none [color-scheme:dark]" />
+        </div>
+      </form>
+      <ul className="space-y-1">
+        {open.slice(0, 12).map((t) => (
+          <li key={t.id} className="group flex items-start gap-2.5 rounded-lg px-1 py-1.5 hover:bg-white/5">
+            <button onClick={() => toggle(t)} aria-label={`Rond af: ${t.title}`} className="press hit mt-0.5 shrink-0 w-5 h-5 rounded-full border border-white/30 grid place-items-center hover:border-emerald-400 hover:text-emerald-400 text-transparent"><Check className="w-3 h-3" /></button>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm leading-snug">{t.title}</div>
+              <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-white/45">
+                {t.client_id && <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colorOf[t.client_id] ?? "#888" }} />{nameOf[t.client_id]}</span>}
+                {t.assignee === "client" && <span className="text-violet-300">wacht op klant</span>}
+                {t.due_date && <span className={`tabular-nums ${t.due_date < today ? "text-red-400" : ""}`}>{t.due_date < today ? "te laat · " : ""}{formatDate(t.due_date)}</span>}
+              </div>
+            </div>
+            <button onClick={() => remove(t)} aria-label={`Verwijder: ${t.title}`} className="press shrink-0 w-7 h-7 rounded-full grid place-items-center text-white/30 hover:text-red-400 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100"><Trash2 className="w-3.5 h-3.5" /></button>
+          </li>
+        ))}
+        {!open.length && <li className="text-xs text-white/45 py-1">Geen open taken. Voeg er een toe hierboven.</li>}
+        {open.length > 12 && <li className="text-[11px] text-white/45 pt-1">+ {open.length - 12} meer</li>}
+      </ul>
+    </section>
   );
 }
 
-function HudButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+function Videos({ clients, videos, month, colorOf, onChange }: { clients: ClientRow[]; videos: Video[]; month: string; colorOf: Record<string, string>; onChange: () => void }) {
+  async function cycle(clientId: string, slot: number, current?: Video) {
+    const now = new Date().toISOString();
+    const q = !current
+      ? db.from("client_videos").insert({ client_id: clientId, month, slot, status: "verstuurd", sent_at: now })
+      : current.status === "verstuurd"
+        ? db.from("client_videos").update({ status: "geplaatst", posted_at: now }).eq("id", current.id)
+        : db.from("client_videos").delete().eq("id", current.id);
+    const { error } = await q;
+    if (error) toast.error(error.message); else onChange();
+  }
+  const label = new Date(month).toLocaleDateString("nl-BE", { month: "long" });
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={label} className="hit press w-9 h-9 rounded-full grid place-items-center text-white/80 hover:bg-white/10 active:bg-white/15">
-      {children}
-    </button>
+    <section className={card}>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-sm font-medium">Video's · {label}</h2>
+        <span className="text-[11px] text-white/45">tik: verstuurd → geplaatst</span>
+      </div>
+      {clients.length === 0 ? <p className="text-xs text-white/45">Geen klant met een videopakket.</p> : (
+        <ul className="space-y-3">
+          {clients.map((c) => {
+            const mine = videos.filter((v) => v.client_id === c.id && v.slot);
+            const n = Number(c.social_videos_per_month);
+            const sent = mine.length, posted = mine.filter((v) => v.status === "geplaatst").length;
+            return (
+              <li key={c.id}>
+                <div className="flex items-center gap-2 text-sm mb-1.5">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorOf[c.id] }} />
+                  <span className="flex-1 truncate font-medium">{c.name.replace(/\s*\(.*\)$/, "")}</span>
+                  <span className="text-[11px] text-white/50 tabular-nums">{sent}/{n} verstuurd · {posted} geplaatst</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from({ length: n }, (_, i) => {
+                    const v = mine.find((x) => x.slot === i + 1);
+                    const state = v?.status ?? "te maken";
+                    return (
+                      <button key={i} onClick={() => cycle(c.id, i + 1, v)} aria-label={`Video ${i + 1}: ${state}`} title={`Video ${i + 1}: ${state}`}
+                        className={`press w-7 h-7 rounded-lg text-[11px] font-medium tabular-nums grid place-items-center border transition-colors ${v?.status === "geplaatst" ? "bg-emerald-500/25 border-emerald-400/60 text-emerald-300" : v ? "bg-sky-500/20 border-sky-400/60 text-sky-300" : "border-white/15 text-white/35 hover:border-white/40"}`}>
+                        {v?.status === "geplaatst" ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }

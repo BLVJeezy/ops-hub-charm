@@ -42,7 +42,7 @@ export function widgetPayload(
     visitorsDelta: before > 0 ? Math.round(((t.visitors - before) / before) * 100) : null,
     fresh: t.fresh,
     upcoming: t.upcoming,
-    mrr: Math.round(clients.filter((c) => c.status === "Active").reduce((a, c) => a + clientMRR(c), 0)),
+    mrr: Math.round(clients.filter((c) => c.status === "Active" && !c.is_internal).reduce((a, c) => a + clientMRR(c), 0)),
     openInvoices: t.open,
     openTotal: Math.round(Number(snap.invoices?.open_total) || 0),
     paidThisMonth: Math.round(paidThisMonth),

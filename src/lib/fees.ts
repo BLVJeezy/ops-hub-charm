@@ -37,6 +37,9 @@ export function autoFillMonthly(yearly?: number | null): number | null {
 // ===== Spec-accurate helpers (Solyn spec §4.8–§4.12) =====
 
 export type FeeClient = {
+  /** Solyn's own account (used for testing): never counted as a customer. */
+  is_internal?: boolean | null;
+  brand_color?: string | null;
   status?: string | null;
   billing_frequency?: string | null;
   monthly_fee?: number | null;

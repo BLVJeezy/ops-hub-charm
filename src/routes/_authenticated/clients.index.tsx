@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/clients/")({
   component: ClientsPage,
 });
 
-type Row = ClientRow & { id: string };
+type Row = ClientRow & { id: string; is_internal?: boolean | null; brand_color?: string | null };
 type Invoice = { client: string | null; total: number; status: string };
 type Expense = { linked_client: string | null; monthly_cost: number };
 
@@ -75,7 +75,7 @@ function ClientsPage() {
   }, [rows, tab]);
 
   const sum = useMemo(() => {
-    const active = rows.filter((r) => r.status === "Active");
+    const active = rows.filter((r) => r.status === "Active" && !r.is_internal);
     return {
       active: active.length,
       mrr: active.reduce((t, r) => t + clientMRR(r), 0),
@@ -145,8 +145,9 @@ function ClientsPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <HealthDot health={r.health} />
+                    {r.brand_color ? <span className="w-1.5 h-5 rounded-full shrink-0" style={{ backgroundColor: r.brand_color }} aria-hidden /> : <HealthDot health={r.health} />}
                     <span className="font-semibold truncate">{r.name}</span>
+                    {r.is_internal && <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">eigen account · test</span>}
                     {r.status !== "Active" && <StatusBadge status={r.status} />}
                   </div>
                   <div className="shrink-0 font-bold tabular-nums">

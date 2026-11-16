@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
+import { ForecastChart, SERVICE_COLS } from "@/components/ForecastChart";
 import { brusselsToday, forecastByService, type ForecastInvoice } from "@/lib/invoice-schedule";
 import { clientAnnualProjection, clientMRR, serviceMRR, type FeeClient } from "@/lib/fees";
 import { BookOpen } from "lucide-react";
@@ -64,7 +65,7 @@ function Finance() {
   }, []);
 
   const clientById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c])), [clients]);
-  const activeClients = useMemo(() => clients.filter((c) => c.status === "Active"), [clients]);
+  const activeClients = useMemo(() => clients.filter((c) => c.status === "Active" && !c.is_internal), [clients]);
 
   const mrr = useMemo(() => activeClients.reduce((s, c) => s + clientMRR(c), 0), [activeClients]);
   const jrr = mrr * 12;
@@ -149,6 +150,7 @@ function Finance() {
   const topProj = annualProjectionPerClient[0]?.total || 1;
   const list = view === "paid" ? revenuePerClient : annualProjectionPerClient;
   const listTop = view === "paid" ? topPaid : topProj;
+  const colorOf: Record<string, string> = Object.fromEntries(clients.filter((c) => c.brand_color).map((c) => [c.id, c.brand_color as string]));
   const margin = mrr > 0 ? Math.round((netProfit / mrr) * 100) : null;
 
   return (
@@ -225,7 +227,7 @@ function Finance() {
                     <span className="tabular-nums font-medium shrink-0">{formatCurrency(t.total)}</span>
                   </div>
                   <div className="meter mt-1">
-                    <i style={{ width: `${Math.max(3, (t.total / listTop) * 100)}%` }} />
+                    <i style={{ width: `${Math.max(3, (t.total / listTop) * 100)}%`, ...(colorOf[t.id] ? { background: colorOf[t.id] } : {}) }} />
                   </div>
                 </Link>
               </li>
@@ -324,12 +326,7 @@ function ServiceSplit({ clients, total }: { clients: FeeClient[]; total: number 
 function ForecastTable({ invoices }: { invoices: unknown[] }) {
   const rows = forecastByService(invoices as ForecastInvoice[], brusselsToday(), 6);
   const sum = (k: "seo" | "website" | "social" | "oneoff" | "total") => rows.reduce((a, r) => a + r[k], 0);
-  const cols = [
-    { key: "seo", label: "SEO", color: "#38bdf8" },
-    { key: "website", label: "Websites", color: "#d6b25e" },
-    { key: "social", label: "Social media", color: "#a78bfa" },
-    { key: "oneoff", label: "Eenmalig", color: "#9ca3af" },
-  ] as const;
+  const cols = SERVICE_COLS;
   const cell = (n: number) => (n ? formatCurrency(n) : <span className="text-muted-foreground/50">—</span>);
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
@@ -337,6 +334,8 @@ function ForecastTable({ invoices }: { invoices: unknown[] }) {
         <div className="text-sm font-medium">Projectie · komende 6 maanden</div>
         <div className="text-xs text-muted-foreground">uit geplande facturen, excl. btw</div>
       </div>
+      <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-6 lg:items-center">
+      <div className="mb-3 lg:mb-0"><ForecastChart rows={rows} height={240} /></div>
       <div className="overflow-x-auto -mx-1 px-1">
         <table className="w-full text-sm">
           <thead>
@@ -370,6 +369,7 @@ function ForecastTable({ invoices }: { invoices: unknown[] }) {
             </tr>
           </tfoot>
         </table>
+      </div>
       </div>
     </div>
   );

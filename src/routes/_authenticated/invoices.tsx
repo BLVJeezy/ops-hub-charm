@@ -32,7 +32,7 @@ type Row = InvoiceRow & {
   opened_at?: string | null;
   bounced_at?: string | null;
 };
-type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null };
+type Client = { id: string; name: string; billing_address?: string | null; vat_number?: string | null; contact_email?: string | null; brand_color?: string | null };
 
 function isPlanned(r: { status: string; scheduled_send_at?: string | null; repeat_monthly?: boolean }) {
   return (r.status === "Draft" && !!r.scheduled_send_at) || !!r.repeat_monthly;
@@ -54,7 +54,7 @@ function Invoices() {
     setLoading(true);
     const [i, c] = await Promise.all([
       supabase.from("invoices").select("*").order("created_at", { ascending: false }),
-      supabase.from("clients").select("id,name,billing_address,vat_number,contact_email").order("name"),
+      supabase.from("clients").select("id,name,billing_address,vat_number,contact_email,brand_color").order("name"),
     ]);
     if (i.error) toast.error(i.error.message);
     setRows((i.data as unknown as Row[]) ?? []);
@@ -168,6 +168,8 @@ function Invoices() {
     // open money first, then most recent activity
     return [...map.values()].sort((a, b) => (b.open > 0 ? 1 : 0) - (a.open > 0 ? 1 : 0) || b.latest.localeCompare(a.latest));
   }, [filtered]);
+
+  const colorOf: Record<string, string> = Object.fromEntries(clients.filter((c) => c.brand_color).map((c) => [c.id, c.brand_color as string]));
 
   function toggleGroup(key: string) {
     setExpanded((s) => {
@@ -334,7 +336,7 @@ function Invoices() {
                   >
                     <ChevronRight className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold truncate">{g.name}</div>
+                      <div className="font-semibold truncate flex items-center gap-2">{colorOf[g.key] && <span className="w-1.5 h-4 rounded-full shrink-0" style={{ backgroundColor: colorOf[g.key] }} aria-hidden />}<span className="truncate">{g.name}</span></div>
                       <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground tabular-nums">
                         <span>{g.items.length} {g.items.length === 1 ? "factuur" : "facturen"}</span>
                         {g.paid > 0 && <span className="text-emerald-400">{formatCurrency(g.paid)} betaald</span>}

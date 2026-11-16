@@ -81,7 +81,7 @@ function Dashboard() {
   const upcoming = records.filter((r) => (r.kind === "afspraak" || r.kind === "reservatie") && (r.starts_at ?? "") >= nowIso && !/cancel|geannuleerd/i.test(r.status ?? "")).slice(0, 6);
   const latest = [...records].filter((r) => r.kind === "lead" || r.kind === "aanvraag").sort((a, b) => (b.source_created_at ?? b.starts_at ?? "").localeCompare(a.source_created_at ?? a.starts_at ?? "")).slice(0, 5);
 
-  const active = clients.filter((c) => c.status === "Active");
+  const active = clients.filter((c) => c.status === "Active" && !c.is_internal);
   const mrr = active.reduce((s, c) => s + clientMRR(c), 0);
   const open = invoices.filter((i) => i.status === "Sent");
   const openTotal = open.reduce((s, i) => s + Number(i.total || 0), 0);

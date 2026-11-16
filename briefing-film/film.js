@@ -25,7 +25,12 @@ export function buildTimeline(plan, dur = {}) {
 }
 
 export function makeFilm(plan, model, dur) {
-  const T = U.theme(192, 36);
+  // The look changes with the day (hue of the light + accent of the locked values), so two films in a row never look the same.
+  // Always one hue and one accent, as the style asks; red is left out: it would read as an alarm.
+  const LOOKS = [[192, 36], [158, 48], [262, 44], [212, 18], [174, 320], [228, 150], [45, 190]];
+  const dayNo = plan.day ? Math.floor(Date.parse(plan.day + 'T12:00:00Z') / 864e5) : 0;
+  const T = U.theme(...LOOKS[((dayNo % LOOKS.length) + LOOKS.length) % LOOKS.length]);
+  const swing = [0, 0.5, -0.45, 0.9, -0.8][((dayNo % 5) + 5) % 5];   // where the opening orbit starts
   const TL = buildTimeline(plan, dur);
   const holo = new Holo(W, H);
   const n = plan.sites.length, crit = plan.status === 'critical';
@@ -37,7 +42,7 @@ export function makeFilm(plan, model, dur) {
 
   // ---------- Camera ----------
   const CAM = {
-    hook: { target: [0, 0.32 * YM, 0], yaw: 0.95, pitch: 0.62, dist: 5.0, cx: 0.5, cy: 0.56 },
+    hook: { target: [0, 0.32 * YM, 0], yaw: 0.95 + swing, pitch: 0.62, dist: 5.0, cx: 0.5, cy: 0.56 },
     boot: { target: [0, 0.4 * YM, 0], yaw: 0.35, pitch: 0.34, dist: 4.3, cx: 0.6, cy: 0.56 },
     verdict: { target: [0, 0.4 * YM, 0], yaw: 0.2, pitch: 0.3, dist: 3.9, cx: 0.63, cy: 0.56 },
     plan: { target: [0, 0, 0], yaw: 0.2, pitch: 1.32, dist: 4.6, cx: 0.5, cy: 0.5 },

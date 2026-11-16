@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Film, Play, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getBriefingVideo } from "@/lib/briefing.functions";
+import { ProgressFilms } from "@/components/ProgressFilms";
 import { siteState, totals, type Snapshot, type SnapSite } from "@/lib/briefing";
 
 type Row = {
@@ -137,6 +138,8 @@ function BriefingPage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 3xl:grid-cols-4 gap-2 md:gap-3">
         {sites.map((s) => <SiteCard key={s.id} s={s} chapter={chapterOf(s.id)} onPlay={video.url ? seek : undefined} />)}
       </div>
+
+      <div className="pt-4 md:pt-6 border-t border-border"><ProgressFilms /></div>
     </div>
   );
 }

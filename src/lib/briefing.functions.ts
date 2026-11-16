@@ -40,3 +40,33 @@ export const getBriefingVideo = createServerFn({ method: "POST" })
     for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
     return { ok: true as const, mime: "video/mp4", base64: btoa(bin) };
   });
+
+/**
+ * The weekly "Solyn Global progress" films (bucket "briefings", folder progress/, filled by the same hook with kind=progress).
+ * Returns the days there are films for, and a signed link plus chapters for the asked day (default: the newest). Staff only.
+ */
+export const getProgressFilm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { day?: string }) => {
+    if (input?.day && !/^\d{4}-\d{2}-\d{2}$/.test(input.day)) throw new Error("bad day");
+    return input ?? {};
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: staff } = await supabase.rpc("is_staff", { _user_id: userId });
+    if (!staff) throw new Error("Geen toegang");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const store = (supabaseAdmin as any).storage.from("briefings");
+    const { data: files } = await store.list("progress", { limit: 200, sortBy: { column: "name", order: "desc" } });
+    const days: string[] = ((files ?? []) as { name: string }[]).map((f) => /^(\d{4}-\d{2}-\d{2})\.mp4$/.exec(f.name)?.[1]).filter((d): d is string => !!d).sort().reverse();
+    const day = data.day && days.includes(data.day) ? data.day : days[0];
+    if (!day) return { days, day: null, url: null, chapters: [] as { t: number; label: string }[] };
+    const signed = await store.createSignedUrl(`progress/${day}.mp4`, 60 * 60 * 6);
+    let chapters: { t: number; label: string }[] = [];
+    try {
+      const file = await store.download(`progress/${day}.json`);
+      if (file.data) chapters = JSON.parse(await file.data.text());
+    } catch { /* a film without chapters still plays */ }
+    return { days, day, url: (signed.data?.signedUrl as string | undefined) ?? null, chapters };
+  });

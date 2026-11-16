@@ -15,3 +15,6 @@ Needs the Lemo-Opuscar library (`LIB`), as the noon-scan film does. Output files
 `sh build.sh client` makes a client's monthly report film instead (Dutch on screen, no voice, in the client's own colour, logo from
 `public/logos/<client id>.png`). `client-snapshot.sql` is its query: replace `{{CLIENT_ID}}`, `{{FROM}}`, `{{TO}}`, run it, save the
 `snapshot` value as `data.json`. `tools/prepare-client.mts` leaves out scenes the client has no data for.
+
+Rankings: when `data.json` also has `rankings` (`[{keyword, avg, top3, prev_avg, prev_top3}]`, from LeadSnap heatmaps: `avg` = the
+heatmap's `average`, 20 = not found; `top3` = `top_3_percentage`), `rank_date` and `rank_prev_date`, the film gets a Google Maps scene.

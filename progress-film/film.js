@@ -241,6 +241,20 @@ export function makeFilm(plan, dur = {}) {
       text(g, s.chartLabel, CX + 40, 360, 24, { w: 600, col: T.mute, a: eo(seg(lt, 0.6, 1.1)) });
       series(g, lt, s.rows, CX + 40, 400, CW - 40, 470, T.acc, s.form, 0.9, nl);
     }
+    if (s.type === 'c_rank') {
+      const p = eo(seg(lt, 0.8, 2.2)), a = eo(seg(lt, 0.8, 1.2));
+      text(g, nl(s.big * p) + '%', LX, 500, 150, { w: T.wDisp, fam: T.disp, a, ls: -4 }); text(g, s.bigLabel.replace(/^% /, ''), LX + 4, 546, 26, { col: T.mute, a });
+      if (s.note) text(g, s.note, LX + 4, 596, 24, { w: 600, col: T.acc, a: eo(seg(lt, 2.4, 3)) });
+      (s.facts || []).forEach((f, i) => { const fa = eo(seg(lt, 2.6 + i * 0.3, 3.2 + i * 0.3)), yy = 690 + i * 84; text(g, f[0], LX + 4, yy, 38, { w: 700, a: fa, col: i === 0 ? (T.light ? '#12A150' : '#3DDC84') : i === 1 && f[0] !== '0' ? '#FFB020' : T.ink }); text(g, f[1], LX + 4, yy + 30, 21, { col: T.mute, a: fa }); });
+      const rows = s.rows, x0 = 640, w0 = W - 120 - x0, rh = Math.min(48, 600 / rows.length), y0 = 372, up = T.light ? '#12A150' : '#3DDC84';
+      text(g, 'Zoekwoord', x0, y0 - 16, 19, { col: T.mute, a }); text(g, 'In top 3 op de kaart', x0 + w0 * 0.46, y0 - 16, 19, { col: T.mute, a }); text(g, 'Gem. plaats', x0 + w0, y0 - 16, 19, { col: T.mute, al: 'right', a });
+      rows.forEach((r, i) => { const pp = eo(seg(lt, 0.9 + i * 0.11, 1.7 + i * 0.11)), ra = clamp(pp * 3), yy = y0 + rh * i + rh * 0.62, bx = x0 + w0 * 0.46, bw = w0 * 0.34;
+        text(g, r.keyword, x0, yy, 24, { w: 600, a: ra });
+        g.fillStyle = rgba(T.light ? '#0E1320' : '#FFFFFF', 0.07 * ra); rr(g, bx, yy - 15, bw, 14, 7); g.fill(); g.fillStyle = T.acc; rr(g, bx, yy - 15, Math.max(r.top3 ? 8 : 0, bw * (r.top3 / 100) * pp), 14, 7); g.fill();
+        text(g, `${Math.round(r.top3 * pp)}%`, bx + bw + 14, yy, 22, { w: 600, a: ra });
+        text(g, r.avg >= 20 ? 'niet zichtbaar' : `#${r.avg.toFixed(1).replace('.', ',')}`, x0 + w0 - 34, yy, r.avg >= 20 ? 19 : 24, { w: 700, al: 'right', a: ra, col: r.avg >= 20 ? T.mute : T.ink });
+        if (r.move) { g.fillStyle = r.move > 0 ? up : '#FFB020'; g.globalAlpha = ra; g.beginPath(); const tx = x0 + w0 - 12, ty = yy - 8, d = r.move > 0 ? -1 : 1; g.moveTo(tx - 9, ty - 6 * d); g.lineTo(tx + 9, ty - 6 * d); g.lineTo(tx, ty + 7 * d); g.closePath(); g.fill(); g.globalAlpha = 1; } });
+    }
     if (s.type === 'c_bars') {
       const rows = s.rows, max = Math.max(1, ...rows.map(r => r.v)), bw = 1000, rh = 500 / rows.length;
       rows.forEach((r, i) => { const p = eo(seg(lt, 0.8 + i * 0.14, 1.8 + i * 0.14)), a = clamp(p * 3), yy = 400 + rh * i; text(g, r.label.length > 44 ? r.label.slice(0, 43) + '…' : r.label, LX, yy + 26, 26, { w: 600, a }); g.fillStyle = rgba(T.light ? '#0E1320' : '#FFFFFF', 0.07 * a); rr(g, LX, yy + 40, bw, 16, 8); g.fill(); g.fillStyle = T.acc; rr(g, LX, yy + 40, Math.max(12, bw * (r.v / max) * p), 16, 8); g.fill(); text(g, nl(r.v * p), LX + bw + 20, yy + 56, 26, { w: 700, a }); });

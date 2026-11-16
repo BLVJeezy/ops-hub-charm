@@ -21,6 +21,20 @@ describe("ownerAlerts", () => {
   it("shows an offline site but leaves the mail to the monitor", () => {
     expect(ownerAlerts({ ...base, sites: [{ id: "s", name: "Riory", client_id: "c", last_status: "down" }] })[0]).toMatchObject({ kind: "site", mail: false, clientId: "c" });
   });
+  it("reports what came in through a site since the last look, per kind", () => {
+    const sites = [{ id: "s", name: "Riory", client_id: "c", last_status: "up" }, { id: "q", name: "Belgomed", last_status: "up" }];
+    const records = [
+      { site_id: "s", kind: "aanvraag", source_created_at: "2026-11-15T12:00:00Z" },
+      { site_id: "s", kind: "aanvraag", source_created_at: "2026-11-15T18:00:00Z" },
+      { site_id: "s", kind: "afspraak", source_created_at: null, starts_at: "2026-11-16T07:00:00Z" },
+      { site_id: "s", kind: "blokkade", source_created_at: "2026-11-15T19:00:00Z" },
+      { site_id: "s", kind: "aanvraag", source_created_at: "2026-11-14T08:00:00Z" },       // before the last look
+    ];
+    const a = ownerAlerts({ ...base, sites, records, since: "2026-11-15T09:00:00Z" });
+    expect(a).toHaveLength(1);
+    expect(a[0]).toMatchObject({ kind: "leads", clientId: "c", mail: true, title: "Riory: 2 nieuwe aanvragen, 1 nieuwe afspraak" });
+    expect(ownerAlerts({ ...base, sites, records })).toHaveLength(0);                       // no "since": not asked
+  });
   it("counts videos evenly over the month", () => {
     expect(videosExpected(11, "2026-11-30")).toBe(11);
     expect(videosExpected(11, "2026-11-15")).toBe(5);

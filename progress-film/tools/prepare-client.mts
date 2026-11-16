@@ -37,6 +37,12 @@ const sites = S.sites as any[], up = sites.filter((s) => s.status !== "down").le
 const ms = sites.length ? Math.round(sites.reduce((a, s) => a + Number(s.ms || 0), 0) / sites.length) : 0;
 const backedUp = sites.length > 0 && sites.every((s) => s.backup && Date.parse(to) - Date.parse(String(s.backup).slice(0, 10)) < 3 * 864e5 || (s.backup && String(s.backup).slice(0, 10) >= to));
 const target = Number(S.client.videos_per_month || 0), sent = Number(S.videos?.sent || 0), posted = Number(S.videos?.posted || 0);
+// local rankings (LeadSnap heatmaps): average place on the map (20 = not found) and the share of the map where the client is in the top 3
+const ranks = ((S.rankings ?? []) as any[]).map((r) => ({ keyword: String(r.keyword).replace(/-/g, " ").replace(/\s+/g, " ").trim().toLowerCase(), avg: Number(r.avg), top3: Number(r.top3), prevAvg: r.prev_avg == null ? null : Number(r.prev_avg), prevTop3: r.prev_top3 == null ? null : Number(r.prev_top3) }))
+  .map((r) => ({ ...r, move: r.prevAvg == null ? 0 : r.prevAvg - r.avg >= 0.3 ? 1 : r.avg - r.prevAvg >= 0.3 ? -1 : 0 })).sort((a, b) => b.top3 - a.top3 || a.avg - b.avg);
+const better = ranks.filter((r) => r.move > 0).length, worse = ranks.filter((r) => r.move < 0).length;
+const top3Now = ranks.length ? ranks.reduce((a, r) => a + r.top3, 0) / ranks.length : 0;
+const top3Prev = ranks.some((r) => r.prevTop3 != null) ? ranks.reduce((a, r) => a + (r.prevTop3 ?? r.top3), 0) / ranks.length : null;
 const trendText = (p: number | null) => (p === null ? "" : p === 0 ? "gelijk aan de periode ervoor" : `${p > 0 ? "+" : "−"}${Math.abs(p)}% tegenover de periode ervoor`);
 
 function seeded(seed: string) { let h = 2166136261; for (const ch of seed) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 100000) / 100000; }; }
@@ -51,12 +57,16 @@ add({ id: "open", type: "title", chapter: "Rapport", kicker: `Maandrapport · ${
 if (visitors > 0) add({ id: "visitors", type: "c_chart", chapter: "Bezoekers", kicker: period, title: "Bezoekers op uw website", big: visitors, bigLabel: "bezoekers", note: trendText(vTrend), facts: [[nl(pageviews), "pagina's bekeken"], [nl(visitors / days), "bezoekers per dag"], [best ? `${best.v} op ${best.label}` : "", "drukste dag"]], rows: visits, form: look.reach, chartLabel: "Bezoekers per dag" });
 if (pagesKnown && pages.length > 1) add({ id: "pages", type: "c_bars", chapter: "Pagina's", kicker: period, title: "Wat bezoekers bekeken", rows: pages.slice(0, 6), side: devices, sideLabel: "Toestel" });
 if (requests > 0) add({ id: "requests", type: "c_chart", chapter: "Aanvragen", kicker: period, title: "Aanvragen via uw website", big: requests, bigLabel: records.length === 1 ? KIND[records[0].kind]?.[requests === 1 ? 0 : 1] ?? "aanvragen" : "aanvragen en boekingen", note: trendText(rTrend), facts: [...(records.length > 1 ? records.slice(0, 3) : []).map((r) => [nl(r.n), KIND[r.kind]?.[r.n === 1 ? 0 : 1] ?? r.kind]), ...(visitors ? [[`${((requests / visitors) * 100).toFixed(1).replace(".", ",")}%`, "van de bezoekers neemt contact op"]] : [])].slice(0, 3), rows: perDay, form: "bars", chartLabel: "Aanvragen per dag" });
+if (ranks.length) add({ id: "rankings", type: "c_rank", chapter: "Google", kicker: S.rank_date ? `Meting van ${dd(S.rank_date)} ${MON[mm(S.rank_date)]}${S.rank_prev_date ? `, tegenover ${dd(S.rank_prev_date)} ${MON[mm(S.rank_prev_date)]}` : ""}` : period, title: "Uw plaats in Google Maps",
+  big: Math.round(top3Now), bigLabel: "% van de kaart in de top 3", note: top3Prev == null ? "" : Math.round(top3Now) === Math.round(top3Prev) ? "gelijk aan de vorige meting" : `${top3Now > top3Prev ? "+" : "−"}${Math.abs(Math.round(top3Now) - Math.round(top3Prev))} ${Math.abs(Math.round(top3Now) - Math.round(top3Prev)) === 1 ? "punt" : "punten"} tegenover de vorige meting`,
+  facts: [[String(better), better === 1 ? "zoekwoord gestegen" : "zoekwoorden gestegen"], [String(worse), worse === 1 ? "zoekwoord gedaald" : "zoekwoorden gedaald"], [String(ranks.length), "zoekwoorden gemeten"]], rows: ranks.slice(0, 14), min: 9 });
 if (target > 0 || sent > 0) add({ id: "videos", type: "c_slots", chapter: "Video's", kicker: period, title: "Video's voor uw sociale media", big: sent, bigLabel: target ? `van de ${target} video's geleverd` : "video's geleverd", target: Math.max(target, sent), sent, posted, facts: [[nl(posted), "geplaatst"], [nl(Math.max(0, sent - posted)), "klaar om te plaatsen"]] });
 if (sites.length) add({ id: "health", type: "c_tiles", chapter: "Techniek", kicker: period, title: "Uw website draait", tiles: [[up === sites.length ? "Online" : `${up}/${sites.length}`, sites.length === 1 ? "status van de website" : "websites online", up === sites.length], [`${(ms / 1000).toFixed(2).replace(".", ",")} s`, "reactietijd van de server", ms < 1500], [String(S.incidents), Number(S.incidents) === 1 ? "storing" : "storingen", Number(S.incidents) === 0], ...(backedUp ? [["Dagelijks", "back-up van code en gegevens", true]] : [])] });
 const stats: [string, string][] = [];
 if (visitors) stats.push([nl(visitors), "bezoekers"]);
 if (requests) stats.push([nl(requests), "aanvragen"]);
 if (sent) stats.push([nl(sent), "video's"]);
+if (ranks.length && stats.length < 3) stats.push([`${Math.round(top3Now)}%`, "van de kaart in de top 3"]);
 if (sites.length && stats.length < 3) stats.push([String(S.incidents), Number(S.incidents) === 1 ? "storing" : "storingen"]);
 add({ id: "end", type: "end", chapter: "Einde", kicker: period, title: "Verzorgd door Solyn Global", stats: stats.slice(0, 3), min: 5 });
 

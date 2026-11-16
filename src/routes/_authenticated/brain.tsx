@@ -132,7 +132,7 @@ function BrainPage() {
   const services = serviceMRR(sel ? [sel] : m.active);
   // a tap on a client opens its profile; closing it shows everyone again
   const openClient = (key: string | null) => { setSelected(key); setProfile(key); };
-  const alerts = ownerAlerts({ invoices: data.invoices, clients: data.clients, videos: data.videos, sites: data.sites, today });
+  const alerts = ownerAlerts({ invoices: data.invoices, clients: data.clients, videos: data.videos, sites: data.sites, today, records: data.records, since: new Date(Date.now() - 24 * 36e5).toISOString() });
   async function sendInvoice(id: string) {
     const t = toast.loading("Factuur versturen…");
     try { await sendMail({ data: { invoiceId: id, isReminder: false } }); toast.success("Factuur verstuurd", { id: t }); await load(); }
@@ -206,8 +206,8 @@ function BrainPage() {
           <div className="hidden lg:flex flex-wrap gap-2" role="status" aria-label="Seintjes">
             {alerts.map((a) => (
               <button key={a.key} onClick={() => (a.clientId ? openClient(a.clientId) : void navigate({ to: "/status" }))}
-                className={`press inline-flex items-center gap-2 rounded-full h-9 px-3.5 text-xs border ${a.kind === "site" ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-amber-300/40 bg-amber-400/10 text-amber-100"}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${a.kind === "site" ? "bg-red-400" : "bg-amber-300"}`} /><span className="font-medium">{a.title}</span><span className="opacity-60">{a.detail}</span>
+                className={`press inline-flex items-center gap-2 rounded-full h-9 px-3.5 text-xs border ${a.kind === "site" ? "border-red-400/40 bg-red-500/10 text-red-200" : a.kind === "leads" ? "border-sky-300/40 bg-sky-400/10 text-sky-100" : "border-amber-300/40 bg-amber-400/10 text-amber-100"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${a.kind === "site" ? "bg-red-400" : a.kind === "leads" ? "bg-sky-300" : "bg-amber-300"}`} /><span className="font-medium">{a.title}</span><span className="opacity-60">{a.detail}</span>
               </button>
             ))}
           </div>

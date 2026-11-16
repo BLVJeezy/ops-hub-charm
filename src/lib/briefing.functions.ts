@@ -65,7 +65,7 @@ export const getProgressFilm = createServerFn({ method: "POST" })
     const signed = await store.createSignedUrl(`progress/${day}.mp4`, 60 * 60 * 6);
     let chapters: { t: number; label: string }[] = [];
     try {
-      const file = await store.download(`progress/${day}.json`);
+      const file = await store.download(`progress/${day}.chapters`);
       if (file.data) chapters = JSON.parse(await file.data.text());
     } catch { /* a film without chapters still plays */ }
     return { days, day, url: (signed.data?.signedUrl as string | undefined) ?? null, chapters };

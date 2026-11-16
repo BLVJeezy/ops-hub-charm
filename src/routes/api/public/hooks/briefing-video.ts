@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
  *
  * POST /api/public/hooks/briefing-video?day=YYYY-MM-DD  body: the mp4
  * With &kind=progress it is the weekly "Solyn Global progress" film instead: kept as progress/<day>.mp4, with its
- * chapters (optional header X-Chapters: base64 of the chapters JSON) beside it as progress/<day>.json.
+ * chapters (optional header X-Chapters: base64 of the chapters JSON) beside it as progress/<day>.chapters.
  * Authorization: Bearer <shared backup token>  (only its sha256 lives here)
  */
 const KEY_SHA256 = "07cc86d4b801acd9882c238a7bc712c243469ec8f557382b52893a702810a7b4";
@@ -53,7 +53,9 @@ export const Route = createFileRoute("/api/public/hooks/briefing-video")({
             const list = JSON.parse(raw);
             if (Array.isArray(list) && raw.length < 4000) chapters = JSON.stringify(list.slice(0, 20).map((c) => ({ t: Number(c.t) || 0, label: String(c.label ?? "").slice(0, 40) })));
           } catch { /* no chapters sent */ }
-          await db.storage.from("briefings").upload(`progress/${day}.json`, new TextEncoder().encode(chapters), { contentType: "application/json", upsert: true });
+          // the bucket only takes video/mp4, so the small chapters file goes in under that type; it is read back as text
+          const side = await db.storage.from("briefings").upload(`progress/${day}.chapters`, new TextEncoder().encode(chapters), { contentType: "video/mp4", upsert: true });
+          if (side.error) return Response.json({ ok: true, kind: "progress", day, bytes: body.length, chapters: side.error.message });
           return Response.json({ ok: true, kind: "progress", day, bytes: body.length });
         }
         const path = `${day}/noon-scan.mp4`;

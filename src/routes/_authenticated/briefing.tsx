@@ -80,7 +80,7 @@ function BriefingPage() {
   const sites = [...(row.snapshot.sites ?? [])].sort((a, b) => ["down", "warn", "ok"].indexOf(siteState(a)) - ["down", "warn", "ok"].indexOf(siteState(b)) || (b.visitors_yesterday ?? 0) - (a.visitors_yesterday ?? 0));
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-3 md:space-y-4">
+    <div className="p-4 sm:p-6 max-w-6xl 3xl:max-w-[1500px] mx-auto space-y-3 md:space-y-4">
       <div className="flex items-center gap-3 justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2"><Film className="w-6 h-6 shrink-0" /> Noon scan</h1>
@@ -101,7 +101,7 @@ function BriefingPage() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_260px] gap-2 md:gap-4">
+      <div className="grid lg:grid-cols-[1fr_260px] 3xl:grid-cols-[1fr_340px] gap-2 md:gap-4">
         <div className={`rounded-xl border overflow-hidden aspect-video flex items-center justify-center ${video.url ? "border-border bg-black" : `tone ${row.status === "critical" ? "tone-red" : row.status === "warning" ? "tone-amber" : "tone-emerald"}`}`}>
           {video.url ? (
             <video ref={vref} src={video.url} controls playsInline className="w-full h-full" onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
@@ -134,7 +134,7 @@ function BriefingPage() {
         <Kpi label="Facturen te laat" short="te laat" value={T.overdue} warn={T.overdue > 0} tone={T.overdue ? "tone-red" : ""} />
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 3xl:grid-cols-4 gap-2 md:gap-3">
         {sites.map((s) => <SiteCard key={s.id} s={s} chapter={chapterOf(s.id)} onPlay={video.url ? seek : undefined} />)}
       </div>
     </div>

@@ -240,7 +240,7 @@ function ClientDetail() {
   const hasSeo = client.seo_package && client.seo_package !== "None";
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto pb-12">
+    <div className="p-4 md:p-6 max-w-3xl 3xl:max-w-5xl mx-auto pb-12">
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
         <Link to="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">

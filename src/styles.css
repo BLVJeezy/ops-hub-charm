@@ -10,6 +10,10 @@
  */
 
 @theme inline {
+  /* ultra-wide screens (v2): 3xl = 1920px, 4xl = 2400px */
+  --breakpoint-3xl: 120rem;
+  --breakpoint-4xl: 150rem;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

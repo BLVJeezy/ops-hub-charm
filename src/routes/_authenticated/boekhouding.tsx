@@ -79,7 +79,7 @@ function Bookkeeping() {
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Laden…</div>;
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl xl:max-w-7xl mx-auto space-y-3 md:space-y-4">
+    <div className="p-4 md:p-6 max-w-6xl xl:max-w-7xl 3xl:max-w-[1800px] 4xl:max-w-[2300px] mx-auto space-y-3 md:space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2"><BookOpen className="w-6 h-6 md:w-7 md:h-7 shrink-0" /> Boekhouding</h1>

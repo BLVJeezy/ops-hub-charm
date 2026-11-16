@@ -118,7 +118,7 @@ function SiteFolder() {
   const st = STATUS[site.enabled ? site.last_status : "unknown"];
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl 3xl:max-w-6xl mx-auto">
       <BackLink />
       <div className="flex items-start justify-between gap-3 mt-3 mb-4">
         <div className="min-w-0">

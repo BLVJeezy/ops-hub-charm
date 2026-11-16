@@ -62,7 +62,7 @@ function Expenses() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl lg:max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-3xl lg:max-w-6xl 3xl:max-w-[1800px] 4xl:max-w-[2300px] mx-auto">
       <div className="flex items-center justify-between mb-3 gap-3">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Expenses</h1>
         <Button onClick={() => { setEditing(null); setModalOpen(true); }} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
@@ -70,7 +70,7 @@ function Expenses() {
         </Button>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-4 lg:items-start">
+      <div className="lg:grid lg:grid-cols-[340px_minmax(0,1fr)] 3xl:grid-cols-[420px_minmax(0,1fr)] lg:gap-4 lg:items-start">
         <div className="lg:sticky lg:top-20 space-y-3 mb-3 lg:mb-0">
       {/* Total, split by category */}
       <div className="tone tone-amber rounded-2xl border p-4">

@@ -99,7 +99,7 @@ function Dashboard() {
   const feeds = { agenda: upcoming.length, nieuw: latest.length, opvolgen: followups.length };
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-3 md:space-y-4">
+    <div className="p-4 md:p-6 max-w-6xl 3xl:max-w-[1800px] 4xl:max-w-[2300px] mx-auto space-y-3 md:space-y-4">
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" })}</div>
@@ -125,16 +125,17 @@ function Dashboard() {
         )}
       </Link>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 3xl:gap-3">
         <Tile tone="tone-gold" ink="ink-gold" label="MRR" value={formatCurrency(mrr)} sub={`${formatCurrency(monthPaid)} betaald deze maand`} to="/finance" />
         <Tile tone={openTotal > 0 ? "tone-amber" : ""} label="Openstaande facturen" value={formatCurrency(openTotal)} sub={`${open.length} verstuurd`} to="/invoices" />
         <Tile tone="tone-sky" label="Bezoekers gisteren" value={String(visY)} sub={visY2 ? <Delta a={visY} b={visY2} /> : "alle sites"} to="/status" />
         <Tile tone={fresh.length ? "tone-violet" : ""} label="Nieuw in 24 uur" value={String(fresh.length)} sub="aanvragen, afspraken, leads" to="/status" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-3 md:gap-4">
-        <Panel title="Websiteverkeer · 14 dagen" icon={<Activity className="w-4 h-4" />} className="lg:col-span-2" link={{ to: "/status", label: "Status" }}>
-          <div className="h-28 md:h-48 -ml-2 md:ml-0">
+      <div className="space-y-3 md:space-y-4 3xl:space-y-0 3xl:grid 3xl:grid-cols-12 3xl:gap-4">
+      <div className="grid lg:grid-cols-3 gap-3 md:gap-4 3xl:contents">
+        <Panel title="Websiteverkeer · 14 dagen" icon={<Activity className="w-4 h-4" />} className="lg:col-span-2 3xl:col-span-6" link={{ to: "/status", label: "Status" }}>
+          <div className="h-28 md:h-48 3xl:h-64 -ml-2 md:ml-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chart}>
                 <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#C9A14A" stopOpacity={0.5} /><stop offset="100%" stopColor="#C9A14A" stopOpacity={0} /></linearGradient></defs>
@@ -153,7 +154,7 @@ function Dashboard() {
           </div>
         </Panel>
 
-        <Panel title="Websites" icon={<Globe className="w-4 h-4" />} link={{ to: "/status", label: "Alles" }} className="hidden lg:block">
+        <Panel title="Websites" icon={<Globe className="w-4 h-4" />} link={{ to: "/status", label: "Alles" }} className="hidden lg:block 3xl:col-span-3">
           <div className="space-y-1.5">
             {sites.map((s) => (
               <Link key={s.id} to="/status/$id" params={{ id: s.id }} className="flex items-center gap-2 text-sm hover:text-primary">
@@ -186,14 +187,14 @@ function Dashboard() {
         )) : <Empty>Geen opvolgingen vandaag.</Empty>)}
       </div>
 
-      <div className="hidden lg:grid lg:grid-cols-3 gap-4">
-        <Panel title="Komende afspraken & reservaties" icon={<CalendarClock className="w-4 h-4" />}>
+      <div className="hidden lg:grid lg:grid-cols-3 gap-4 3xl:contents">
+        <Panel title="Komende afspraken & reservaties" icon={<CalendarClock className="w-4 h-4" />} className="3xl:col-span-3">
           {upcoming.length ? upcoming.map((r) => <RecRow key={r.id} r={r} site={siteName[r.site_id]} />) : <Empty>Niets gepland de komende dagen.</Empty>}
         </Panel>
-        <Panel title="Laatste aanvragen & leads" icon={<Inbox className="w-4 h-4" />}>
+        <Panel title="Laatste aanvragen & leads" icon={<Inbox className="w-4 h-4" />} className="3xl:col-span-3">
           {latest.length ? latest.map((r) => <RecRow key={r.id} r={r} site={siteName[r.site_id]} created />) : <Empty>Nog geen aanvragen.</Empty>}
         </Panel>
-        <Panel title="Opvolgen" icon={<Users className="w-4 h-4" />} link={{ to: "/clients", label: "Klanten" }}>
+        <Panel title="Opvolgen" icon={<Users className="w-4 h-4" />} link={{ to: "/clients", label: "Klanten" }} className="3xl:col-span-3">
           {followups.length ? followups.map((c) => (
             <Link key={c.id} to="/clients/$id" params={{ id: c.id }} className="flex justify-between text-sm py-1 hover:text-primary">
               <span className="truncate">{c.name}</span><span className={`text-xs ${c.next_followup_date! < today ? "text-red-500" : "text-muted-foreground"}`}>{c.next_followup_date!.split("-").reverse().slice(0, 2).join("/")}</span>
@@ -202,8 +203,8 @@ function Dashboard() {
         </Panel>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-3 md:gap-4">
-        <Panel title="Pipeline" icon={<TrendingUp className="w-4 h-4" />} className="lg:col-span-2" link={{ to: "/pipeline", label: "Pipeline" }}>
+      <div className="grid lg:grid-cols-3 gap-3 md:gap-4 3xl:contents">
+        <Panel title="Pipeline" icon={<TrendingUp className="w-4 h-4" />} className="lg:col-span-2 3xl:col-span-4" link={{ to: "/pipeline", label: "Pipeline" }}>
           <div className="lg:hidden">
             <div className="flex gap-1 h-9 items-end">
               {pipeline.filter((x) => x.s !== "Write-off").map(({ s, n }) => (
@@ -221,12 +222,13 @@ function Dashboard() {
             ))}
           </div>
         </Panel>
-        <Panel title="Klantgezondheid" icon={<Heart className="w-4 h-4" />}>
+        <Panel title="Klantgezondheid" icon={<Heart className="w-4 h-4" />} className="3xl:col-span-2">
           <div className="grid grid-cols-3 gap-2">
             {health.map(({ h, n }) => <div key={h} className="flex flex-col items-start gap-1"><div className="flex items-center gap-2"><HealthDot health={h} /><span className="text-2xl font-bold tabular-nums">{n}</span></div><span className="text-xs text-muted-foreground">{h}</span></div>)}
           </div>
           <div className="text-xs text-muted-foreground mt-2">{active.length} actieve klanten</div>
         </Panel>
+      </div>
       </div>
       <QuickAddProspect open={quickAdd} onOpenChange={setQuickAdd} />
     </div>

@@ -151,7 +151,7 @@ function Finance() {
   const margin = mrr > 0 ? Math.round((netProfit / mrr) * 100) : null;
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl xl:max-w-7xl mx-auto space-y-2 lg:space-y-3">
+    <div className="p-4 md:p-6 max-w-5xl xl:max-w-7xl 3xl:max-w-[1800px] 4xl:max-w-[2300px] mx-auto space-y-2 lg:space-y-3">
       <div className="flex items-center justify-between mb-2 md:mb-4">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Finance</h1>
         <CurrencyToggle />

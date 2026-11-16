@@ -67,7 +67,7 @@ function SearchPage() {
   }), [clients, invoices, actions]);
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl 3xl:max-w-6xl mx-auto">
       <h1 className="text-2xl font-semibold mb-4">Search</h1>
 
       <form

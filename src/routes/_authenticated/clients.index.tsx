@@ -87,7 +87,7 @@ function ClientsPage() {
   const topMrr = Math.max(1, ...filtered.map((r) => clientMRR(r)));
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl lg:max-w-7xl mx-auto pb-24">
+    <div className="p-4 md:p-6 max-w-3xl lg:max-w-7xl 3xl:max-w-[1800px] 4xl:max-w-[2300px] mx-auto pb-24">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-3">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Clients</h1>
         <Button onClick={() => setModalOpen(true)} className="gap-2 shrink-0 bg-white text-black hover:bg-white/90 rounded-full h-10 px-4">
@@ -133,7 +133,7 @@ function ClientsPage() {
           <EmptyState icon={Users} title="No clients" description="Create your first client to get started." />
         </div>
       ) : (
-        <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3 tone-gold">
+        <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5 tone-gold">
           {[...filtered].sort((x, y) => clientMRR(y) - clientMRR(x) || x.name.localeCompare(y.name)).map((r) => {
             const total = paidByClient[r.id] || 0;
             const mrr = clientMRR(r);

@@ -222,7 +222,7 @@ function StatusPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl xl:max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl xl:max-w-7xl 3xl:max-w-[1800px] 4xl:max-w-[2300px] mx-auto">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-2xl font-semibold">Status</h1>
         {isAdmin && (
@@ -278,7 +278,7 @@ function StatusPage() {
             description="Add a client website to start checking it."
           />
         ) : (
-          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5">
             {sites.map((s) => (
               <SiteCard
                 key={s.id}
@@ -338,13 +338,13 @@ function BackupList({ runs }: { runs: BackupRun[] }) {
   const byTarget = new Map(runs.map((r) => [r.target, r]));
   const targets = Array.from(new Set([...Object.keys(BACKUP_TARGETS), ...byTarget.keys()]));
   return (
-    <div className="rounded-xl border border-border bg-card divide-y divide-border">
+    <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden 3xl:divide-y-0 3xl:grid 3xl:grid-cols-2 4xl:grid-cols-4 3xl:gap-px 3xl:bg-border">
       {targets.map((t) => {
         const r = byTarget.get(t);
         const color = !r ? "#6B7280" : !r.ok ? "#DC2626" : r.stale ? "#D97706" : "#1D9E75";
         const label = !r ? "No backup yet" : !r.ok ? "Failed" : r.stale ? "Overdue" : "OK";
         return (
-          <div key={t} className="flex items-center gap-3 p-3">
+          <div key={t} className="flex items-center gap-3 p-3 bg-card">
             <Dot color={color} />
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">{BACKUP_TARGETS[t] ?? t}</div>

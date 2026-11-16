@@ -276,7 +276,7 @@ function Invoices() {
   );
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
+    <div className="p-4 md:p-6 max-w-6xl 3xl:max-w-[1800px] 4xl:max-w-[2300px] mx-auto pb-24">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-3">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Invoices</h1>
         {isAdmin && (
@@ -321,7 +321,7 @@ function Invoices() {
         view === "list" ? (
           <ul className="space-y-2">{filtered.map((r) => renderRow(r, false))}</ul>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-2 3xl:space-y-0 3xl:grid 3xl:grid-cols-2 3xl:gap-3 3xl:items-start">
             {groups.map((g) => {
               const open = q.trim() !== "" || groups.length === 1 || expanded.has(g.key);
               return (

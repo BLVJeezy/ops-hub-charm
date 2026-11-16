@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
+import { brusselsToday, forecastByService, type ForecastInvoice } from "@/lib/invoice-schedule";
 import { clientAnnualProjection, clientMRR, serviceMRR, type FeeClient } from "@/lib/fees";
 import { BookOpen } from "lucide-react";
 
@@ -43,7 +44,7 @@ function Finance() {
   async function load() {
     const [c, i, e] = await Promise.all([
       supabase.from("clients").select("*"),
-      supabase.from("invoices").select("id,invoice_number,client,client_name,total,status,date"),
+      supabase.from("invoices").select("id,invoice_number,client,client_name,total,status,date,line_items,scheduled_send_at,repeat_monthly,repeat_day,next_repeat_on"),
       supabase.from("expenses").select("id,monthly_cost,linked_client"),
     ]);
     setClients((c.data as unknown as Client[]) ?? []);
@@ -190,6 +191,9 @@ function Finance() {
       {/* What earns what: MRR per service */}
       <ServiceSplit clients={activeClients} total={mrr} />
 
+      {/* What is coming: scheduled invoices per month and per service */}
+      <ForecastTable invoices={invoices} />
+
       <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-3 lg:items-start">
       {/* Who pays */}
       <Card>
@@ -312,6 +316,60 @@ function ServiceSplit({ clients, total }: { clients: FeeClient[]; total: number 
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function ForecastTable({ invoices }: { invoices: unknown[] }) {
+  const rows = forecastByService(invoices as ForecastInvoice[], brusselsToday(), 6);
+  const sum = (k: "seo" | "website" | "social" | "oneoff" | "total") => rows.reduce((a, r) => a + r[k], 0);
+  const cols = [
+    { key: "seo", label: "SEO", color: "#38bdf8" },
+    { key: "website", label: "Websites", color: "#d6b25e" },
+    { key: "social", label: "Social media", color: "#a78bfa" },
+    { key: "oneoff", label: "Eenmalig", color: "#9ca3af" },
+  ] as const;
+  const cell = (n: number) => (n ? formatCurrency(n) : <span className="text-muted-foreground/50">—</span>);
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-medium">Projectie · komende 6 maanden</div>
+        <div className="text-xs text-muted-foreground">uit geplande facturen, excl. btw</div>
+      </div>
+      <div className="overflow-x-auto -mx-1 px-1">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[11px] text-muted-foreground">
+              <th className="text-left font-normal py-1.5 pr-3">Maand</th>
+              {cols.map((c) => (
+                <th key={c.key} className="text-right font-normal py-1.5 px-2 whitespace-nowrap">
+                  <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: c.color }} />{c.label}
+                </th>
+              ))}
+              <th className="text-right font-normal py-1.5 pl-2">Totaal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.month} className="border-t border-border">
+                <td className="py-2 pr-3 whitespace-nowrap capitalize">
+                  {new Date(r.month + "-15").toLocaleDateString("nl-BE", { month: "short", year: "2-digit" })}
+                  {i === 0 && <span className="text-[11px] text-muted-foreground normal-case"> · rest</span>}
+                </td>
+                {cols.map((c) => <td key={c.key} className="py-2 px-2 text-right tabular-nums">{cell(r[c.key])}</td>)}
+                <td className="py-2 pl-2 text-right tabular-nums font-semibold">{formatCurrency(r.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-border font-semibold">
+              <td className="py-2 pr-3">Totaal</td>
+              {cols.map((c) => <td key={c.key} className="py-2 px-2 text-right tabular-nums">{cell(sum(c.key))}</td>)}
+              <td className="py-2 pl-2 text-right tabular-nums ink-gold">{formatCurrency(sum("total"))}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   );

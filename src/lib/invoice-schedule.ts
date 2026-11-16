@@ -188,3 +188,51 @@ export function plannedForecast(rows: PlannedInvoice[], today: string, months = 
   }
   return { count, total: Math.round(total * 100) / 100, until };
 }
+
+export type ServiceKey = "seo" | "website" | "social" | "oneoff";
+export type ForecastLine = { description?: string | null; qty?: number | null; unit_price?: number | null; price?: number | null };
+export type ForecastInvoice = PlannedInvoice & { line_items?: ForecastLine[] | null };
+export type ServiceMonth = { month: string; seo: number; website: number; social: number; oneoff: number; total: number };
+
+/** Which service an invoice line belongs to, from its description. Anything unrecognised counts as website. */
+export function lineService(description: string): ServiceKey {
+  const d = description.toLowerCase();
+  if (/ontwikkeling|development|opstart|setup|eenmalig/.test(d)) return "oneoff";
+  if (/\bseo\b|zoekmachine/.test(d)) return "seo";
+  if (/social|facebook|instagram|tiktok|video/.test(d)) return "social";
+  return "website";
+}
+
+/**
+ * What will be invoiced per calendar month and per service, from the current month
+ * through `months` months ahead. Scheduled drafts count once, monthly repeats every month.
+ */
+export function forecastByService(rows: ForecastInvoice[], today: string, months = 6): ServiceMonth[] {
+  const out: ServiceMonth[] = [];
+  for (let i = 0; i <= months; i++) out.push({ month: addMonthsIso(today.slice(0, 8) + "01", i).slice(0, 7), seo: 0, website: 0, social: 0, oneoff: 0, total: 0 });
+  const last = out[out.length - 1].month;
+  const add = (date: string, r: ForecastInvoice) => {
+    const m = out.find((x) => x.month === date.slice(0, 7));
+    if (!m) return;
+    const lines = r.line_items?.length ? r.line_items : [{ description: "", qty: 1, unit_price: Number(r.total || 0) }];
+    for (const l of lines) {
+      const amount = Number(l.qty ?? 1) * Number(l.unit_price ?? l.price ?? 0);
+      m[lineService(l.description ?? "")] += amount;
+      m.total += amount;
+    }
+  };
+  for (const r of rows) {
+    let first: string | null = null;
+    if (r.status === "Draft" && r.scheduled_send_at) first = r.scheduled_send_at;
+    else if (r.repeat_monthly && (r.status === "Sent" || r.status === "Paid") && r.next_repeat_on) first = r.next_repeat_on;
+    if (!first) continue;
+    if (first < today) first = today;
+    add(first, r);
+    if (!r.repeat_monthly) continue;
+    const day = r.repeat_day ?? Number(first.slice(8, 10));
+    let d = nextMonthlyDate(first, day);
+    for (let i = 0; i < 240 && d.slice(0, 7) <= last; i++) { add(d, r); d = nextMonthlyDate(d, day); }
+  }
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return out.map((m) => ({ ...m, seo: round(m.seo), website: round(m.website), social: round(m.social), oneoff: round(m.oneoff), total: round(m.total) }));
+}

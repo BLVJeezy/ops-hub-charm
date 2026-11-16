@@ -39,3 +39,26 @@ describe("plannedForecast", () => {
     expect(f).toMatchObject({ count: 1, total: 10 });
   });
 });
+
+import { forecastByService, lineService } from "./invoice-schedule";
+describe("forecastByService", () => {
+  it("classifies lines", () => {
+    expect(lineService("SEO")).toBe("seo");
+    expect(lineService("Social media (Facebook/Instagram) – maand 2")).toBe("social");
+    expect(lineService("Ontwikkeling website en platform – termijn 1")).toBe("oneoff");
+    expect(lineService("Onderhoud website – maand 2")).toBe("website");
+  });
+  it("spreads drafts and repeats over the months, per service", () => {
+    const f = forecastByService([
+      { status: "Draft", total: 500, scheduled_send_at: "2026-12-01", repeat_monthly: true, repeat_day: 1, line_items: [{ description: "SEO", qty: 1, unit_price: 500 }] },
+      { status: "Draft", total: 918.33, scheduled_send_at: "2027-01-15", line_items: [
+        { description: "Ontwikkeling website – termijn 1", unit_price: 533.33 }, { description: "Onderhoud website", unit_price: 85 }, { description: "Social media (Facebook/Instagram)", unit_price: 300 }] },
+      { status: "Draft", total: 150, scheduled_send_at: "2026-11-17", repeat_monthly: true, repeat_day: 17, line_items: [{ description: "Social media: 11 video's", unit_price: 150 }] },
+    ], "2026-11-16", 6);
+    expect(f.map((m) => m.month)).toEqual(["2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04", "2027-05"]);
+    expect(f[0]).toMatchObject({ seo: 0, social: 150, total: 150 });
+    expect(f[1]).toMatchObject({ seo: 500, social: 150, total: 650 });
+    expect(f[2]).toMatchObject({ seo: 500, website: 85, social: 450, oneoff: 533.33, total: 1568.33 });
+    expect(f[6]).toMatchObject({ seo: 500, social: 150 });
+  });
+});

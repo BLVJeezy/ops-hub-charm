@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet,
-  FileText, Search as SearchIcon, LogOut, Activity, Film, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff,
+  FileText, Search as SearchIcon, LogOut, Activity, Film, Workflow, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { to: "/expenses", label: "Expenses", icon: Wallet },
   { to: "/status", label: "Status", icon: Activity },
   { to: "/briefing", label: "Briefing", icon: Film },
+  { to: "/automations", label: "Automations", icon: Workflow },
 ] as const;
 
 function useIsActive(path: string, exact = false) {

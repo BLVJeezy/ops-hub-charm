@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, ArrowRight, BookOpen, BrainCircuit, Check, FileText, Film, GitBranch, LayoutDashboard, TrendingUp, Users, Wallet, ChevronLeft, ChevronRight, GripVertical, LayoutGrid, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
+import { Activity, Workflow, ArrowRight, BookOpen, BrainCircuit, Check, FileText, Film, GitBranch, LayoutDashboard, TrendingUp, Users, Wallet, ChevronLeft, ChevronRight, GripVertical, LayoutGrid, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceMail } from "@/lib/invoice-send.functions";
 import { ownerAlerts } from "@/lib/alerts";
+import { LIVE } from "@/lib/automations";
 import { TaskAgenda } from "@/components/TaskAgenda";
 import { RecurringTasks } from "@/components/RecurringTasks";
 import { supabase } from "@/integrations/supabase/client";
@@ -151,6 +152,7 @@ function BrainPage() {
     PAGE("/expenses", "Expenses", Wallet, "#FF7EB6", "kosten"),
     PAGE("/status", "Status", Activity, up < data.sites.length ? "#FF4D4D" : "#7CF5D0", `${up}/${data.sites.length} online`),
     PAGE("/briefing", "Briefing", Film, "#A9B4FF", "films"),
+    PAGE("/automations", "Automations", Workflow, "#FFD166", `${LIVE.length} draaien`),
   ];
   const planetUrls: Record<string, string> = Object.fromEntries([...m.neurons.map((n) => [n.key, planetUrl(n.dim ? "prospect" : n.key)] as const), ["core", planetUrl("sun")]]);
   const openTasks = tasks.filter((t) => !t.done_at).sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));

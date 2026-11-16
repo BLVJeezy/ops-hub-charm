@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as AuthenticatedAutomationsRouteImport } from './routes/_authenticated/automations'
 import { Route as AuthenticatedBoekhoudingRouteImport } from './routes/_authenticated/boekhouding'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as AuthenticatedBriefingRouteImport } from './routes/_authenticated/briefing'
@@ -63,6 +64,12 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
   path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAutomationsRoute =
+  AuthenticatedAutomationsRouteImport.update({
+    id: '/automations',
+    path: '/automations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedBoekhoudingRoute =
   AuthenticatedBoekhoudingRouteImport.update({
     id: '/boekhouding',
@@ -231,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/automations': typeof AuthenticatedAutomationsRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
   '/brain': typeof AuthenticatedBrainRoute
   '/briefing': typeof AuthenticatedBriefingRoute
@@ -266,6 +274,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/automations': typeof AuthenticatedAutomationsRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
   '/brain': typeof AuthenticatedBrainRoute
   '/briefing': typeof AuthenticatedBriefingRoute
@@ -302,6 +311,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/_authenticated/automations': typeof AuthenticatedAutomationsRoute
   '/_authenticated/boekhouding': typeof AuthenticatedBoekhoudingRoute
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
   '/_authenticated/briefing': typeof AuthenticatedBriefingRoute
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/unsubscribe'
+    | '/automations'
     | '/boekhouding'
     | '/brain'
     | '/briefing'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/unsubscribe'
+    | '/automations'
     | '/boekhouding'
     | '/brain'
     | '/briefing'
@@ -409,6 +421,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/unsubscribe'
+    | '/_authenticated/automations'
     | '/_authenticated/boekhouding'
     | '/_authenticated/brain'
     | '/_authenticated/briefing'
@@ -493,6 +506,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/automations': {
+      id: '/_authenticated/automations'
+      path: '/automations'
+      fullPath: '/automations'
+      preLoaderRoute: typeof AuthenticatedAutomationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/boekhouding': {
       id: '/_authenticated/boekhouding'
@@ -721,6 +741,7 @@ const AuthenticatedClientsRouteWithChildren =
   AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAutomationsRoute: typeof AuthenticatedAutomationsRoute
   AuthenticatedBoekhoudingRoute: typeof AuthenticatedBoekhoudingRoute
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
   AuthenticatedBriefingRoute: typeof AuthenticatedBriefingRoute
@@ -736,6 +757,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAutomationsRoute: AuthenticatedAutomationsRoute,
   AuthenticatedBoekhoudingRoute: AuthenticatedBoekhoudingRoute,
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,
   AuthenticatedBriefingRoute: AuthenticatedBriefingRoute,

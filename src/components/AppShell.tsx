@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet,
-  FileText, Search as SearchIcon, LogOut, Activity, Film, TrendingUp, BookOpen, MoreHorizontal, X, Hexagon, Eye, EyeOff,
+  FileText, Search as SearchIcon, LogOut, Activity, Film, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
 
 const NAV_ITEMS = [
-  { to: "/hive", label: "Hive Mind", icon: Hexagon },
+  { to: "/brain", label: "Brain", icon: BrainCircuit },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/clients", label: "Clients", icon: Users },

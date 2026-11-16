@@ -14,12 +14,12 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedBoekhoudingRouteImport } from './routes/_authenticated/boekhouding'
+import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as AuthenticatedBriefingRouteImport } from './routes/_authenticated/briefing'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticated/finance'
-import { Route as AuthenticatedHiveRouteImport } from './routes/_authenticated/hive'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
@@ -68,6 +68,11 @@ const AuthenticatedBoekhoudingRoute =
     path: '/boekhouding',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBrainRoute = AuthenticatedBrainRouteImport.update({
+  id: '/brain',
+  path: '/brain',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBriefingRoute = AuthenticatedBriefingRouteImport.update({
   id: '/briefing',
   path: '/briefing',
@@ -91,11 +96,6 @@ const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
 const AuthenticatedFinanceRoute = AuthenticatedFinanceRouteImport.update({
   id: '/finance',
   path: '/finance',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedHiveRoute = AuthenticatedHiveRouteImport.update({
-  id: '/hive',
-  path: '/hive',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedInvoicesRoute = AuthenticatedInvoicesRouteImport.update({
@@ -225,12 +225,12 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
+  '/brain': typeof AuthenticatedBrainRoute
   '/briefing': typeof AuthenticatedBriefingRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/finance': typeof AuthenticatedFinanceRoute
-  '/hive': typeof AuthenticatedHiveRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
@@ -259,11 +259,11 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
+  '/brain': typeof AuthenticatedBrainRoute
   '/briefing': typeof AuthenticatedBriefingRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/finance': typeof AuthenticatedFinanceRoute
-  '/hive': typeof AuthenticatedHiveRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
@@ -294,12 +294,12 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/boekhouding': typeof AuthenticatedBoekhoudingRoute
+  '/_authenticated/brain': typeof AuthenticatedBrainRoute
   '/_authenticated/briefing': typeof AuthenticatedBriefingRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/finance': typeof AuthenticatedFinanceRoute
-  '/_authenticated/hive': typeof AuthenticatedHiveRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
@@ -330,12 +330,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/unsubscribe'
     | '/boekhouding'
+    | '/brain'
     | '/briefing'
     | '/clients'
     | '/dashboard'
     | '/expenses'
     | '/finance'
-    | '/hive'
     | '/invoices'
     | '/pipeline'
     | '/search'
@@ -364,11 +364,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/unsubscribe'
     | '/boekhouding'
+    | '/brain'
     | '/briefing'
     | '/dashboard'
     | '/expenses'
     | '/finance'
-    | '/hive'
     | '/invoices'
     | '/pipeline'
     | '/search'
@@ -398,12 +398,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/unsubscribe'
     | '/_authenticated/boekhouding'
+    | '/_authenticated/brain'
     | '/_authenticated/briefing'
     | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/expenses'
     | '/_authenticated/finance'
-    | '/_authenticated/hive'
     | '/_authenticated/invoices'
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
@@ -487,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBoekhoudingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/brain': {
+      id: '/_authenticated/brain'
+      path: '/brain'
+      fullPath: '/brain'
+      preLoaderRoute: typeof AuthenticatedBrainRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/briefing': {
       id: '/_authenticated/briefing'
       path: '/briefing'
@@ -520,13 +527,6 @@ declare module '@tanstack/react-router' {
       path: '/finance'
       fullPath: '/finance'
       preLoaderRoute: typeof AuthenticatedFinanceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/hive': {
-      id: '/_authenticated/hive'
-      path: '/hive'
-      fullPath: '/hive'
-      preLoaderRoute: typeof AuthenticatedHiveRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/invoices': {
@@ -701,12 +701,12 @@ const AuthenticatedClientsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBoekhoudingRoute: typeof AuthenticatedBoekhoudingRoute
+  AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
   AuthenticatedBriefingRoute: typeof AuthenticatedBriefingRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
   AuthenticatedFinanceRoute: typeof AuthenticatedFinanceRoute
-  AuthenticatedHiveRoute: typeof AuthenticatedHiveRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
@@ -716,12 +716,12 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBoekhoudingRoute: AuthenticatedBoekhoudingRoute,
+  AuthenticatedBrainRoute: AuthenticatedBrainRoute,
   AuthenticatedBriefingRoute: AuthenticatedBriefingRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
   AuthenticatedFinanceRoute: AuthenticatedFinanceRoute,
-  AuthenticatedHiveRoute: AuthenticatedHiveRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,

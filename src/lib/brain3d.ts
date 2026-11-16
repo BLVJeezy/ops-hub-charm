@@ -198,7 +198,7 @@ export function buildOrbit3D(input: { key: string; dim?: boolean }[]): Brain3D {
   const folds: P3[][] = [];
   const neurons = ordered.map((n, i) => {
     const r = seeded(n.key);
-    const orbit: Orbit = { r: 0.26 + (i / Math.max(1, ordered.length - 1)) * 0.66, tilt: (r() - 0.5) * 0.5, node: r() * Math.PI * 2, phase: r() * Math.PI * 2, speed: 0.34 / (1 + i * 0.45) };
+    const orbit: Orbit = { r: 0.4 + (i / Math.max(1, ordered.length - 1)) * 0.58, tilt: (r() - 0.5) * 0.5, node: r() * Math.PI * 2, phase: r() * Math.PI * 2, speed: 0.34 / (1 + i * 0.45) };
     folds.push(Array.from({ length: 73 }, (_, k) => orbitPos({ ...orbit, phase: (k / 72) * Math.PI * 2, speed: 0 }, 0)));
     const pos = orbitPos(orbit, 0);
     return { key: n.key, dim: !!n.dim, pos, axon: straight(core, pos, 2), orbit };

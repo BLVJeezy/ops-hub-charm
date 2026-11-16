@@ -237,7 +237,7 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
         if (L.mode === "orbit") { // real planets: no beams, no glow; they are drawn afterwards, back to front
           const q = path[path.length - 1];
           const press = v.press === sn.key ? 0.9 : 1;
-          const rad = (sn.dim ? 13 : 24 + info.weight * 22) * q.s * (R / 300) * press * Math.min(1, ease * 1.3);
+          const rad = (sn.dim ? 12 : 20 + info.weight * 16) * q.s * (R / 300) * press * Math.min(1, ease * 1.3);
           planets.push({ key: sn.key, x: q.x, y: q.y, z: q.z, rad, color: [r, g, b], a: focus ? 1 : 0.4, alert: !!info.alert });
           screen.push({ key: sn.key, x: q.x, y: q.y, r: rad, z: q.z });
           labels.push({ x: q.x, y: q.y, near: (q.z + 1) / 2, n: info, r: rad * 0.72 });
@@ -287,7 +287,7 @@ export function BrainCanvas({ neurons, coreLabel, coreValue, selected, onSelect,
       if (L.mode === "orbit") {
         // sun and planets as solid bodies, far ones first so near ones pass in front
         ctx.globalCompositeOperation = "source-over";
-        const sunR = R * 0.17 * Math.min(1, ease * 1.3);
+        const sunR = R * 0.15 * Math.min(1, ease * 1.3);
         const bodies = [...planets.map((b) => ({ ...b, sun: false })), { key: "core", x: c.x, y: c.y, z: 0, rad: sunR, color: [255, 210, 120] as [number, number, number], a: dimAll < 1 ? 0.75 : 1, alert: false, sun: true }].sort((a, b) => a.z - b.z);
         for (const b of bodies) {
           const pic = planet(L.images?.[b.key]);

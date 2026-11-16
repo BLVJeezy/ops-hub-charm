@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BrainCircuit, Check, ChevronLeft, ChevronRight, GripVertical, LayoutGrid, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -173,7 +173,7 @@ function BrainPage() {
             <button onClick={() => saveLayout(DEFAULT_LAYOUT)} className="press ml-auto rounded-full h-8 px-3 text-white/70 hover:bg-white/10">Standaard</button>
           </div>
         )}
-        <div className="grid gap-3 grid-cols-[minmax(0,1fr)] lg:grid-cols-12 lg:[grid-auto-flow:dense] lg:items-start">
+        <div className="grid gap-3 grid-cols-[minmax(0,1fr)] lg:grid-cols-12 lg:gap-y-0 lg:[grid-auto-rows:4px] lg:[grid-auto-flow:dense] lg:items-start">
           {layout.filter((w) => !w.hidden).map((w) => (
             <WidgetFrame key={w.id} w={w} editing={editing} tall={w.id === "brain"}
               onMove={(d) => move(w.id, d)} onSize={(d) => resize(w.id, d)} onRemove={() => patch(w.id, { hidden: true })}
@@ -321,10 +321,23 @@ function WidgetFrame({ w, editing, tall, dragging, children, onMove, onSize, onR
   onMove: (d: -1 | 1) => void; onSize: (d: -1 | 1) => void; onRemove: () => void; onDragStart: () => void; onDragOver: () => void; onDragEnd: () => void;
 }) {
   const btn = "press hit w-7 h-7 rounded-full grid place-items-center hover:bg-white/15";
+  // masonry: every widget takes exactly the rows its own height needs, so nothing leaves a hole beside the big one
+  const inner = useRef<HTMLDivElement>(null);
+  const [rows, setRows] = useState(1);
+  useEffect(() => {
+    const el = inner.current;
+    if (!el) return;
+    const measure = () => setRows(Math.ceil((el.offsetHeight + 12) / 4));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  void tall;
   return (
     <div
-      className={`relative min-w-0 lg:[grid-column:span_var(--span)] ${tall && w.span < 12 ? "lg:row-span-3" : ""} ${editing ? "rounded-3xl ring-1 ring-sky-300/40 ring-offset-4 ring-offset-[#02030a]" : ""} ${dragging ? "opacity-50" : ""} transition-opacity`}
-      style={{ "--span": w.span } as React.CSSProperties}
+      className={`relative min-w-0 lg:[grid-column:span_var(--span)] lg:[grid-row-end:span_var(--rows)] ${editing ? "rounded-3xl ring-1 ring-sky-300/40 ring-offset-4 ring-offset-[#02030a]" : ""} ${dragging ? "opacity-50" : ""} transition-opacity`}
+      style={{ "--span": w.span, "--rows": rows } as React.CSSProperties}
       onDragOver={editing ? (e) => { e.preventDefault(); onDragOver(); } : undefined}
     >
       {editing && (
@@ -339,7 +352,7 @@ function WidgetFrame({ w, editing, tall, dragging, children, onMove, onSize, onR
           <button className={`${btn} hover:text-red-400`} onClick={onRemove} aria-label="Widget weghalen"><X className="w-4 h-4" /></button>
         </div>
       )}
-      {children}
+      <div ref={inner}>{children}</div>
     </div>
   );
 }

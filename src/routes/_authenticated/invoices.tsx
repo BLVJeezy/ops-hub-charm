@@ -1,7 +1,7 @@
 import { useCurrency } from "@/components/CurrencyToggle";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2, Trash2, CalendarClock, Repeat } from "lucide-react";
+import { Plus, FileText, Download, Pencil, Send, Bell, CheckCircle2, Trash2, CalendarClock, Repeat, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -69,6 +69,11 @@ function Invoices() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
+
+  const [view, setView] = useState<"clients" | "list">(() => {
+    try { return localStorage.getItem("invoices-view") === "list" ? "list" : "clients"; } catch { return "clients"; }
+  });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     let list = rows;
@@ -142,6 +147,134 @@ function Invoices() {
     Paid: "bg-emerald-500/15 text-emerald-400",
   };
 
+  const groups = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; items: Row[]; total: number; paid: number; open: number; planned: number; nextPlanned: string | null; latest: string }>();
+    for (const r of filtered) {
+      const key = (r as { client?: string | null }).client || r.client_name || "—";
+      let g = map.get(key);
+      if (!g) { g = { key, name: r.client_name || "Zonder klant", items: [], total: 0, paid: 0, open: 0, planned: 0, nextPlanned: null, latest: "" }; map.set(key, g); }
+      const amt = Number(r.total || 0);
+      g.items.push(r);
+      g.total += amt;
+      if (r.status === "Paid") g.paid += amt;
+      if (r.status === "Sent") g.open += amt;
+      if (isPlanned(r)) {
+        g.planned++;
+        const d = r.status === "Draft" ? r.scheduled_send_at : r.next_repeat_on;
+        if (d && (!g.nextPlanned || d < g.nextPlanned)) g.nextPlanned = d;
+      }
+      if (r.date > g.latest) g.latest = r.date;
+    }
+    // open money first, then most recent activity
+    return [...map.values()].sort((a, b) => (b.open > 0 ? 1 : 0) - (a.open > 0 ? 1 : 0) || b.latest.localeCompare(a.latest));
+  }, [filtered]);
+
+  function toggleGroup(key: string) {
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (n.has(key)) n.delete(key); else n.add(key);
+      return n;
+    });
+  }
+
+  function setViewMode(v: "clients" | "list") {
+    setView(v);
+    try { localStorage.setItem("invoices-view", v); } catch { /* storage unavailable */ }
+  }
+
+  const renderRow = (r: Row, inGroup: boolean) => (
+    <li key={r.id} className="rounded-xl border border-border bg-card px-3.5 py-3 lg:py-2 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1.9fr)_auto_5.5rem_auto] lg:items-center lg:gap-x-4">
+      <div className="flex items-center gap-2 lg:contents">
+        <div className="font-semibold truncate min-w-0 flex-1 lg:col-start-1 lg:row-start-1">{inGroup ? <span className="font-mono text-sm">{formatInvoiceNumber(r.invoice_number)}</span> : r.client_name}</div>
+        {isAdmin ? (
+          <select
+            value={r.status}
+            onChange={(e) => markStatus(r, e.target.value)}
+            aria-label="Status" className={`lg:col-start-4 lg:row-start-1 shrink-0 rounded-full px-2.5 h-8 text-xs font-medium border-0 ${statusColor[r.status] ?? "bg-muted"}`}
+          >
+            {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s} className="bg-card text-foreground">{s}</option>)}
+          </select>
+        ) : (
+          <span className={`lg:col-start-4 lg:row-start-1 shrink-0 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColor[r.status] ?? "bg-muted"}`}>{r.status}</span>
+        )}
+        <div className="lg:col-start-5 lg:row-start-1 lg:w-auto shrink-0 text-base font-bold tabular-nums w-[4.5rem] text-right">{formatCurrency(Number(r.total || 0))}</div>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-1 lg:mt-0 lg:contents">
+        <div className="text-xs text-muted-foreground truncate lg:col-start-2 lg:row-start-1">
+          {inGroup ? formatDate(r.date) : <><span className="font-mono">{formatInvoiceNumber(r.invoice_number)}</span> · {formatDate(r.date)}</>}
+        </div>
+        <div className="flex shrink-0 -mr-2.5 lg:col-start-6 lg:row-start-1 lg:justify-end lg:w-36">
+          {isAdmin && r.status !== "Paid" && (
+            <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => sendInvoiceEmail(r)} title={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur per e-mail"} aria-label={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur"}>
+              <Send className="w-3.5 h-3.5 text-sky-400" />
+            </Button>
+          )}
+          <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => downloadPdf(r)} title="Download PDF" aria-label="Download PDF">
+            <Download className="w-3.5 h-3.5" />
+          </Button>
+          {isAdmin && (
+            <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit" aria-label="Bewerken">
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          {isAdmin && (
+            <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => deleteInvoiceRow(r)} title="Delete" aria-label="Verwijderen">
+              <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+            </Button>
+          )}
+        </div>
+      </div>
+      {(r.sent_at || (r.reminder_count ?? 0) > 0 || r.email_status || isPlanned(r) || r.schedule_error) && (
+        <div className="mt-1 lg:mt-0 lg:col-start-3 lg:row-start-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground min-w-0">
+          {r.status === "Draft" && r.scheduled_send_at && (
+            <span className="inline-flex items-center gap-1 text-sky-400">
+              <CalendarClock className="w-3.5 h-3.5" /> Gepland {formatDate(r.scheduled_send_at)} {hourLabel(r.scheduled_send_hour)}
+            </span>
+          )}
+          {r.repeat_monthly && (
+            <span className="inline-flex items-center gap-1 text-violet-400">
+              <Repeat className="w-3.5 h-3.5" /> Maandelijks
+              {r.status === "Draft" && r.scheduled_send_at ? "" : r.next_repeat_on ? ` · volgende ${formatDate(r.next_repeat_on)} ${hourLabel(r.repeat_hour)}` : r.repeat_day ? ` · dag ${r.repeat_day}, ${hourLabel(r.repeat_hour)}` : ""}
+            </span>
+          )}
+          {r.schedule_error && (
+            <span className="inline-flex items-center gap-1 text-red-400" title={r.schedule_error}>
+              ⚠ Automatisch versturen mislukt
+            </span>
+          )}
+          {r.sent_at && (
+            <span className="inline-flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              Verstuurd {formatDate(r.sent_at)}
+            </span>
+          )}
+          {r.delivered_at && (
+            <span className="inline-flex items-center gap-1 text-emerald-400">
+              ✓ Afgeleverd {formatDate(r.delivered_at)}
+            </span>
+          )}
+          {r.opened_at && (
+            <span className="inline-flex items-center gap-1 text-sky-400">
+              👁 Geopend {formatDate(r.opened_at)}
+            </span>
+          )}
+          {r.bounced_at && (
+            <span className="inline-flex items-center gap-1 text-red-400">
+              ⚠ Bounced {formatDate(r.bounced_at)}
+            </span>
+          )}
+          {(r.reminder_count ?? 0) > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <Bell className="w-3.5 h-3.5 text-amber-400" />
+              {r.reminder_count} herinnering{(r.reminder_count ?? 0) > 1 ? "en" : ""}
+              {r.last_reminder_at && ` · laatst ${formatDate(r.last_reminder_at)}`}
+            </span>
+          )}
+        </div>
+      )}
+    </li>
+  );
+
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-3">
@@ -169,7 +302,15 @@ function Invoices() {
             ))}
           </TabsList>
         </Tabs>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full h-9" />
+        <div className="flex gap-2">
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full h-9" />
+          <div className="shrink-0 inline-flex rounded-lg border border-border p-0.5 h-9" role="group" aria-label="Weergave">
+            {([["clients", "Per klant"], ["list", "Lijst"]] as const).map(([v, label]) => (
+              <button key={v} type="button" onClick={() => setViewMode(v)} aria-pressed={view === v}
+                className={`px-3 rounded-md text-xs font-medium ${view === v ? "bg-white text-black" : "text-muted-foreground"}`}>{label}</button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -177,100 +318,47 @@ function Invoices() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={FileText} title="No invoices" description="Create one to get started." />
       ) : (
-        <ul className="space-y-2">
-          {filtered.map((r) => (
-            <li key={r.id} className="rounded-xl border border-border bg-card px-3.5 py-3 lg:py-2 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,1.9fr)_auto_5.5rem_auto] lg:items-center lg:gap-x-4">
-              <div className="flex items-center gap-2 lg:contents">
-                <div className="font-semibold truncate min-w-0 flex-1 lg:col-start-1 lg:row-start-1">{r.client_name}</div>
-                {isAdmin ? (
-                  <select
-                    value={r.status}
-                    onChange={(e) => markStatus(r, e.target.value)}
-                    aria-label="Status" className={`lg:col-start-4 lg:row-start-1 shrink-0 rounded-full px-2.5 h-8 text-xs font-medium border-0 ${statusColor[r.status] ?? "bg-muted"}`}
+        view === "list" ? (
+          <ul className="space-y-2">{filtered.map((r) => renderRow(r, false))}</ul>
+        ) : (
+          <ul className="space-y-2">
+            {groups.map((g) => {
+              const open = q.trim() !== "" || groups.length === 1 || expanded.has(g.key);
+              return (
+                <li key={g.key} className={`rounded-2xl border bg-card/60 ${g.open > 0 ? "border-amber-500/30" : "border-border"}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(g.key)}
+                    aria-expanded={open}
+                    className="press w-full flex items-center gap-3 px-3.5 py-3 text-left"
                   >
-                    {["Draft", "Sent", "Paid"].map((s) => <option key={s} value={s} className="bg-card text-foreground">{s}</option>)}
-                  </select>
-                ) : (
-                  <span className={`lg:col-start-4 lg:row-start-1 shrink-0 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColor[r.status] ?? "bg-muted"}`}>{r.status}</span>
-                )}
-                <div className="lg:col-start-5 lg:row-start-1 lg:w-auto shrink-0 text-base font-bold tabular-nums w-[4.5rem] text-right">{formatCurrency(Number(r.total || 0))}</div>
-              </div>
-              <div className="flex items-center justify-between gap-2 mt-1 lg:mt-0 lg:contents">
-                <div className="text-xs text-muted-foreground truncate lg:col-start-2 lg:row-start-1">
-                  <span className="font-mono">{formatInvoiceNumber(r.invoice_number)}</span> · {formatDate(r.date)}
-                </div>
-                <div className="flex shrink-0 -mr-2.5 lg:col-start-6 lg:row-start-1 lg:justify-end lg:w-36">
-                  {isAdmin && r.status !== "Paid" && (
-                    <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => sendInvoiceEmail(r)} title={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur per e-mail"} aria-label={r.sent_at ? "Opnieuw versturen" : "Verstuur factuur"}>
-                      <Send className="w-3.5 h-3.5 text-sky-400" />
-                    </Button>
+                    <ChevronRight className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate">{g.name}</div>
+                      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground tabular-nums">
+                        <span>{g.items.length} {g.items.length === 1 ? "factuur" : "facturen"}</span>
+                        {g.paid > 0 && <span className="text-emerald-400">{formatCurrency(g.paid)} betaald</span>}
+                        {g.open > 0 && <span className="text-amber-400">{formatCurrency(g.open)} open</span>}
+                        {g.planned > 0 && (
+                          <span className="text-sky-400">
+                            {g.planned} gepland{g.nextPlanned ? ` · volgende ${formatDate(g.nextPlanned)}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-bold tabular-nums">{formatCurrency(g.total)}</div>
+                      <div className="text-[11px] text-muted-foreground">totaal</div>
+                    </div>
+                  </button>
+                  {open && (
+                    <ul className="space-y-2 px-2 pb-2 pop-in">{g.items.map((r) => renderRow(r, true))}</ul>
                   )}
-                  <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => downloadPdf(r)} title="Download PDF" aria-label="Download PDF">
-                    <Download className="w-3.5 h-3.5" />
-                  </Button>
-                  {isAdmin && (
-                    <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => { setEditing(r); setModalOpen(true); }} title="Edit" aria-label="Bewerken">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                  {isAdmin && (
-                    <Button size="icon" variant="ghost" className="hit h-9 w-9" onClick={() => deleteInvoiceRow(r)} title="Delete" aria-label="Verwijderen">
-                      <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {(r.sent_at || (r.reminder_count ?? 0) > 0 || r.email_status || isPlanned(r) || r.schedule_error) && (
-                <div className="mt-1 lg:mt-0 lg:col-start-3 lg:row-start-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground min-w-0">
-                  {r.status === "Draft" && r.scheduled_send_at && (
-                    <span className="inline-flex items-center gap-1 text-sky-400">
-                      <CalendarClock className="w-3.5 h-3.5" /> Gepland {formatDate(r.scheduled_send_at)} {hourLabel(r.scheduled_send_hour)}
-                    </span>
-                  )}
-                  {r.repeat_monthly && (
-                    <span className="inline-flex items-center gap-1 text-violet-400">
-                      <Repeat className="w-3.5 h-3.5" /> Maandelijks
-                      {r.status === "Draft" && r.scheduled_send_at ? "" : r.next_repeat_on ? ` · volgende ${formatDate(r.next_repeat_on)} ${hourLabel(r.repeat_hour)}` : r.repeat_day ? ` · dag ${r.repeat_day}, ${hourLabel(r.repeat_hour)}` : ""}
-                    </span>
-                  )}
-                  {r.schedule_error && (
-                    <span className="inline-flex items-center gap-1 text-red-400" title={r.schedule_error}>
-                      ⚠ Automatisch versturen mislukt
-                    </span>
-                  )}
-                  {r.sent_at && (
-                    <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      Verstuurd {formatDate(r.sent_at)}
-                    </span>
-                  )}
-                  {r.delivered_at && (
-                    <span className="inline-flex items-center gap-1 text-emerald-400">
-                      ✓ Afgeleverd {formatDate(r.delivered_at)}
-                    </span>
-                  )}
-                  {r.opened_at && (
-                    <span className="inline-flex items-center gap-1 text-sky-400">
-                      👁 Geopend {formatDate(r.opened_at)}
-                    </span>
-                  )}
-                  {r.bounced_at && (
-                    <span className="inline-flex items-center gap-1 text-red-400">
-                      ⚠ Bounced {formatDate(r.bounced_at)}
-                    </span>
-                  )}
-                  {(r.reminder_count ?? 0) > 0 && (
-                    <span className="inline-flex items-center gap-1">
-                      <Bell className="w-3.5 h-3.5 text-amber-400" />
-                      {r.reminder_count} herinnering{(r.reminder_count ?? 0) > 1 ? "en" : ""}
-                      {r.last_reminder_at && ` · laatst ${formatDate(r.last_reminder_at)}`}
-                    </span>
-                  )}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )
       )}
 
       <InvoiceModal

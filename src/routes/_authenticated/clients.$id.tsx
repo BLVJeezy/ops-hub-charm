@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { sendClientDocument } from "@/lib/document-send.functions";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
+import { ClientReports } from "@/components/ClientReports";
 
 export const Route = createFileRoute("/_authenticated/clients/$id")({
   component: ClientDetail,
@@ -543,6 +544,8 @@ function ClientDetail() {
           </div>
         ))}
       </div>
+
+      <ClientReports clientId={client.id} />
 
       {/* REPORTS & DOCUMENTS */}
       <div className="flex items-center justify-between mb-3">

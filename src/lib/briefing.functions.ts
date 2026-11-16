@@ -70,3 +70,30 @@ export const getProgressFilm = createServerFn({ method: "POST" })
     } catch { /* a film without chapters still plays */ }
     return { days, day, url: (signed.data?.signedUrl as string | undefined) ?? null, chapters };
   });
+
+/**
+ * A client's monthly report films (bucket "briefings", folder reports/<client id>/, filled by the hook with kind=client).
+ * Returns the days there are films for and a signed link for the asked one (default: the newest). Staff only.
+ */
+export const getClientReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { clientId: string; day?: string }) => {
+    if (!/^[0-9a-f-]{36}$/.test(input?.clientId ?? "")) throw new Error("bad client");
+    if (input.day && !/^\d{4}-\d{2}-\d{2}$/.test(input.day)) throw new Error("bad day");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: staff } = await supabase.rpc("is_staff", { _user_id: userId });
+    if (!staff) throw new Error("Geen toegang");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const store = (supabaseAdmin as any).storage.from("briefings");
+    const { data: files } = await store.list(`reports/${data.clientId}`, { limit: 100, sortBy: { column: "name", order: "desc" } });
+    const days: string[] = ((files ?? []) as { name: string }[]).map((f) => /^(\d{4}-\d{2}-\d{2})\.mp4$/.exec(f.name)?.[1]).filter((d): d is string => !!d).sort().reverse();
+    const day = data.day && days.includes(data.day) ? data.day : days[0];
+    if (!day) return { days, day: null, url: null, download: null };
+    const path = `reports/${data.clientId}/${day}.mp4`;
+    const [play, save] = await Promise.all([store.createSignedUrl(path, 60 * 60 * 6), store.createSignedUrl(path, 60 * 60 * 6, { download: `maandrapport-${day}.mp4` })]);
+    return { days, day, url: (play.data?.signedUrl as string | undefined) ?? null, download: (save.data?.signedUrl as string | undefined) ?? null };
+  });

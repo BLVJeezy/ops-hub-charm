@@ -1,5 +1,5 @@
 #!/bin/sh
-# SOLYN GLOBAL PROGRESS — one command: sh build.sh [full|week]
+# SOLYN GLOBAL PROGRESS — one command: sh build.sh [full|week|client]
 #   data.json = the Hub snapshot (the single row of snapshot.sql) · LIB = the Lemo-Opuscar library
 # Output: progress.mp4 (master), progress-web.mp4 (small copy for the Hub), progress.srt, poster.jpg, chapters.json
 set -e
@@ -14,9 +14,11 @@ if ! ffmpeg -version 2>/dev/null | head -1 | grep -Eq 'version (n)?([7-9]|[1-9][
   mkdir -p "$HERE/out/bin"; ln -sf "$F" "$HERE/out/bin/ffmpeg"; PATH="$HERE/out/bin:$PATH"; export PATH
 fi
 sh "$HERE/tools/fonts.sh"
-node --experimental-strip-types --no-warnings "$HERE/tools/prepare.mts" "$HERE" "$MODE"   # 1. numbers, look and voice lines
+if [ "$MODE" = client ]; then node --experimental-strip-types --no-warnings "$HERE/tools/prepare-client.mts" "$HERE"   # 1. a client's monthly report (data.json from client-snapshot.sql)
+else node --experimental-strip-types --no-warnings "$HERE/tools/prepare.mts" "$HERE" "$MODE"; fi                        # 1. numbers, look and voice lines
 cd "$LIB"
-rm -rf "$HERE/voices"; "$PY" core/tts/tts.py "$HERE/lines.json" "$HERE/voices"            # 2. voice (Kokoro, offline)
+rm -rf "$HERE/voices"; mkdir -p "$HERE/voices"
+[ "$(tr -d '[:space:]' < "$HERE/lines.json")" = "[]" ] || "$PY" core/tts/tts.py "$HERE/lines.json" "$HERE/voices"   # 2. voice (Kokoro, offline); a client film has none
 node "$HERE/tools/export.mjs" "$HERE"                                                     # 3. timeline, chapters, subtitles
 "$PY" "$HERE/mix.py" "$HERE"                                                              # 4. score + sounds + voice
 "$PY" core/render/srt.py "$HERE/out/srt.json" "$HERE/progress.srt"

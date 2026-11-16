@@ -9,3 +9,9 @@ made every Monday from the Hub's data. `sh build.sh week` for the weekly edition
 - `mix.py` — generated score (key and tempo per edition), interface sounds, voice.
 
 Needs the Lemo-Opuscar library (`LIB`), as the noon-scan film does. Output files are not kept in git.
+
+## Client reports
+
+`sh build.sh client` makes a client's monthly report film instead (Dutch on screen, no voice, in the client's own colour, logo from
+`public/logos/<client id>.png`). `client-snapshot.sql` is its query: replace `{{CLIENT_ID}}`, `{{FROM}}`, `{{TO}}`, run it, save the
+`snapshot` value as `data.json`. `tools/prepare-client.mts` leaves out scenes the client has no data for.

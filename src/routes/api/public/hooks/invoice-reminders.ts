@@ -158,7 +158,11 @@ export const Route = createFileRoute('/api/public/hooks/invoice-reminders')({
           results.push({ id: inv.id, ok: true })
         }
 
-        return Response.json({ ok: true, checked: invoices?.length ?? 0, sent, results })
+        // the owner's own daily word (open 14+ days, clients behind on videos); rides on this daily job
+        const { mailOwnerAlerts } = await import('@/lib/owner-alerts.server')
+        const owner = await mailOwnerAlerts(supabase)
+
+        return Response.json({ ok: true, checked: invoices?.length ?? 0, sent, results, owner })
       },
     },
   },

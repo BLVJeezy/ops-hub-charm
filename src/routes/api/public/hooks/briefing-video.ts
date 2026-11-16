@@ -8,6 +8,8 @@ import { createFileRoute } from "@tanstack/react-router";
  * POST /api/public/hooks/briefing-video?day=YYYY-MM-DD  body: the mp4
  * With &kind=progress it is the weekly "Solyn Global progress" film instead: kept as progress/<day>.mp4, with its
  * chapters (optional header X-Chapters: base64 of the chapters JSON) beside it as progress/<day>.chapters.
+ * With &kind=client&client=<client id> it is a client's monthly report film: kept as reports/<client id>/<day>.mp4
+ * (day = the last day the report covers).
  * Authorization: Bearer <shared backup token>  (only its sha256 lives here)
  */
 const KEY_SHA256 = "07cc86d4b801acd9882c238a7bc712c243469ec8f557382b52893a702810a7b4";
@@ -44,7 +46,17 @@ export const Route = createFileRoute("/api/public/hooks/briefing-video")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db = supabaseAdmin as any;
-        if (new URL(request.url).searchParams.get("kind") === "progress") {
+        const kind = new URL(request.url).searchParams.get("kind");
+        if (kind === "client") {
+          const client = new URL(request.url).searchParams.get("client") ?? "";
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(client)) return Response.json({ error: "bad client" }, { status: 400 });
+          const known = await db.from("clients").select("id").eq("id", client).maybeSingle();
+          if (!known.data) return Response.json({ error: "unknown client" }, { status: 404 });
+          const film = await db.storage.from("briefings").upload(`reports/${client}/${day}.mp4`, body, { contentType: "video/mp4", upsert: true });
+          if (film.error) return Response.json({ error: film.error.message }, { status: 500 });
+          return Response.json({ ok: true, kind: "client", client, day, bytes: body.length });
+        }
+        if (kind === "progress") {
           const film = await db.storage.from("briefings").upload(`progress/${day}.mp4`, body, { contentType: "video/mp4", upsert: true });
           if (film.error) return Response.json({ error: film.error.message }, { status: 500 });
           let chapters = "[]";

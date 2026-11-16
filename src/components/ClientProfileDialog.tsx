@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Globe, Mail, MapPin, Phone, User } from "lucide-react";
+import { ArrowRight, Globe, Mail, MapPin, Phone, Send, User } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { clientMRR, clientMRRBreakdown, type FeeClient } from "@/lib/fees";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -12,14 +13,20 @@ export type ProfileClient = FeeClient & {
 type Invoice = { id: string; date: string; total?: number | string | null; status?: string | null; scheduled_send_at?: string | null; next_repeat_on?: string | null; repeat_monthly?: boolean | null };
 
 /** Everything about one client at a glance, opened from the Brain. */
-export function ClientProfileDialog({ client, color, sites, invoices, tasks, videos, onClose }: {
+export function ClientProfileDialog({ client, color, sites, invoices, tasks, videos, onClose, onSend, children }: {
   client: ProfileClient | null; color: string;
   sites: { id: string; name: string; last_status: string | null }[];
   invoices: Invoice[];
   tasks: { id: string; title: string; due_date: string | null; done_at: string | null; assignee: string }[];
   videos: { sent: number; posted: number } | null;
   onClose: () => void;
+  /** send a planned invoice now; resolves when it is done */
+  onSend?: (invoiceId: string) => Promise<void>;
+  /** things to do right here: add a task, tick off a video */
+  children?: React.ReactNode;
 }) {
+  const [confirm, setConfirm] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   if (!client) return null;
   const mrr = clientMRR(client), split = clientMRRBreakdown(client);
   const paid = invoices.filter((v) => v.status === "Paid"), open = invoices.filter((v) => v.status === "Sent");
@@ -36,8 +43,9 @@ export function ClientProfileDialog({ client, color, sites, invoices, tasks, vid
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[88dvh] overflow-y-auto border-white/10 bg-[rgba(8,11,24,0.96)] text-white backdrop-blur-2xl p-0 gap-0 rounded-3xl">
         <div className="p-5 sm:p-6 flex items-center gap-4 border-b border-white/10" style={{ background: `linear-gradient(120deg, ${color}33, transparent 70%)` }}>
-          <span className="w-16 h-16 rounded-full overflow-hidden grid place-items-center shrink-0 ring-2 bg-[#05070f]" style={{ ["--tw-ring-color" as string]: color }}>
-            <img src={`/logos/${client.id}.png`} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <span className="relative w-16 h-16 rounded-full overflow-hidden grid place-items-center shrink-0 ring-2 bg-[#05070f]" style={{ ["--tw-ring-color" as string]: color }}>
+            <span className="text-lg font-semibold" style={{ color }}>{client.name.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</span>
+            <img src={`/logos/${client.id}.png`} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
           </span>
           <div className="min-w-0">
             <DialogTitle className="text-xl sm:text-2xl font-semibold tracking-tight truncate">{client.name}</DialogTitle>
@@ -86,19 +94,26 @@ export function ClientProfileDialog({ client, color, sites, invoices, tasks, vid
           <Block title="Komende facturen">
             {planned.length ? (
               <ul className="space-y-1.5 text-sm">
-                {planned.slice(0, 4).map((v) => <li key={v.id} className="flex justify-between"><span>{formatDate(String(v.scheduled_send_at))}{v.repeat_monthly ? <span className="text-white/40"> · maandelijks</span> : null}</span><span className="tabular-nums font-medium">{formatCurrency(Number(v.total || 0))}</span></li>)}
+                {planned.slice(0, 4).map((v) => (
+                  <li key={v.id} className="flex items-center gap-3 min-h-9">
+                    <span className="flex-1">{formatDate(String(v.scheduled_send_at))}{v.repeat_monthly ? <span className="text-white/40"> · maandelijks</span> : null}</span>
+                    <span className="tabular-nums font-medium">{formatCurrency(Number(v.total || 0))}</span>
+                    {onSend && (confirm === v.id ? (
+                      <span className="inline-flex gap-1">
+                        <button disabled={busy === v.id} onClick={async () => { setBusy(v.id); try { await onSend(v.id); } finally { setBusy(null); setConfirm(null); } }} className="press h-8 px-3 rounded-full bg-white text-black text-xs font-semibold disabled:opacity-60">{busy === v.id ? "Versturen…" : "Ja, verstuur"}</button>
+                        <button onClick={() => setConfirm(null)} className="press h-8 px-3 rounded-full bg-white/10 text-xs">Annuleer</button>
+                      </span>
+                    ) : (
+                      <button onClick={() => setConfirm(v.id)} className="press h-8 px-3 rounded-full bg-white/10 hover:bg-white/15 text-xs inline-flex items-center gap-1.5"><Send className="w-3.5 h-3.5" />Verstuur nu</button>
+                    ))}
+                  </li>
+                ))}
                 {planned.length > 4 && <li className="text-xs text-white/40">+ {planned.length - 4} later</li>}
               </ul>
             ) : <Empty>Niets ingepland.</Empty>}
           </Block>
 
-          {openTasks.length > 0 && (
-            <Block title="Open taken">
-              <ul className="space-y-1.5 text-sm">
-                {openTasks.slice(0, 5).map((t) => <li key={t.id} className="flex justify-between gap-3"><span className="truncate">{t.title}</span><span className="text-xs text-white/50 shrink-0">{t.assignee === "client" ? "wacht op klant" : "ik"}{t.due_date ? ` · ${formatDate(t.due_date)}` : ""}</span></li>)}
-              </ul>
-            </Block>
-          )}
+          {children}
 
           {client.notes && <Block title="Notities"><p className="text-sm text-white/75 whitespace-pre-wrap">{client.notes}</p></Block>}
 

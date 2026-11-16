@@ -2,6 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, ArrowRight, BookOpen, BrainCircuit, Check, FileText, Film, GitBranch, LayoutDashboard, TrendingUp, Users, Wallet, ChevronLeft, ChevronRight, GripVertical, LayoutGrid, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { sendInvoiceMail } from "@/lib/invoice-send.functions";
+import { ownerAlerts } from "@/lib/alerts";
 import { supabase } from "@/integrations/supabase/client";
 import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
 import { PerkRing, type PerkItem } from "@/components/PerkRing";
@@ -54,6 +57,7 @@ function BrainPage() {
   const pickRing = (k: "clients" | "pages") => { setRing(k); try { localStorage.setItem("brain-ring", k); } catch { /* storage unavailable */ } };
   const [profile, setProfile] = useState<string | null>(null);
   const navigate = useNavigate();
+  const sendMail = useServerFn(sendInvoiceMail);
   const [layout, setLayout] = useState<WidgetState[]>(readLayout);
   const [editing, setEditing] = useState(false);
   const [dragId, setDragId] = useState<WidgetId | null>(null);
@@ -125,6 +129,12 @@ function BrainPage() {
   const services = serviceMRR(sel ? [sel] : m.active);
   // a tap on a client opens its profile; closing it shows everyone again
   const openClient = (key: string | null) => { setSelected(key); setProfile(key); };
+  const alerts = ownerAlerts({ invoices: data.invoices, clients: data.clients, videos: data.videos, sites: data.sites, today });
+  async function sendInvoice(id: string) {
+    const t = toast.loading("Factuur versturen…");
+    try { await sendMail({ data: { invoiceId: id, isReminder: false } }); toast.success("Factuur verstuurd", { id: t }); await load(); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Versturen mislukt", { id: t }); }
+  }
   const prof = profile ? data.clients.find((c) => c.id === profile) ?? null : null;
   const profVideos = prof ? data.videos.filter((v) => v.client_id === prof.id && v.month === month) : [];
   const PAGE = (to: string, label: string, icon: PerkItem["icon"], color: string, value: string): PerkItem => ({ key: to, label, color, weight: 1, dim: false, value, icon });
@@ -165,6 +175,7 @@ function BrainPage() {
             <BrainCircuit className="w-5 h-5 text-sky-300" />
             <h1 className="text-xl font-semibold tracking-tight">Brain</h1>
             <span className="inline-flex items-center gap-1 text-[11px] text-sky-300"><span className="w-1.5 h-1.5 rounded-full bg-sky-300" />live</span>
+            {alerts.length > 0 && <span className="lg:hidden inline-flex items-center gap-1 text-[11px] text-amber-200 rounded-full bg-amber-400/15 px-2 h-6">{alerts.length} {alerts.length === 1 ? "seintje" : "seintjes"}</span>}
           </div>
           <dl className="hidden lg:flex flex-wrap gap-x-6 gap-y-1 text-xs">
             <Stat label="Per maand" value={formatCurrency(sel ? clientMRR(sel) : m.mrr)} />
@@ -187,6 +198,17 @@ function BrainPage() {
           )}
         </header>
 
+        {/* what needs you, without looking for it */}
+        {alerts.length > 0 && (
+          <div className="hidden lg:flex flex-wrap gap-2" role="status" aria-label="Seintjes">
+            {alerts.map((a) => (
+              <button key={a.key} onClick={() => (a.clientId ? openClient(a.clientId) : void navigate({ to: "/status" }))}
+                className={`press inline-flex items-center gap-2 rounded-full h-9 px-3.5 text-xs border ${a.kind === "site" ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-amber-300/40 bg-amber-400/10 text-amber-100"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${a.kind === "site" ? "bg-red-400" : "bg-amber-300"}`} /><span className="font-medium">{a.title}</span><span className="opacity-60">{a.detail}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {/* widgets: move, resize, remove and add them in "Indelen" */}
         {editing && (
           <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-sky-300/20 bg-sky-400/5 px-3 py-2 text-xs pop-in">
@@ -330,7 +352,14 @@ function BrainPage() {
         invoices={prof ? data.invoices.filter((v) => v.client === prof.id) : []}
         tasks={prof ? data.tasks.filter((t) => t.client_id === prof.id) : []}
         videos={prof && Number(prof.social_videos_per_month) > 0 ? { sent: profVideos.length, posted: profVideos.filter((v) => v.status === "geplaatst").length } : null}
-        onClose={() => { setProfile(null); setSelected(null); }} />
+        onClose={() => { setProfile(null); setSelected(null); }} onSend={sendInvoice}>
+        {prof && (
+          <div className="space-y-3">
+            <Tasks tasks={data.tasks.filter((t) => t.client_id === prof.id)} open={data.tasks.filter((t) => t.client_id === prof.id && !t.done_at)} clients={[prof]} colorOf={m.colorOf} nameOf={m.nameOf} selected={prof.id} today={today} onChange={load} />
+            {Number(prof.social_videos_per_month) > 0 && <Videos clients={[prof]} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />}
+          </div>
+        )}
+      </ClientProfileDialog>
     </div>
   );
 }

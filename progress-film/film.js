@@ -20,12 +20,17 @@ const THEMES = {
 const SERVICES = [['seo', 'SEO'], ['website', 'Websites'], ['social', 'Social media']];
 
 export function makeFilm(plan, dur = {}) {
-  const T = THEMES[plan.look.theme] || THEMES.vault, L = plan.look;
+  const base = THEMES[plan.look.theme] || THEMES.vault, L = plan.look;
+  // a client's film wears the client's own colour; on the light theme a pale colour is deepened so it still reads
+  const darken = hex => { const n = parseInt(hex.slice(1), 16), k = c => Math.round(c * 0.55); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(c => k(c).toString(16).padStart(2, '0')).join(''); };
+  const lum = hex => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+  const T = L.acc ? { ...base, acc: base.light && lum(L.acc) > 0.6 ? darken(L.acc) : !base.light && lum(L.acc) < 0.25 ? '#FFFFFF' : L.acc } : base;
+  const nl = n => Math.round(n).toLocaleString('nl-BE');
   const SC = { seo: T.acc2, website: T.acc, social: T.light ? '#E0447C' : '#FF7EB6', oneoff: T.mute };
   // ── timeline: every scene lasts as long as its sentence needs ──
   let t = 0;
   const scenes = plan.scenes.map((s, i) => {
-    const d = dur[s.id] ?? s.vo.split(' ').length / 2.7;
+    const d = s.vo ? dur[s.id] ?? s.vo.split(' ').length / 2.7 : 0;
     const len = Math.max(s.min ?? (s.type === 'title' || s.type === 'end' ? 4 : 5.2), d + (s.type === 'end' ? 2.2 : 1.5));
     const o = { ...s, i, t0: t, t1: t + len, vo0: t + 0.7, d }; t += len; return o;
   });
@@ -219,7 +224,7 @@ export function makeFilm(plan, dur = {}) {
     const lt = time - s.t0; background(g, time);
     if (s.type === 'title' || s.type === 'end') return titleCard(g, s, lt, time);
     chrome(g, time, s); header(g, s, lt);
-    const wide = s.type === 'clients' || s.type === 'reach' || s.type === 'forecast' || s.type === 'focus';
+    const wide = s.type === 'clients' || s.type === 'reach' || s.type === 'forecast' || s.type === 'focus' || s.type.startsWith('c_');
     const x = wide ? LX : CX, w = wide ? W - 240 : CW, y = wide ? 420 : CY, h = wide ? 500 : CH;
     if (s.type === 'revenue') { bigNumber(g, `received since ${plan.sinceLabel}`, plan.n.paidTotal, LX, 520, lt); const top = plan.paidByClient.slice(0, 3); top.forEach((c, i) => { const a = eo(seg(lt, 2.2 + i * 0.25, 2.8 + i * 0.25)), yy = 660 + i * 62; g.globalAlpha = a; g.fillStyle = c.color; g.beginPath(); g.arc(LX + 9, yy - 9, 9, 0, 7); g.fill(); g.globalAlpha = 1; text(g, c.name, LX + 34, yy, 26, { a, w: 600 }); text(g, euro(c.total), LX + 520, yy, 26, { a, al: 'right', col: T.mute }); }); chartRevenue(g, lt, x + 60, y, w - 60, h - 40); }
     if (s.type === 'week') { bigNumber(g, 'received in the last 7 days', plan.n.paidWeek, LX, 520, lt); text(g, `${euro(plan.n.paidTotal)} since ${plan.sinceLabel}`, LX, 640, 28, { col: T.mute, a: eo(seg(lt, 2.2, 2.8)) }); chartWeek(g, lt, x, y - 40, w, h + 60); }
@@ -228,21 +233,57 @@ export function makeFilm(plan, dur = {}) {
     if (s.type === 'margin') { bigNumber(g, 'left per month after tools', plan.n.margin, LX, 520, lt, 1.9); text(g, `${Math.round((plan.n.margin / (plan.n.mrr || 1)) * 100)}% margin on recurring revenue`, LX, 640, 28, { col: T.acc, w: 600, a: eo(seg(lt, 3.2, 3.8)) }); chartMargin(g, lt, x + 60, y, w - 60, h); }
     if (s.type === 'reach') { const stats = plan.mode === 'full' ? [[plan.n.visitors30, 'visitors in 30 days'], [plan.n.requestsTotal, 'requests and bookings']] : [[plan.n.vNow, 'visitors last week'], [plan.n.rNow, 'requests last week']]; stats.forEach(([v, label], i) => { const p = eo(seg(lt, 0.8 + i * 0.3, 2.2 + i * 0.3)), xx = W - 120 - i * 420; text(g, Math.round(v * p).toLocaleString('en-US'), xx, 250, 78, { w: T.wDisp, fam: T.disp, al: 'right', ls: -2, a: clamp(p * 4) }); text(g, label, xx, 290, 22, { col: T.mute, al: 'right', a: clamp(p * 4) }); }); chartReach(g, lt, x, 370, w, 600); }
     if (s.type === 'forecast') { text(g, euro(plan.n.forecastTotal * eo(seg(lt, 0.8, 2.4))), W - 120, 262, 84, { w: T.wDisp, fam: T.disp, al: 'right', ls: -2, a: eo(seg(lt, 0.7, 1.1)) }); text(g, 'planned in invoices', W - 120, 302, 24, { col: T.mute, al: 'right', a: eo(seg(lt, 0.7, 1.1)) }); chartForecast(g, lt, x + 70, 380, w - 70, 580); }
+    if (s.type === 'c_chart') {
+      const p = eo(seg(lt, 0.8, 2.4)), a = eo(seg(lt, 0.8, 1.2));
+      text(g, nl(s.big * p), LX, 520, 170, { w: T.wDisp, fam: T.disp, a, ls: -5 }); text(g, s.bigLabel, LX + 4, 566, 28, { col: T.mute, a });
+      if (s.note) text(g, s.note, LX + 4, 622, 26, { w: 600, col: T.acc, a: eo(seg(lt, 2.4, 3)) });
+      (s.facts || []).filter(f => f[0]).forEach((f, i) => { const fa = eo(seg(lt, 2.6 + i * 0.3, 3.2 + i * 0.3)), yy = 716 + i * 92; text(g, f[0], LX + 4, yy, 38, { w: 700, a: fa }); text(g, f[1], LX + 4, yy + 32, 22, { col: T.mute, a: fa }); });
+      text(g, s.chartLabel, CX + 40, 360, 24, { w: 600, col: T.mute, a: eo(seg(lt, 0.6, 1.1)) });
+      series(g, lt, s.rows, CX + 40, 400, CW - 40, 470, T.acc, s.form, 0.9, nl);
+    }
+    if (s.type === 'c_bars') {
+      const rows = s.rows, max = Math.max(1, ...rows.map(r => r.v)), bw = 1000, rh = 500 / rows.length;
+      rows.forEach((r, i) => { const p = eo(seg(lt, 0.8 + i * 0.14, 1.8 + i * 0.14)), a = clamp(p * 3), yy = 400 + rh * i; text(g, r.label.length > 44 ? r.label.slice(0, 43) + '…' : r.label, LX, yy + 26, 26, { w: 600, a }); g.fillStyle = rgba(T.light ? '#0E1320' : '#FFFFFF', 0.07 * a); rr(g, LX, yy + 40, bw, 16, 8); g.fill(); g.fillStyle = T.acc; rr(g, LX, yy + 40, Math.max(12, bw * (r.v / max) * p), 16, 8); g.fill(); text(g, nl(r.v * p), LX + bw + 20, yy + 56, 26, { w: 700, a }); });
+      const side = s.side || [], tot = side.reduce((a, d) => a + d.v, 0) || 1; let a0 = -Math.PI / 2; const cx = W - 330, cy = 600, R = 170, pp = eio(seg(lt, 1.2, 2.8));
+      if (side.length) { text(g, s.sideLabel, cx, 380, 24, { w: 600, col: T.mute, al: 'center', a: eo(seg(lt, 1, 1.5)) }); side.forEach((d, i) => { const a1 = a0 + (d.v / tot) * Math.PI * 2 * pp; g.beginPath(); g.arc(cx, cy, R, a0, a1); g.arc(cx, cy, R * 0.62, a1, a0, true); g.closePath(); g.fillStyle = i ? rgba(T.acc, 0.38) : T.acc; g.fill(); a0 = a1 + 0.014; text(g, `${d.label} ${Math.round((d.v / tot) * 100)}%`, cx, cy + R + 56 + i * 38, 26, { w: i ? 500 : 700, al: 'center', col: i ? T.mute : T.ink, a: eo(seg(lt, 2 + i * 0.2, 2.6 + i * 0.2)) }); }); }
+    }
+    if (s.type === 'c_slots') {
+      const p = eo(seg(lt, 0.8, 2.2)), a = eo(seg(lt, 0.8, 1.2));
+      text(g, nl(s.big * p), LX, 520, 170, { w: T.wDisp, fam: T.disp, a, ls: -5 }); text(g, s.bigLabel, LX + 4, 566, 28, { col: T.mute, a });
+      (s.facts || []).forEach((f, i) => { const fa = eo(seg(lt, 2.6 + i * 0.3, 3.2 + i * 0.3)), yy = 700 + i * 78; text(g, f[0], LX + 4, yy, 36, { w: 700, a: fa }); text(g, f[1], LX + 4, yy + 30, 21, { col: T.mute, a: fa }); });
+      const n = Math.max(1, s.target), cols = Math.min(n, n > 12 ? 6 : n > 6 ? 4 : 3), cell = Math.min(190, (CW - 40) / cols), rowsN = Math.ceil(n / cols), ox = CX + 40 + (CW - 40 - cols * cell) / 2, oy = 620 - (rowsN * cell) / 2;
+      for (let i = 0; i < n; i++) { const pp = back(seg(lt, 0.9 + i * 0.16, 1.5 + i * 0.16)), cx = ox + (i % cols) * cell + cell / 2, cy = oy + Math.floor(i / cols) * cell + cell / 2, r = cell * 0.36, done = i < s.sent, live = i < s.posted;
+        g.fillStyle = done ? (live ? T.acc : rgba(T.acc, 0.35)) : rgba(T.light ? '#0E1320' : '#FFFFFF', 0.07); g.beginPath(); g.arc(cx, cy, Math.max(0, r * (done ? pp : clamp(pp))), 0, 7); g.fill();
+        if (done && pp > 0.6) { g.strokeStyle = live ? (T.light ? '#FFFFFF' : T.bg[0]) : T.ink; g.lineWidth = r * 0.16; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(cx - r * 0.36, cy + r * 0.02); g.lineTo(cx - r * 0.08, cy + r * 0.3); g.lineTo(cx + r * 0.4, cy - r * 0.28); g.stroke(); }
+        else if (!done) text(g, String(i + 1), cx, cy + r * 0.2, r * 0.6, { al: 'center', col: T.mute, a: clamp(pp) }); }
+      text(g, 'Gevuld = geplaatst  ·  licht = geleverd', CX + 40 + (CW - 40) / 2, 940, 22, { col: T.mute, al: 'center', a: eo(seg(lt, 2.4, 3)) });
+    }
+    if (s.type === 'c_tiles') {
+      const tl = s.tiles, cw = (W - 240 - 36 * (tl.length - 1)) / tl.length;
+      tl.forEach((tile, i) => { const p = back(seg(lt, 0.9 + i * 0.35, 1.7 + i * 0.35)), a = clamp(p * 2), xx = LX + i * (cw + 36), yy = 420 + (1 - p) * 50, ok = tile[2], col = ok ? (T.light ? '#12A150' : '#3DDC84') : '#FFB020';
+        g.globalAlpha = a; g.fillStyle = T.card; rr(g, xx, yy, cw, 380, 28); g.fill(); g.globalAlpha = 1;
+        g.fillStyle = rgba(col, 0.18 * a); g.beginPath(); g.arc(xx + 78, yy + 92, 44, 0, 7); g.fill(); const ck = eo(seg(lt, 1.5 + i * 0.35, 2.1 + i * 0.35));
+        g.strokeStyle = col; g.lineWidth = 8; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); if (ok) { g.moveTo(xx + 60, yy + 94); g.lineTo(xx + 60 + 14 * Math.min(1, ck * 2), yy + 94 + 14 * Math.min(1, ck * 2)); if (ck > 0.5) g.lineTo(xx + 74 + 24 * (ck - 0.5) * 2, yy + 108 - 30 * (ck - 0.5) * 2); } else { g.moveTo(xx + 78, yy + 70); g.lineTo(xx + 78, yy + 70 + 28 * ck); } g.stroke();
+        text(g, tile[0], xx + 40, yy + 250, tile[0].length > 8 ? 54 : 72, { w: T.wDisp, fam: T.disp, a, ls: -2 }); wrap(g, tile[1], xx + 40, yy + 304, cw - 80, 24, { col: T.mute, a }); });
+    }
     if (s.type === 'focus') { const n = plan.focus.length, cw = (w - 40 * (n - 1)) / n; plan.focus.forEach((f, i) => { const p = back(seg(lt, 0.9 + i * 0.9, 1.7 + i * 0.9)), a = clamp(p * 2), xx = x + i * (cw + 40), yy = 400 + (1 - p) * 60; g.globalAlpha = a; g.fillStyle = T.card; rr(g, xx, yy, cw, 420, 28); g.fill(); g.fillStyle = T.acc; rr(g, xx, yy, 10, 420, 5); g.fill(); g.globalAlpha = 1; text(g, String(i + 1).padStart(2, '0'), xx + 50, yy + 110, 72, { w: T.wDisp, fam: T.disp, col: T.acc, a }); wrap(g, f.title, xx + 50, yy + 190, Math.min(cw - 100, 900), n === 1 ? 54 : 40, { w: 700, a }); wrap(g, f.text, xx + 50, yy + (n === 1 ? 330 : 350), cw - 100, 28, { col: T.mute, a }); }); }
   }
   function wrap(g, s, x, y, w, px, o) { font(g, px, o.w ?? 500, o.fam ?? T.body); const words = s.split(' '); let line = '', yy = y; for (const wd of words) { if (g.measureText(line + wd).width > w && line) { text(g, line.trim(), x, yy, px, o); line = ''; yy += px * 1.22; } line += wd + ' '; } text(g, line.trim(), x, yy, px, o); }
   function titleCard(g, s, lt, time) {
     const end = s.type === 'end';
     // a skyline of the clients, each in its own colour, grows behind the title
-    const rows = plan.mrrRows.filter(r => r.mrr > 0), max = Math.max(1, ...rows.map(r => r.mrr)), bw = W / (rows.length * 2 + 1);
+    const rows = plan.sky || plan.mrrRows.filter(r => r.mrr > 0), max = Math.max(1, ...rows.map(r => r.mrr)), bw = W / (rows.length * 2 + 1);
     rows.forEach((r, i) => { const p = eo(seg(lt, 0.2 + i * 0.12, 1.6 + i * 0.12)), hh = (end ? 60 + 130 * (r.mrr / max) : 120 + 420 * (r.mrr / max)) * p; g.fillStyle = rgba(r.color, T.light ? 0.3 : 0.2); rr(g, bw * (i * 2 + 1), H - hh, bw, hh + 30, 18); g.fill(); });
     const a = eo(seg(lt, 0.3, 1.0));
     text(g, s.kicker, 120, 330, 30, { w: 600, col: T.acc, a });
-    'SOLYN GLOBAL'.split('').reduce((xx, ch, i) => { const p = back(seg(lt, 0.35 + i * 0.05, 0.95 + i * 0.05)); font(g, 190, T.wDisp, T.disp); const cw = g.measureText(ch).width; text(g, ch, xx, 520 + (1 - p) * 70, 190, { w: T.wDisp, fam: T.disp, a: clamp(p * 1.5), ls: 0 }); return xx + cw - 4; }, 112);
+    const brand = plan.brand || 'SOLYN GLOBAL', client = plan.mode === 'client';
+    font(g, 190, T.wDisp, T.disp); const bpx = Math.min(190, Math.floor(190 * (W - (client && plan._logo ? 560 : 240)) / g.measureText(brand).width));
+    if (client && plan._logo && !end) { const lp = back(seg(lt, 0.3, 1.1)), r = 150 * Math.max(0, lp), cx = W - 290, cy = 470; g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip(); g.drawImage(plan._logo, cx - r, cy - r, r * 2, r * 2); g.restore(); g.strokeStyle = T.acc; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, r + 8, 0, 7); g.stroke(); }
+    (client && end ? 'BEDANKT' : brand).split('').reduce((xx, ch, i) => { const p = back(seg(lt, 0.35 + i * 0.05, 0.95 + i * 0.05)); const px = client && end ? 190 : bpx; font(g, px, T.wDisp, T.disp); const cw = g.measureText(ch).width; text(g, ch, xx, 520 + (1 - p) * 70, px, { w: T.wDisp, fam: T.disp, a: clamp(p * 1.5), ls: 0 }); return xx + cw - 4 * (px / 190); }, 112);
     g.fillStyle = T.acc; rr(g, 120, 566, 360 * eio(seg(lt, 0.9, 1.8)), 8, 4); g.fill();
-    text(g, end ? s.title : (plan.mode === 'full' ? 'Full company check' : 'Weekly progress'), 120, 660, 60, { w: 600, fam: T.disp, a: eo(seg(lt, 1.0, 1.7)), ls: -1 });
-    if (end) [[euro(plan.n.paidTotal), 'received'], [euro(plan.n.mrr), 'recurring per month'], [euro(plan.n.forecastTotal), 'planned, 6 months']].forEach(([v, l], i) => { const p = eo(seg(lt, 1.3 + i * 0.3, 2 + i * 0.3)); text(g, v, 120 + i * 480, 800 + (1 - p) * 30, 64, { w: T.wDisp, fam: T.disp, a: p, ls: -1 }); text(g, l, 122 + i * 480, 842, 24, { col: T.mute, a: p }); });
-    else text(g, `Since ${plan.sinceLabel}  ·  ${plan.n.active} active clients  ·  ${plan.n.sites} sites`, 120, 730, 30, { col: T.mute, a: eo(seg(lt, 1.4, 2.1)) });
+    text(g, end || client ? (client && !end ? s.subtitle : s.title) : (plan.mode === 'full' ? 'Full company check' : 'Weekly progress'), 120, 660, client && !end ? 46 : 60, { w: 600, fam: T.disp, a: eo(seg(lt, 1.0, 1.7)), ls: -1 });
+    if (end) (s.stats || [[euro(plan.n.paidTotal), 'received'], [euro(plan.n.mrr), 'recurring per month'], [euro(plan.n.forecastTotal), 'planned, 6 months']]).forEach(([v, l], i) => { const p = eo(seg(lt, 1.3 + i * 0.3, 2 + i * 0.3)); text(g, v, 120 + i * 480, 800 + (1 - p) * 30, 64, { w: T.wDisp, fam: T.disp, a: p, ls: -1 }); text(g, l, 122 + i * 480, 842, 24, { col: T.mute, a: p }); });
+    else text(g, client ? (s.note || '') : `Since ${plan.sinceLabel}  ·  ${plan.n.active} active clients  ·  ${plan.n.sites} sites`, 120, 730, 30, { col: T.mute, a: eo(seg(lt, 1.4, 2.1)) });
   }
 
   // ── transitions between scenes ──
@@ -261,8 +302,8 @@ export function makeFilm(plan, dur = {}) {
     if (time > DUR - 0.6) { g.fillStyle = `rgba(0,0,0,${seg(time, DUR - 0.6, DUR)})`; g.fillRect(0, 0, W, H); }
     if (!opts.nosub) { const s = subs().find(c => time >= c.t0 && time <= c.t1); if (s) { font(g, 30, 500); const tw = g.measureText(s.text).width; g.fillStyle = T.light ? 'rgba(255,255,255,0.86)' : 'rgba(0,0,0,0.6)'; rr(g, W / 2 - tw / 2 - 26, H - 86, tw + 52, 54, 14); g.fill(); text(g, s.text, W / 2, H - 49, 30, { al: 'center', col: T.light ? '#0E1320' : '#FFFFFF' }); } }
   }
-  const subs = () => scenes.map(s => ({ t0: s.vo0, t1: Math.min(s.t1 - 0.1, s.vo0 + s.d + 0.5), text: s.sub }));
-  const events = () => scenes.flatMap(s => [{ t: s.t0, type: s.i ? 'cut' : 'start' }, { t: s.vo0, type: 'vo', id: s.id, d: s.d }, ...(s.type === 'title' || s.type === 'end' ? [{ t: s.t0 + 0.9, type: 'rise' }] : [{ t: s.t0 + 0.9, type: 'draw', n: 6 }, { t: s.t0 + 2.4, type: 'lock' }]), ...(s.type === 'focus' ? plan.focus.map((_, i) => ({ t: s.t0 + 0.9 + i * 0.9, type: 'card' })) : [])]).sort((a, b) => a.t - b.t);
+  const subs = () => scenes.filter(s => s.sub).map(s => ({ t0: s.vo0, t1: Math.min(s.t1 - 0.1, s.vo0 + s.d + 0.5), text: s.sub }));
+  const events = () => scenes.flatMap(s => [{ t: s.t0, type: s.i ? 'cut' : 'start' }, ...(s.vo ? [{ t: s.vo0, type: 'vo', id: s.id, d: s.d }] : []), ...(s.type === 'title' || s.type === 'end' ? [{ t: s.t0 + 0.9, type: 'rise' }] : [{ t: s.t0 + 0.9, type: 'draw', n: 6 }, { t: s.t0 + 2.4, type: 'lock' }]), ...(s.type === 'focus' ? plan.focus.map((_, i) => ({ t: s.t0 + 0.9 + i * 0.9, type: 'card' })) : [])]).sort((a, b) => a.t - b.t);
   const chapters = () => scenes.filter(s => s.type !== 'end').map(s => ({ t: Math.round(s.t0 * 10) / 10, label: s.chapter }));
   return { DUR, scenes, render, subs, events, chapters, theme: plan.look.theme };
 }

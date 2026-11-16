@@ -1,66 +1,51 @@
 import { describe, expect, it } from "vitest";
-import { R_CLIENTS, buildHive, clientRadius, hitTest, project, rubberband, stepSpring } from "./hive";
+import { MAX_CELLS, R_DOMAIN, buildHive, hitTest, project, spiral, stepSpring, type DomainInput } from "./hive";
 
-const input = {
-  mrr: 1255,
-  clients: [
-    { id: "a", name: "Riory", status: "Active", health: "Green", mrr: 500 },
-    { id: "b", name: "Villa Amano", status: "Active", health: "Green", mrr: 385 },
-    { id: "p", name: "TCSC", status: "Prospect", stage: "Proposal Sent", mrr: 0 },
-    { id: "w", name: "Oud", status: "Write-off", mrr: 0 },
-  ],
-  sites: [
-    { id: "s1", client_id: "a", name: "riory.be", status: "up", visitors: 30 },
-    { id: "s2", client_id: null, name: "Hub", status: "down", visitors: 0 },
-  ],
-  invoices: [
-    { id: "i1", client: "a", total: 500, status: "Paid", planned: false, nr: "43", date: "2026-11-01" },
-    { id: "i2", client: "a", total: 500, status: "Draft", planned: true, nr: "44", date: "2026-12-01" },
-  ],
-  records: [{ id: "r1", site_id: "s1", kind: "lead", title: "Jos", when: "2026-11-16" }],
-};
+const dom = (key: string, n: number): DomainInput => ({
+  key, label: key, value: String(n), sub: "", tone: "gold",
+  cells: Array.from({ length: n }, (_, i) => ({ id: String(i), label: `${key}${i}`, tone: "green" as const })),
+});
+const domains = [dom("omzet", 3), dom("klanten", 8), dom("websites", 7), dom("facturen", 30), dom("aanvragen", 0), dom("pipeline", 2), dom("contracten", 2)];
 
 describe("buildHive", () => {
-  const { nodes, edges } = buildHive(input);
-  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  const nodes = buildHive(domains);
+  const big = nodes.filter((n) => n.kind === "domain");
 
-  it("puts the core in the middle and the biggest client at the top", () => {
-    expect(byId.core).toMatchObject({ x: 0, y: 0 });
-    expect(byId["c:a"].x).toBeCloseTo(0);
-    expect(byId["c:a"].y).toBeCloseTo(-R_CLIENTS);
+  it("puts the first domain in the middle and six around it, touching but not overlapping", () => {
+    expect(big).toHaveLength(7);
+    expect(big[0]).toMatchObject({ x: 0, y: 0 });
+    for (const d of big.slice(1)) {
+      const dist = Math.hypot(d.x, d.y);
+      expect(dist).toBeGreaterThan(Math.sqrt(3) * R_DOMAIN);
+      expect(dist).toBeLessThan(Math.sqrt(3) * R_DOMAIN * 1.1);
+    }
   });
-  it("skips written-off clients and keeps prospects on the outer ring", () => {
-    expect(byId["c:w"]).toBeUndefined();
-    expect(byId["c:p"].kind).toBe("prospect");
-    expect(Math.hypot(byId["c:p"].x, byId["c:p"].y)).toBeGreaterThan(R_CLIENTS);
+  it("keeps every small cell inside its big cell", () => {
+    for (const c of nodes.filter((n) => n.kind === "cell")) {
+      const d = big.find((b) => b.domain === c.domain)!;
+      expect(Math.hypot(c.x - d.x, c.y - d.y) + c.r).toBeLessThanOrEqual(R_DOMAIN * 0.866);
+    }
   });
-  it("hangs sites, invoices and records on their owners", () => {
-    expect(byId["s:s1"].parent).toBe("c:a");
-    expect(byId["s:s2"].parent).toBe("core");
-    expect(byId["s:s2"].pulse).toBe(true);
-    expect(byId["i:i1"].tone).toBe("green");
-    expect(byId["i:i2"].tone).toBe("sky");
-    expect(byId["r:r1"].parent).toBe("s:s1");
-  });
-  it("flows money and visitors along edges", () => {
-    expect(edges.find((e) => e.from === "c:a")!.flow).toBe(1);
-    expect(edges.find((e) => e.from === "s:s2")!.flow).toBe(0);
+  it("caps a crowded cell and says how many more there are", () => {
+    const f = nodes.filter((n) => n.kind === "cell" && n.domain === "facturen");
+    expect(f).toHaveLength(MAX_CELLS);
+    expect(f[f.length - 1].label).toBe("+12");
   });
   it("is deterministic", () => {
-    expect(buildHive(input)).toEqual(buildHive(input));
+    expect(buildHive(domains)).toEqual(nodes);
+  });
+  it("hit-tests by level", () => {
+    expect(hitTest(nodes, 0, 0, "domain")?.domain).toBe("omzet");
+    expect(hitTest(nodes, 0, 0, "cell")?.id).toBe("c:omzet:0");
+    expect(hitTest(nodes, 9999, 0, "domain")).toBeNull();
   });
 });
 
 describe("helpers", () => {
-  it("caps client size", () => {
-    expect(clientRadius(0)).toBe(18);
-    expect(clientRadius(1e6)).toBe(46);
-  });
-  it("hit-tests the smallest node under the point", () => {
-    const { nodes } = buildHive(input);
-    const site = nodes.find((n) => n.id === "s:s1")!;
-    expect(hitTest(nodes, site.x, site.y)?.id).toBe("s:s1");
-    expect(hitTest(nodes, 9999, 9999)).toBeNull();
+  it("spirals outward without duplicates", () => {
+    const s = spiral(19);
+    expect(s[0]).toEqual([0, 0]);
+    expect(new Set(s.map((p) => p.join(","))).size).toBe(19);
   });
   it("springs settle on target without overshoot when critically damped", () => {
     let s = { value: 0, velocity: 0, target: 100 };
@@ -69,9 +54,7 @@ describe("helpers", () => {
     expect(s.value).toBeCloseTo(100, 0);
     expect(max).toBeLessThanOrEqual(100.5);
   });
-  it("projects flicks and rubber-bands edges", () => {
+  it("projects flicks", () => {
     expect(project(1000)).toBeCloseTo(499, 0);
-    expect(rubberband(100, 400)).toBeLessThan(100);
-    expect(rubberband(-100, 400)).toBeGreaterThan(-100);
   });
 });

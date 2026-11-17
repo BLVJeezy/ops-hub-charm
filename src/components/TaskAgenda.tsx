@@ -3,7 +3,7 @@ import { Check, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { brusselsToday } from "@/lib/invoice-schedule";
-import { clock, elapsed, groupTasks, dueLabel, lapTimes, spent, stepWord, weekday, type AgendaTask, type GroupKey } from "@/lib/task-agenda";
+import { byDay, clock, elapsed, groupByClient, groupTasks, dueLabel, lapTimes, spent, stepWord, weekday, type AgendaTask, type GroupKey } from "@/lib/task-agenda";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,6 +32,12 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   const [day, setDay] = useState(today);
   const [weekOf, setWeekOf] = useState(today);
   const [editing, setEditing] = useState<string | null>(null);
+  // two ways to read the same tasks: by date, or per client with the client that needs you first on top
+  const [view, setView] = useState<"date" | "client">("date");
+  useEffect(() => { try { if (localStorage.getItem("tasks-view") === "client") setView("client"); } catch { /* no storage */ } }, []);
+  const pick = (v: "date" | "client") => { setView(v); try { localStorage.setItem("tasks-view", v); } catch { /* no storage */ } };
+  const [folded, setFolded] = useState<Record<string, boolean>>({});
+  const [all, setAll] = useState<Record<string, boolean>>({});
   const [draft, setDraft] = useState({ title: "", due: "", steps: "" });
 
   const load = useCallback(async () => {
@@ -109,21 +115,20 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
     setTitle(""); setRepeat(""); setDue(""); await load(); onChange?.();
   }
 
-  const Row = (t: AgendaTask, group: GroupKey) => {
+  const Row = (t: AgendaTask, group: GroupKey | "client" | "day") => {
     const c = t.client_id ? byId[t.client_id] : null, late = !t.done_at && !!t.due_date && t.due_date < today;
     const sec = elapsed(t, now), isRunning = !!t.started_at && !t.done_at, steps = Number(t.steps_total || 0);
     return (
       <li key={t.id}>
         <div className="flex items-center gap-2.5 min-h-[52px] py-1.5">
-          {(group === "week" || group === "next") && t.due_date && <span className="w-7 shrink-0 text-xs font-semibold uppercase opacity-70 text-center">{weekday(t.due_date)}</span>}
           <button type="button" onClick={() => toggle(t)} aria-pressed={!!t.done_at} aria-label={t.done_at ? `Zet terug: ${t.title}` : `Klaar: ${t.title}`} className="press hit shrink-0">
             <span className={`w-7 h-7 rounded-full grid place-items-center border-2 transition-colors ${t.done_at ? "bg-emerald-500 border-emerald-500 text-black" : late ? "border-red-400" : "border-current opacity-40"}`}>{t.done_at && <Check className="w-4 h-4" strokeWidth={3} />}</span>
           </button>
           <button type="button" onClick={() => edit(t)} aria-expanded={editing === t.id} className="min-w-0 flex-1 text-left">
             <span className={`block text-[15px] leading-snug ${t.done_at ? "line-through opacity-45" : ""}`}>{t.title}</span>
             <span className="flex flex-wrap items-center gap-x-1.5 text-xs opacity-60">
-              {c && <><span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.brand_color || "#8A93A6" }} /><span className="truncate">{short(c.name)}</span></>}
-              {group !== "today" && group !== "week" && group !== "next" && <span className={late ? "text-red-400 opacity-100 font-medium" : ""}>{dueLabel(t.due_date, today)}</span>}
+              {c && group !== "client" && <><span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.brand_color || "#8A93A6" }} /><span className="truncate">{short(c.name)}</span></>}
+              {group !== "today" && group !== "day" && <span className={late ? "text-red-400 opacity-100 font-medium" : ""}>{dueLabel(t.due_date, today)}</span>}
               {t.assignee === "client" && <span>wacht op klant</span>}
               {steps > 0 && <span className="tabular-nums">{Number(t.steps_done || 0)}/{steps}</span>}
               {sec > 0 && !isRunning && <span className="tabular-nums">{spent(sec)}{Number(t.breaks) ? ` · ${t.breaks} ${t.breaks === 1 ? "pauze" : "pauzes"}` : ""}</span>}
@@ -213,16 +218,60 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
     );
   };
 
+
+  const PerClient = () => {
+    const list = groupByClient(shown, today);
+    if (!list.length) return <p className="text-sm opacity-60 py-3">Geen open taken.</p>;
+    return (
+      <div className="space-y-2 mt-2">
+        {list.map((g) => {
+          const key = g.clientId ?? "none", c = g.clientId ? byId[g.clientId] : null, color = c?.brand_color || "#8A93A6";
+          const urgent = g.late + g.today + g.week > 0, isOpen = folded[key] === undefined ? urgent : !folded[key];
+          const max = 6, more = g.tasks.length - max, tasks = all[key] ? g.tasks : g.tasks.slice(0, max);
+          return (
+            <div key={key} className={`rounded-2xl border px-3 ${g.late ? "border-red-400/50 bg-red-500/[0.06]" : "border-current/10"}`} style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
+              <button type="button" onClick={() => setFolded((f) => ({ ...f, [key]: isOpen }))} aria-expanded={isOpen} className="press w-full flex items-center gap-2 min-h-12 text-left">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                <span className="text-sm font-semibold truncate">{c ? short(c.name) : "Zonder klant"}</span>
+                <span className="flex flex-wrap gap-1 ml-1">
+                  {g.late > 0 && <span className="text-[11px] rounded-full bg-red-500/20 text-red-300 px-2 py-0.5 font-medium">{g.late} te laat</span>}
+                  {g.today > 0 && <span className="text-[11px] rounded-full bg-white text-black px-2 py-0.5 font-medium">{g.today} vandaag</span>}
+                  {g.week > 0 && <span className="text-[11px] rounded-full border border-current/25 px-2 py-0.5">{g.week} deze week</span>}
+                  {!urgent && g.next && <span className="text-[11px] opacity-60 px-1 py-0.5">volgende: {dueLabel(g.next, today)}</span>}
+                </span>
+                <span className="ml-auto text-xs tabular-nums opacity-70 shrink-0">{g.open}</span>
+                <ChevronDown className={`w-4 h-4 opacity-60 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+              {isOpen && (
+                <>
+                  <ul className="divide-y divide-current/10">{tasks.map((t) => Row(t, "client"))}</ul>
+                  {more > 0 && <button type="button" onClick={() => setAll((a) => ({ ...a, [key]: !a[key] }))} className="press text-xs opacity-70 min-h-10">{all[key] ? "Minder tonen" : `Toon nog ${more}`}</button>}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <section className={className} aria-label="Taken">
-      <div className="flex items-baseline justify-between mb-1">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-base font-semibold">Taken</h2>
+        {!clientId && (
+          <span role="group" aria-label="Weergave" className="ml-auto mr-2 inline-flex rounded-full border border-current/15 p-0.5 text-xs">
+            {([["date", narrow ? "Kalender" : "Per datum"], ["client", "Per klant"]] as const).map(([v, l]) => (
+              <button key={v} type="button" onClick={() => pick(v)} aria-pressed={view === v} className={`press rounded-full px-3 h-7 ${view === v ? "bg-white text-black font-semibold" : "opacity-70"}`}>{l}</button>
+            ))}
+          </span>
+        )}
         <span className="text-xs opacity-60 tabular-nums">{tasks ? `${openCount} open` : ""}</span>
       </div>
       {!tasks ? <p className="text-sm opacity-60 py-3">Laden…</p> : (
         <>
           {running && (!clientId || running.client_id === clientId) && Running(running)}
-          {narrow ? Calendar() : (
+          {view === "client" && !clientId ? PerClient() : narrow ? Calendar() : (
             <>
           {!groups.some((g) => g.key === "late" || g.key === "today" || g.key === "week") && <p className="text-sm opacity-60 py-3">Niets meer voor deze week.</p>}
           <div className="space-y-2 mt-2">
@@ -243,7 +292,13 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
                       <span className="flex-1 min-w-0">{head}</span><ChevronDown className={`w-4 h-4 opacity-60 transition-transform ${shown ? "rotate-180" : ""}`} />
                     </button>
                   ) : <div className="pt-2.5">{head}</div>}
-                  {shown && <ul className="divide-y divide-current/10 pb-1">{g.tasks.map((t) => Row(t, g.key))}</ul>}
+                  {shown && (g.key === "week" || g.key === "next" || g.key === "later"
+                    ? <div className="pb-1">{byDay(g.tasks).map((d) => (
+                        <div key={d.day ?? "x"}>
+                          <div className="text-[11px] font-semibold uppercase tracking-wide opacity-55 pt-2">{d.day ? dueLabel(d.day, today) : ""}</div>
+                          <ul className="divide-y divide-current/10">{d.tasks.map((t) => Row(t, "day"))}</ul>
+                        </div>))}</div>
+                    : <ul className="divide-y divide-current/10 pb-1">{g.tasks.map((t) => Row(t, g.key))}</ul>)}
                 </div>
               );
             })}

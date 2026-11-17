@@ -66,3 +66,29 @@ export function dueLabel(due: string | null, today: string): string {
   const d = new Date(due + "T12:00:00Z");
   return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]}`;
 }
+
+export type ClientGroup = { clientId: string | null; tasks: AgendaTask[]; late: number; today: number; week: number; open: number; next: string | null };
+/**
+ * Open tasks per client, the client that needs you first on top: most late tasks, then most for today,
+ * then most for this week, then the nearest date. Tasks inside a client run by date; undated ones last.
+ */
+export function groupByClient(tasks: AgendaTask[], today: string): ClientGroup[] {
+  const end = weekEnd(today), map = new Map<string | null, AgendaTask[]>();
+  for (const t of tasks) { if (t.done_at) continue; const k = t.client_id ?? null; map.set(k, [...(map.get(k) ?? []), t]); }
+  const out: ClientGroup[] = [...map.entries()].map(([clientId, list]) => {
+    const ts = list.sort((a, b) => String(a.due_date ?? "9").localeCompare(String(b.due_date ?? "9")) || a.title.localeCompare(b.title));
+    const dated = ts.filter((t) => t.due_date).map((t) => t.due_date as string);
+    return {
+      clientId, tasks: ts, open: ts.length,
+      late: dated.filter((d) => d < today).length, today: dated.filter((d) => d === today).length,
+      week: dated.filter((d) => d > today && d <= end).length, next: dated.find((d) => d >= today) ?? null,
+    };
+  });
+  return out.sort((a, b) => b.late - a.late || b.today - a.today || b.week - a.week || String(a.next ?? "9").localeCompare(String(b.next ?? "9")) || b.open - a.open);
+}
+/** Open tasks of one group split per day, for lists that show a heading for each date. */
+export function byDay(tasks: AgendaTask[]): { day: string | null; tasks: AgendaTask[] }[] {
+  const out: { day: string | null; tasks: AgendaTask[] }[] = [];
+  for (const t of tasks) { const last = out[out.length - 1]; if (last && last.day === t.due_date) last.tasks.push(t); else out.push({ day: t.due_date, tasks: [t] }); }
+  return out;
+}

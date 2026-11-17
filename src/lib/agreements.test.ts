@@ -69,4 +69,18 @@ describe("social media agreement", () => {
     expect(b).toContain("- E-mail: michael@example.be");
     expect(b).toContain("met vermelding van het factuurnummer");
   });
+  it("has a French version, article for article", () => {
+    const nl = socialAgreementBody({ ...input, startDate: null, trialMonths: 1, deliveryDays: 30 });
+    const fr = socialAgreementBody({ ...input, startDate: null, trialMonths: 1, deliveryDays: 30, lang: "fr" });
+    expect(socialAgreementTitle({ ...input, lang: "fr" })).toBe("Contrat de collaboration réseaux sociaux – DynaMik");
+    expect(parseAgreement(fr).filter((b) => b.type === "h").length).toBe(parseAgreement(nl).filter((b) => b.type === "h").length);
+    expect(fr).toContain("150,00 € par mois, hors TVA, pour 11 vidéos");
+    expect(fr).toContain("totale liberté créative");
+    expect(fr).toContain("période d'essai d'un (1) mois et prend effet le jour où Solyn Global reçoit le premier paiement");
+    expect(fr).toContain("dans les 30 jours suivant la réception du paiement");
+    expect(fr).toContain("BE48 7390 2803 5627");
+    expect(fr).toContain("propre matériel promotionnel");
+    expect(fr).toContain("moyennant un préavis d'un (1) mois");
+    expect(fr).not.toContain("de un");
+  });
 });

@@ -163,7 +163,7 @@ function AgreementDialog({ agreement, canEdit, onClose, onSaved, onPdf }: { agre
 function NewAgreementDialog({ open, onClose, clients, existing, onSaved }: { open: boolean; onClose: () => void; clients: Client[]; existing: Agreement[]; onSaved: () => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const [clientId, setClientId] = useState("");
-  const [f, setF] = useState({ legal: "", trade: "", address: "", vat: "", rep: "", start: today, fee: "150", videos: "11", revisions: "1", notice: "1", delivery: "30", trial: "1" });
+  const [f, setF] = useState({ legal: "", trade: "", address: "", vat: "", rep: "", start: today, fee: "150", videos: "11", revisions: "1", notice: "1", delivery: "30", trial: "1", lang: "nl" });
   const c = clients.find((x) => x.id === clientId);
   useEffect(() => {
     if (!c) return;
@@ -181,7 +181,7 @@ function NewAgreementDialog({ open, onClose, clients, existing, onSaved }: { ope
     const input = {
       reference: nextRef(), clientName: f.legal.trim() || c.name, tradeName: f.trade.trim() || null, address: f.address.trim() || null,
       vatNumber: f.vat.trim() || null, representative: f.rep.trim() || null, email: c.contact_email, phone: c.contact_phone, startDate: f.start || null, monthlyFee: Number(f.fee) || 0,
-      videosPerMonth: Number(f.videos) || 0, revisionsPerVideo: Number(f.revisions) || 0, noticeMonths: Number(f.notice) || 1, deliveryDays: Number(f.delivery) || null, trialMonths: Number(f.trial) || null,
+      videosPerMonth: Number(f.videos) || 0, revisionsPerVideo: Number(f.revisions) || 0, noticeMonths: Number(f.notice) || 1, deliveryDays: Number(f.delivery) || null, trialMonths: Number(f.trial) || null, lang: f.lang === "fr" ? "fr" as const : "nl" as const,
     };
     const { data: u } = await supabase.auth.getUser();
     const { error } = await db.from("client_agreements").insert({
@@ -224,6 +224,12 @@ function NewAgreementDialog({ open, onClose, clients, existing, onSaved }: { ope
           {field("notice", "Opzeg in maanden", "number")}
           {field("delivery", "Levertijd in dagen na betaling", "number")}
           {field("trial", "Proefperiode in maanden (leeg = geen)", "number")}
+          <label className="block">
+            <span className="text-xs text-muted-foreground">Taal</span>
+            <select value={f.lang} onChange={(e) => setF({ ...f, lang: e.target.value })} className="mt-1 h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm">
+              <option value="nl">Nederlands</option><option value="fr">Français</option>
+            </select>
+          </label>
         </div>
         <div className="flex gap-2 pt-1">
           <Button onClick={create} className="rounded-full"><Eye className="w-3.5 h-3.5 mr-1.5" />Maak overeenkomst</Button>

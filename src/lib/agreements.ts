@@ -20,16 +20,19 @@ export interface SocialAgreementInput {
   trialMonths?: number | null;
   /** the videos are delivered within this many days after payment */
   deliveryDays?: number | null;
+  /** language of the agreement; default Dutch */
+  lang?: "nl" | "fr";
 }
 
 const eur = (n: number) => `€ ${n.toLocaleString("nl-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const dateNl = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" });
 
 export function socialAgreementTitle(i: SocialAgreementInput): string {
-  return `Samenwerkingsovereenkomst social media – ${i.tradeName || i.clientName}`;
+  return i.lang === "fr" ? `Contrat de collaboration réseaux sociaux – ${i.tradeName || i.clientName}` : `Samenwerkingsovereenkomst social media – ${i.tradeName || i.clientName}`;
 }
 
 export function socialAgreementBody(i: SocialAgreementInput): string {
+  if (i.lang === "fr") return socialAgreementBodyFr(i);
   const notice = i.noticeMonths ?? 1;
   const rev = i.revisionsPerVideo === 1 ? "één (1) revisieronde" : `${i.revisionsPerVideo} revisierondes`;
   const party = [
@@ -114,6 +117,97 @@ Op deze overeenkomst is Belgisch recht van toepassing voor zover wettelijk toege
 Wijzigingen of aanvullingen gelden enkel als beide partijen ze schriftelijk (ook per e-mail) bevestigen.`;
 }
 
+const eurFr = (n: number) => `${n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f|\u00a0/g, " ")} €`;
+const dateFr = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("fr-BE", { day: "numeric", month: "long", year: "numeric" });
+
+/** The same agreement in French (for clients in Wallonia or Brussels). Kept article for article in step with the Dutch text. */
+function socialAgreementBodyFr(i: SocialAgreementInput): string {
+  i = { ...i, address: i.address?.replace(/,?\s*België$/i, ", Belgique") ?? i.address };
+  const notice = i.noticeMonths ?? 1;
+  const blank = "………………………………";
+  const iban = (s: string) => s.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
+  const rev = i.revisionsPerVideo === 1 ? "une (1) série de corrections" : `${i.revisionsPerVideo} séries de corrections`;
+  const ofMonths = (n: number) => (n === 1 ? "d'un (1) mois" : `de ${n} mois`);   // "de" + "un" elides to "d'un"
+  const start = i.startDate ? `le ${dateFr(i.startDate)}` : "le jour où Solyn Global reçoit le premier paiement";
+  const party = [
+    i.clientName + (i.tradeName && i.tradeName !== i.clientName ? `, agissant sous le nom commercial ${i.tradeName}` : ""),
+    i.address ? `dont le siège est situé ${i.address}` : null,
+    i.vatNumber ? `numéro d'entreprise ${i.vatNumber}` : null,
+    `représentée par ${i.representative || blank}`,
+  ].filter(Boolean).join(", ");
+  const clientData = [
+    `- Nom : ${i.clientName}${i.tradeName && i.tradeName !== i.clientName ? ` (nom commercial ${i.tradeName})` : ""}`,
+    `- Adresse : ${i.address || blank}`,
+    `- Numéro d'entreprise / TVA : ${i.vatNumber || blank}`,
+    `- Représentée par : ${i.representative || blank}`,
+    `- E-mail : ${i.email || blank}`,
+    ...(i.phone ? [`- Téléphone : ${i.phone}`] : []),
+  ].join("\n");
+
+  return `Référence : ${i.reference}
+
+## Parties
+${COMPANY.name}, dont le siège est situé ${COMPANY.address}, immatriculée sous le numéro ${COMPANY.companyNumber}, représentée par Jason Balongo, ci-après « Solyn Global » ou « le Prestataire » ;
+
+et
+
+${party}, ci-après « le Client ».
+
+## Coordonnées de Solyn Global
+- Nom : ${COMPANY.name}
+- Adresse : ${COMPANY.address}
+- Numéro de société (Companies House, Royaume-Uni) : ${COMPANY.companyNumber}
+- Représentée par : Jason Balongo
+- E-mail : jason@solynglobal.be
+- Numéro de compte : ${iban(COMPANY.iban)} (BIC ${COMPANY.bic}), au nom de ${COMPANY.name}
+- Compte belge : ${iban(COMPANY.beIban)} (${COMPANY.beBank}, BIC ${COMPANY.beBic}), au nom de ${COMPANY.beName}
+
+## Coordonnées du Client
+${clientData}
+
+## Article 1 – Objet
+Solyn Global réalise pour le Client de courtes vidéos destinées aux réseaux sociaux (tels qu'Instagram, TikTok et Facebook). Solyn Global livre ${i.videosPerMonth} vidéos par mois.
+
+## Article 2 – Méthode de travail et livraison
+- Solyn Global dispose d'une totale liberté créative pour la réalisation des vidéos, notamment pour le choix des sujets, du style, de la musique et du montage. Le Client peut communiquer au préalable ses souhaits ou points d'attention ; Solyn Global en tient compte dans la mesure du possible.
+- Le Client fournit en temps utile le matériel nécessaire, l'accès aux lieux et les informations nécessaires à la réalisation des vidéos.
+- Les vidéos sont livrées sous forme numérique, dans un format adapté aux réseaux sociaux${i.deliveryDays ? `, dans les ${i.deliveryDays} jours suivant la réception du paiement` : ""}.
+- Les vidéos qui n'ont pas pu être livrées au cours d'un mois pour une raison imputable au Client ne sont pas reportées au mois suivant, sauf accord écrit contraire des parties.
+
+## Article 3 – Corrections
+Chaque vidéo comprend ${rev}. Une demande de correction est introduite dans les 7 jours suivant la livraison, avec des remarques concrètes regroupées en un seul message. Une vidéo pour laquelle aucune correction n'est demandée dans ce délai est considérée comme approuvée. Toute correction supplémentaire ou modification après approbation n'est effectuée qu'après accord sur un supplément de prix.
+
+## Article 4 – Rémunération et paiement
+- La rémunération s'élève à ${eurFr(i.monthlyFee)} par mois, hors TVA, pour ${i.videosPerMonth} vidéos.
+- La rémunération est payée à l'avance : Solyn Global facture mensuellement et le paiement est reçu avant le début du mois concerné. La production d'un mois commence après réception du paiement.
+- TVA : Solyn Global est établie au Royaume-Uni ; la TVA est autoliquidée par le Client (régime d'autoliquidation), sauf disposition légale contraire.
+- Les paiements sont effectués sur l'un des comptes de Solyn Global mentionnés sous « Coordonnées de Solyn Global », avec mention du numéro de facture.
+- En cas de retard de paiement, Solyn Global peut suspendre la livraison jusqu'à réception du paiement.
+
+## Article 5 – ${i.trialMonths ? "Période d'essai, prolongation et résiliation" : "Durée et résiliation"}
+${i.trialMonths
+  ? `Le présent contrat constitue une période d'essai ${ofMonths(i.trialMonths)} et prend effet ${start}. À l'issue de la période d'essai, la collaboration peut être prolongée ; les parties confirment la prolongation par écrit (y compris par e-mail). À défaut de prolongation, le contrat prend fin à l'issue de la période d'essai. Après prolongation, le contrat se poursuit de mois en mois aux mêmes conditions, et chaque partie peut le résilier par écrit moyennant un préavis ${ofMonths(notice)}. Les mois déjà payés sont intégralement exécutés ; les montants payés ne sont pas remboursés.`
+  : `Le présent contrat prend effet ${start} et est conclu pour une durée indéterminée. Chaque partie peut le résilier par écrit (y compris par e-mail) moyennant un préavis ${ofMonths(notice)}. Les mois déjà payés sont intégralement exécutés ; les montants payés ne sont pas remboursés.`}
+
+## Article 6 – Propriété et utilisation
+Dès leur livraison, les vidéos appartiennent entièrement au Client : les droits patrimoniaux sur les vidéos livrées sont cédés au Client, qui peut les utiliser, les modifier et les diffuser sans limite de durée et de toute manière. Solyn Global conserve toutefois le droit d'utiliser gratuitement les vidéos pour sa propre publicité, son propre contenu et son propre matériel promotionnel, tels que son site web, ses réseaux sociaux et son portfolio. Les rushes et fichiers de travail restent la propriété de Solyn Global, sauf accord contraire.
+
+## Article 7 – Responsabilité du contenu
+Le Client garantit qu'il détient les droits sur le matériel qu'il fournit (logos, musique, photos) et qu'il a obtenu l'accord des personnes reconnaissables à l'image, y compris son personnel et ses clients. Le Client approuve le contenu avant publication et reste responsable de ce qu'il publie.
+
+## Article 8 – Responsabilité
+La responsabilité de Solyn Global est limitée à la rémunération payée par le Client au cours des trois mois précédant le fait générateur du dommage. Solyn Global n'est pas responsable des résultats des publications (tels que la portée, les abonnés ou le chiffre d'affaires) ni des modifications ou pannes des plateformes de réseaux sociaux.
+
+## Article 9 – Confidentialité et données personnelles
+Les parties traitent de manière confidentielle les informations confidentielles de l'autre partie. Les données personnelles ne sont traitées qu'aux fins de l'exécution du présent contrat et conformément au RGPD.
+
+## Article 10 – Droit applicable
+Le présent contrat est régi par le droit belge dans la mesure permise par la loi. Les litiges font d'abord l'objet d'une tentative de règlement amiable ; dans la mesure où cela a été valablement convenu, le tribunal de l'entreprise du ressort du siège social du Client est compétent.
+
+## Article 11 – Modifications
+Les modifications ou ajouts ne sont valables que s'ils sont confirmés par écrit (y compris par e-mail) par les deux parties.`;
+}
+
 export type AgreementBlock = { type: "h" | "p" | "li"; text: string };
 
 /** Split a body into headings, paragraphs and bullets (shared by the viewer and the PDF). */
@@ -132,7 +226,8 @@ export function parseAgreement(body: string): AgreementBlock[] {
   return out;
 }
 
-export async function downloadAgreementPDF(a: { reference: string; title: string; body: string; clientName: string; representative?: string | null; place?: string }) {
+export async function downloadAgreementPDF(a: { reference: string; title: string; body: string; clientName: string; representative?: string | null; place?: string; lang?: "nl" | "fr" }) {
+  const fr = a.lang === "fr" || a.body.startsWith("Référence");
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const L = 20, R = 190, W = R - L, BOTTOM = 280;
@@ -149,7 +244,7 @@ export async function downloadAgreementPDF(a: { reference: string; title: string
   y += 3;
 
   for (const b of parseAgreement(a.body)) {
-    if (b.text.startsWith("Referentie:")) continue;
+    if (b.text.startsWith("Referentie:") || b.text.startsWith("Référence :")) continue;
     if (b.type === "h") {
       ensure(14); y += 3;
       doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30);
@@ -168,23 +263,23 @@ export async function downloadAgreementPDF(a: { reference: string; title: string
   // signatures
   ensure(60); y += 8;
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(50);
-  doc.text(`Opgemaakt in twee exemplaren te ${a.place ?? "Tongeren"} op ……………………, waarvan elke partij er één ontvangt.`, L, y);
+  doc.text(fr ? `Fait en deux exemplaires à ${a.place ?? "Tongeren"} le ……………………, chaque partie ayant reçu le sien.` : `Opgemaakt in twee exemplaren te ${a.place ?? "Tongeren"} op ……………………, waarvan elke partij er één ontvangt.`, L, y);
   y += 14;
   const col = (x: number, who: string, name: string) => {
     doc.setFont("helvetica", "bold"); doc.text(who, x, y);
     doc.setFont("helvetica", "normal");
     doc.text(name, x, y + 6);
     doc.setDrawColor(180); doc.line(x, y + 26, x + 70, y + 26);
-    doc.setFontSize(8); doc.setTextColor(120); doc.text("Handtekening, voorafgegaan door \"gelezen en goedgekeurd\"", x, y + 31);
+    doc.setFontSize(8); doc.setTextColor(120); doc.text(fr ? "Signature, précédée de la mention \"lu et approuvé\"" : "Handtekening, voorafgegaan door \"gelezen en goedgekeurd\"", x, y + 31);
     doc.setFontSize(10); doc.setTextColor(50);
   };
-  col(L, "Voor Solyn Global", "Jason Balongo");
-  col(L + 90, "Voor de Opdrachtgever", a.representative ? `${a.representative} – ${a.clientName}` : a.clientName);
+  col(L, fr ? "Pour Solyn Global" : "Voor Solyn Global", "Jason Balongo");
+  col(L + 90, fr ? "Pour le Client" : "Voor de Opdrachtgever", a.representative ? `${a.representative} – ${a.clientName}` : a.clientName);
 
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150);
-    doc.text(`${COMPANY.name} · ${a.reference} · pagina ${i}/${pages}`, 105, 290, { align: "center" });
+    doc.text(`${COMPANY.name} · ${a.reference} · ${fr ? "page" : "pagina"} ${i}/${pages}`, 105, 290, { align: "center" });
   }
   doc.save(`${a.reference} ${a.clientName}.pdf`.replace(/[\\/:*?"<>|]/g, ""));
 }

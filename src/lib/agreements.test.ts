@@ -38,4 +38,10 @@ describe("social media agreement", () => {
     expect(blocks.filter((b) => b.type === "h").length).toBe(12);
     expect(blocks.some((b) => b.type === "li" && b.text.startsWith("De vergoeding bedraagt"))).toBe(true);
   });
+  it("can start on the first payment and promise delivery within 30 days", () => {
+    const b = socialAgreementBody({ ...input, startDate: null, deliveryDays: 30 });
+    expect(b).toContain("start op de dag waarop Solyn Global de eerste betaling ontvangt");
+    expect(b).toContain("binnen 30 dagen na ontvangst van de betaling");
+    expect(b).toContain("€ 150,00 per maand, exclusief btw, voor 11 video's");
+  });
 });

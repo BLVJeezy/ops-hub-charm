@@ -9,11 +9,13 @@ export interface SocialAgreementInput {
   address?: string | null;
   vatNumber?: string | null;
   representative?: string | null;
-  startDate: string; // YYYY-MM-DD
+  startDate: string | null; // YYYY-MM-DD; null = the agreement starts when the first payment is received
   monthlyFee: number; // excl. VAT
   videosPerMonth: number;
   revisionsPerVideo: number;
   noticeMonths?: number;
+  /** the videos are delivered within this many days after payment */
+  deliveryDays?: number | null;
 }
 
 const eur = (n: number) => `€ ${n.toLocaleString("nl-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -48,7 +50,7 @@ Solyn Global maakt voor de Opdrachtgever korte video's voor gebruik op social me
 ## Artikel 2 – Werkwijze en levering
 - De onderwerpen en de planning van de video's worden in onderling overleg vastgelegd.
 - De Opdrachtgever bezorgt tijdig het nodige materiaal, de toegang tot de locatie en de informatie die nodig is om de video's te maken.
-- De video's worden digitaal afgeleverd in een formaat dat geschikt is voor social media.
+- De video's worden digitaal afgeleverd in een formaat dat geschikt is voor social media${i.deliveryDays ? `, binnen ${i.deliveryDays} dagen na ontvangst van de betaling` : ""}.
 - Video's die in een maand niet geleverd konden worden door een oorzaak bij de Opdrachtgever, worden niet overgedragen naar een volgende maand, tenzij partijen dit schriftelijk anders afspreken.
 
 ## Artikel 3 – Revisies
@@ -61,7 +63,7 @@ Per video is ${rev} inbegrepen. Een revisie wordt binnen 7 dagen na levering aan
 - Bij laattijdige betaling kan Solyn Global de levering opschorten tot de betaling ontvangen is.
 
 ## Artikel 5 – Duur en opzegging
-Deze overeenkomst start op ${dateNl(i.startDate)} en geldt voor onbepaalde duur. Elke partij kan de overeenkomst schriftelijk (ook per e-mail) opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.
+Deze overeenkomst start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"} en geldt voor onbepaalde duur. Elke partij kan de overeenkomst schriftelijk (ook per e-mail) opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.
 
 ## Artikel 6 – Gebruiksrecht
 Na volledige betaling verkrijgt de Opdrachtgever het recht om de geleverde video's onbeperkt in tijd te gebruiken op zijn eigen kanalen en in zijn eigen communicatie. Solyn Global mag de video's tonen in haar portfolio, tenzij de Opdrachtgever daar schriftelijk bezwaar tegen maakt. Ruwe beeldopnames en werkbestanden blijven bij Solyn Global, tenzij anders afgesproken.

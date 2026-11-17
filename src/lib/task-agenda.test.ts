@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { dueLabel, groupTasks, type AgendaTask } from "./task-agenda";
+import { dueLabel, groupTasks, weekEnd, type AgendaTask } from "./task-agenda";
 
 const t = (id: string, due: string | null, done = false): AgendaTask => ({ id, client_id: null, title: id, assignee: "me", due_date: due, done_at: done ? "2026-11-17T08:00:00Z" : null });
 
 describe("groupTasks", () => {
   const today = "2026-11-17";
-  it("splits into late, today, this week, later and undated", () => {
-    const g = groupTasks([t("a", "2026-11-15"), t("b", today), t("c", "2026-11-23"), t("d", "2026-11-24"), t("e", null)], today);
-    expect(g.map((x) => [x.key, x.tasks.map((y) => y.id)])).toEqual([["late", ["a"]], ["today", ["b"]], ["week", ["c"]], ["later", ["d"]], ["none", ["e"]]]);
+  it("splits into late, today, this week, next week, later and undated", () => {
+    // 2026-11-17 is a Tuesday: this week ends Sunday 22, next week Sunday 29
+    const g = groupTasks([t("a", "2026-11-15"), t("b", today), t("c", "2026-11-22"), t("n", "2026-11-23"), t("n2", "2026-11-29"), t("d", "2026-11-30"), t("e", null)], today);
+    expect(g.map((x) => [x.key, x.tasks.map((y) => y.id)])).toEqual([["late", ["a"]], ["today", ["b"]], ["week", ["c"]], ["next", ["n", "n2"]], ["later", ["d"]], ["none", ["e"]]]);
+    expect(g.find((x) => x.key === "next")?.range).toBe("ma 23 nov – zo 29 nov");
+    expect(g.find((x) => x.key === "today")?.range).toBe("di 17 nov");
+  });
+  it("on a Sunday the week is over: tomorrow is next week", () => {
+    expect(weekEnd("2026-11-22")).toBe("2026-11-22");
+    expect(groupTasks([t("m", "2026-11-23")], "2026-11-22")[0].key).toBe("next");
   });
   it("leaves out empty groups and keeps ticked tasks under today, after the open ones", () => {
     const g = groupTasks([t("late-done", "2026-11-10", true), t("b", today)], today);

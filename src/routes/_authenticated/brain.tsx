@@ -59,6 +59,7 @@ function BrainPage() {
   const [ring, setRing] = useState<"clients" | "pages">(() => { try { return localStorage.getItem("brain-ring") === "pages" ? "pages" : "clients"; } catch { return "clients"; } });
   const pickRing = (k: "clients" | "pages") => { setRing(k); try { localStorage.setItem("brain-ring", k); } catch { /* storage unavailable */ } };
   const [profile, setProfile] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
   const navigate = useNavigate();
   const sendMail = useServerFn(sendInvoiceMail);
   const [layout, setLayout] = useState<WidgetState[]>(readLayout);
@@ -139,6 +140,8 @@ function BrainPage() {
     try { await sendMail({ data: { invoiceId: id, isReminder: false } }); toast.success("Factuur verstuurd", { id: t }); await load(); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Versturen mislukt", { id: t }); }
   }
+  // a task changed in one list: the other lists on the page follow
+  const changed = () => { setTick((n) => n + 1); void load(); };
   const prof = profile ? data.clients.find((c) => c.id === profile) ?? null : null;
   const profVideos = prof ? data.videos.filter((v) => v.client_id === prof.id && v.month === month) : [];
   const PAGE = (to: string, label: string, icon: PerkItem["icon"], color: string, value: string): PerkItem => ({ key: to, label, color, weight: 1, dim: false, value, icon });
@@ -262,7 +265,7 @@ function BrainPage() {
                   </div>
                 </div>
               )}
-              {w.id === "tasks" && <Tasks tasks={tasks} open={openTasks} clients={[...m.active, ...m.prospects]} colorOf={m.colorOf} nameOf={m.nameOf} selected={sel?.id ?? null} today={today} onChange={load} />}
+              {w.id === "tasks" && <TaskAgenda className={`${card} text-white`} clientId={sel?.id ?? null} onChange={changed} tick={tick} />}
               {w.id === "videos" && <Videos clients={videoClients} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />}
               {w.id === "payments" && (
             <section className={card}>
@@ -353,7 +356,7 @@ function BrainPage() {
         </div>
       </div>
       {/* on a phone: the tasks, right under the Brain */}
-      <TaskAgenda className="lg:hidden mt-3 rounded-3xl border border-white/10 bg-white/[0.04] p-4 text-white" onChange={load} />
+      <TaskAgenda className="lg:hidden mt-3 rounded-3xl border border-white/10 bg-white/[0.04] p-4 text-white" onChange={changed} tick={tick} />
       <ClientProfileDialog client={prof} color={prof ? m.colorOf[prof.id] ?? "#8A93A6" : "#8A93A6"}
         sites={prof ? data.sites.filter((s) => s.client_id === prof.id) : []}
         invoices={prof ? data.invoices.filter((v) => v.client === prof.id) : []}
@@ -362,8 +365,8 @@ function BrainPage() {
         onClose={() => { setProfile(null); setSelected(null); }} onSend={sendInvoice}>
         {prof && (
           <div className="space-y-3">
-            <Tasks tasks={data.tasks.filter((t) => t.client_id === prof.id)} open={data.tasks.filter((t) => t.client_id === prof.id && !t.done_at)} clients={[prof]} colorOf={m.colorOf} nameOf={m.nameOf} selected={prof.id} today={today} onChange={load} />
-            <RecurringTasks clientId={prof.id} onChange={load} />
+            <TaskAgenda className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white" clientId={prof.id} onChange={changed} tick={tick} />
+            <RecurringTasks clientId={prof.id} onChange={changed} />
             {Number(prof.social_videos_per_month) > 0 && <Videos clients={[prof]} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />}
           </div>
         )}
@@ -439,79 +442,6 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
 }
 function Tile({ label, value, className = "" }: { label: string; value: string; className?: string }) {
   return <div className="rounded-xl bg-white/5 px-2.5 py-2"><div className="text-[10px] text-white/45 truncate">{label}</div><div className={`text-sm font-semibold tabular-nums ${className}`}>{value}</div></div>;
-}
-
-function Tasks({ tasks, open, clients, colorOf, nameOf, selected, today, onChange }: {
-  tasks: Task[]; open: Task[]; clients: ClientRow[]; colorOf: Record<string, string>; nameOf: Record<string, string>; selected: string | null; today: string; onChange: () => void;
-}) {
-  const [title, setTitle] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [assignee, setAssignee] = useState<"me" | "client">("me");
-  const [due, setDue] = useState("");
-  useEffect(() => { setClientId(selected ?? ""); }, [selected]);
-  const doneWeek = tasks.filter((t) => t.done_at && Date.now() - new Date(t.done_at).getTime() < 7 * 864e5).length;
-
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) return;
-    const { data: u } = await supabase.auth.getUser();
-    const { error } = await db.from("client_tasks").insert({ title: title.trim(), client_id: clientId || null, assignee, due_date: due || null, created_by: u.user?.id });
-    if (error) return toast.error(error.message);
-    setTitle(""); setDue(""); onChange();
-  }
-  async function toggle(t: Task) {
-    const { error } = await db.from("client_tasks").update({ done_at: t.done_at ? null : new Date().toISOString() }).eq("id", t.id);
-    if (error) toast.error(error.message); else onChange();
-  }
-  async function remove(t: Task) {
-    const { error } = await db.from("client_tasks").delete().eq("id", t.id);
-    if (error) toast.error(error.message); else onChange();
-  }
-
-  return (
-    <section className={card}>
-      <div className="flex items-baseline justify-between mb-2">
-        <h2 className="text-sm font-medium">Taken</h2>
-        <span className="text-[11px] text-white/45 tabular-nums">{open.length} open · {doneWeek} afgerond deze week</span>
-      </div>
-      <form onSubmit={add} className="space-y-1.5 mb-3">
-        <div className="flex gap-1.5">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nieuwe taak…" aria-label="Nieuwe taak" className="flex-1 min-w-0 h-9 rounded-lg bg-white/5 border border-white/10 px-3 text-sm outline-none focus:border-sky-300/50" />
-          <button type="submit" aria-label="Taak toevoegen" className="press hit shrink-0 w-9 h-9 rounded-lg bg-white text-black grid place-items-center disabled:opacity-40" disabled={!title.trim()}><Plus className="w-4 h-4" /></button>
-        </div>
-        <div className="flex gap-1.5 text-xs">
-          <select value={clientId} onChange={(e) => setClientId(e.target.value)} aria-label="Klant" className="flex-1 min-w-0 h-8 rounded-lg bg-white/5 border border-white/10 px-2 outline-none">
-            <option value="">Algemeen</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <div className="inline-flex rounded-lg border border-white/10 p-0.5" role="group" aria-label="Wie doet dit">
-            {(["me", "client"] as const).map((a) => (
-              <button key={a} type="button" onClick={() => setAssignee(a)} aria-pressed={assignee === a} className={`px-2.5 rounded-md ${assignee === a ? "bg-white text-black font-medium" : "text-white/60"}`}>{a === "me" ? "Ik" : "Klant"}</button>
-            ))}
-          </div>
-          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Deadline" className="h-8 w-[7.5rem] rounded-lg bg-white/5 border border-white/10 px-2 outline-none [color-scheme:dark]" />
-        </div>
-      </form>
-      <ul className="space-y-1">
-        {open.slice(0, 12).map((t) => (
-          <li key={t.id} className="group flex items-start gap-2.5 rounded-lg px-1 py-1.5 hover:bg-white/5">
-            <button onClick={() => toggle(t)} aria-label={`Rond af: ${t.title}`} className="press hit mt-0.5 shrink-0 w-5 h-5 rounded-full border border-white/30 grid place-items-center hover:border-emerald-400 hover:text-emerald-400 text-transparent"><Check className="w-3 h-3" /></button>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm leading-snug">{t.title}</div>
-              <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-white/45">
-                {t.client_id && <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colorOf[t.client_id] ?? "#888" }} />{nameOf[t.client_id]}</span>}
-                {t.assignee === "client" && <span className="text-violet-300">wacht op klant</span>}
-                {t.due_date && <span className={`tabular-nums ${t.due_date < today ? "text-red-400" : ""}`}>{t.due_date < today ? "te laat · " : ""}{formatDate(t.due_date)}</span>}
-              </div>
-            </div>
-            <button onClick={() => remove(t)} aria-label={`Verwijder: ${t.title}`} className="press shrink-0 w-7 h-7 rounded-full grid place-items-center text-white/30 hover:text-red-400 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100"><Trash2 className="w-3.5 h-3.5" /></button>
-          </li>
-        ))}
-        {!open.length && <li className="text-xs text-white/45 py-1">Geen open taken. Voeg er een toe hierboven.</li>}
-        {open.length > 12 && <li className="text-[11px] text-white/45 pt-1">+ {open.length - 12} meer</li>}
-      </ul>
-    </section>
-  );
 }
 
 function Videos({ clients, videos, month, colorOf, onChange }: { clients: ClientRow[]; videos: Video[]; month: string; colorOf: Record<string, string>; onChange: () => void }) {

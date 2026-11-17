@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { brusselsToday } from "@/lib/invoice-schedule";
 import { clock, elapsed, groupTasks, dueLabel, lapTimes, spent, stepWord, weekday, type AgendaTask, type GroupKey } from "@/lib/task-agenda";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
@@ -19,12 +19,18 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   const today = brusselsToday();
   const [tasks, setTasks] = useState<AgendaTask[] | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
-  const [open, setOpen] = useState<Partial<Record<GroupKey, boolean>>>({});   // next week, later and undated start folded
+  const [open, setOpen] = useState<Partial<Record<GroupKey, boolean>>>({});
+  const open_ = open;   // next week, later and undated start folded
   const [due, setDue] = useState("");
   const [title, setTitle] = useState("");
   const [forClient, setForClient] = useState("");
   const [repeat, setRepeat] = useState<"" | "weekly" | "monthly">("");
   const [now, setNow] = useState(() => Date.now());
+  // on a phone the tasks show as a week calendar: tap a day, see that day
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => { const q = window.matchMedia("(max-width: 1023px)"); const on = () => setNarrow(q.matches); on(); q.addEventListener("change", on); return () => q.removeEventListener("change", on); }, []);
+  const [day, setDay] = useState(today);
+  const [weekOf, setWeekOf] = useState(today);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ title: "", due: "", steps: "" });
 
@@ -98,7 +104,7 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
     const d = new Date(today + "T12:00:00Z");
     const res = repeat
       ? await db.from("client_recurring_tasks").insert({ title: text, client_id: forClient || null, cadence: repeat, day: repeat === "weekly" ? d.getUTCDay() || 7 : Math.min(28, d.getUTCDate()), created_by: u.user?.id })
-      : await db.from("client_tasks").insert({ title: text, client_id: forClient || null, assignee: "me", due_date: due || today, created_by: u.user?.id });
+      : await db.from("client_tasks").insert({ title: text, client_id: forClient || null, assignee: "me", due_date: due || (narrow ? day : today), created_by: u.user?.id });
     if (res.error) return toast.error(res.error.message);
     setTitle(""); setRepeat(""); setDue(""); await load(); onChange?.();
   }
@@ -158,6 +164,55 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
     );
   };
 
+  const addDays = (iso: string, n: number) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const monday = (iso: string) => addDays(iso, -((new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7));
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const Calendar = () => {
+    const mon = monday(weekOf), days = Array.from({ length: 7 }, (_, n) => addDays(mon, n));
+    const open = shown.filter((t) => !t.done_at);
+    const late = open.filter((t) => t.due_date && t.due_date < today);
+    const onDay = (d: string) => shown.filter((t) => t.due_date === d && (!t.done_at || (t.done_at && d === today)));
+    const list = day === today ? [...late, ...onDay(day)] : onDay(day);
+    const undated = open.filter((t) => !t.due_date);
+    const MON = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+    const go = (n: number) => { const w = addDays(mon, n * 7); setWeekOf(w); setDay(n === 0 ? today : w <= today && today <= addDays(w, 6) ? today : w); };
+    return (
+      <div className="mt-2">
+        <div className="flex items-center justify-between mb-1.5">
+          <button type="button" onClick={() => go(-1)} aria-label="Vorige week" className="press hit w-9 h-9 grid place-items-center rounded-full"><ChevronLeft className="w-5 h-5" /></button>
+          <button type="button" onClick={() => { setWeekOf(today); setDay(today); }} className="text-sm font-medium">{Number(mon.slice(8, 10))} {MON[Number(mon.slice(5, 7)) - 1]} – {Number(days[6].slice(8, 10))} {MON[Number(days[6].slice(5, 7)) - 1]}</button>
+          <button type="button" onClick={() => go(1)} aria-label="Volgende week" className="press hit w-9 h-9 grid place-items-center rounded-full"><ChevronRight className="w-5 h-5" /></button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 touch-pan-y" onPointerDown={(e) => { swipe.current = { x: e.clientX, y: e.clientY }; }}
+          onPointerUp={(e) => { const s = swipe.current; swipe.current = null; if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(e.clientY - s.y)) go(dx < 0 ? 1 : -1); }}>
+          {days.map((d) => {
+            const n = open.filter((t) => t.due_date === d).length + (d === today ? late.length : 0), sel = d === day, isToday = d === today, hasLate = d === today && late.length > 0;
+            return (
+              <button key={d} type="button" onClick={() => setDay(d)} aria-pressed={sel} aria-label={`${weekday(d)} ${Number(d.slice(8, 10))}: ${n} taken`}
+                className={`press flex flex-col items-center gap-0.5 rounded-2xl py-2 transition-colors ${sel ? "bg-white text-black" : isToday ? "ring-1 ring-current/40" : ""} ${d < today && !sel ? "opacity-50" : ""}`}>
+                <span className="text-[11px] uppercase opacity-70">{weekday(d)}</span>
+                <span className="text-lg font-semibold leading-none tabular-nums">{Number(d.slice(8, 10))}</span>
+                <span className="h-1.5 flex gap-0.5">{n > 0 && <span className={`w-1.5 h-1.5 rounded-full ${hasLate ? "bg-red-400" : sel ? "bg-black" : "bg-current"}`} />}{n > 2 && <span className={`w-1.5 h-1.5 rounded-full ${sel ? "bg-black" : "bg-current"} opacity-60`} />}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-3">
+          <div className="text-sm font-semibold">{day === today ? "Vandaag" : day === addDays(today, 1) ? "Morgen" : dueLabel(day, today).replace(/^./, (c) => c.toUpperCase())}</div>
+          {list.length === 0 ? <p className="text-sm opacity-60 py-3">Geen taken.</p> : <ul className="divide-y divide-current/10">{list.map((t) => Row(t, t.due_date && t.due_date < today && !t.done_at ? "late" : "today"))}</ul>}
+        </div>
+        {undated.length > 0 && (
+          <div className="mt-2 rounded-2xl border border-current/10 px-3">
+            <button type="button" onClick={() => setOpen((o) => ({ ...o, none: !o.none }))} aria-expanded={!!open_.none} className="press w-full flex items-center gap-2 min-h-11 text-left text-sm">
+              <span className="flex-1 font-medium">Zonder datum</span><span className="text-xs opacity-70">{undated.length}</span><ChevronDown className={`w-4 h-4 opacity-60 transition-transform ${open_.none ? "rotate-180" : ""}`} />
+            </button>
+            {open_.none && <ul className="divide-y divide-current/10 pb-1">{undated.map((t) => Row(t, "none"))}</ul>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <section className={className} aria-label="Taken">
       <div className="flex items-baseline justify-between mb-1">
@@ -167,6 +222,8 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
       {!tasks ? <p className="text-sm opacity-60 py-3">Laden…</p> : (
         <>
           {running && (!clientId || running.client_id === clientId) && Running(running)}
+          {narrow ? Calendar() : (
+            <>
           {!groups.some((g) => g.key === "late" || g.key === "today" || g.key === "week") && <p className="text-sm opacity-60 py-3">Niets meer voor deze week.</p>}
           <div className="space-y-2 mt-2">
             {groups.map((g) => {
@@ -191,6 +248,8 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
               );
             })}
           </div>
+            </>
+          )}
           <form onSubmit={add} className="mt-3 space-y-1.5">
             <div className="flex gap-1.5">
               <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nieuwe taak…" aria-label="Nieuwe taak" className="flex-1 min-w-0 h-11 rounded-xl bg-current/5 border border-current/15 px-3 text-[15px] placeholder:opacity-50 outline-none focus:border-current/40" style={{ backgroundColor: "color-mix(in srgb, currentColor 6%, transparent)" }} />

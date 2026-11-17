@@ -40,7 +40,8 @@ export function ownerAlerts(input: { invoices: Inv[]; clients: Cli[]; videos: Vi
 
   for (const c of clients) {
     const n = Number(c.social_videos_per_month || 0);
-    if (!n || c.is_internal || c.status !== "Active" || (c.social_end_date && c.social_end_date < today)) continue;
+    // no start date yet = not started (waiting for the agreement and the first payment): nothing can be behind
+    if (!n || c.is_internal || c.status !== "Active" || !c.social_start_date || c.social_start_date > today || (c.social_end_date && c.social_end_date < today)) continue;
     const sent = videos.filter((x) => x.client_id === c.id && x.month.slice(0, 7) === today.slice(0, 7) && x.sent_at).length;
     const gap = videosExpected(n, today, c.social_start_date) - sent;
     if (gap < 2) continue;

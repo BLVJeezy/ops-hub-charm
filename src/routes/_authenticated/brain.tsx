@@ -60,6 +60,9 @@ function BrainPage() {
   const pickRing = (k: "clients" | "pages") => { setRing(k); try { localStorage.setItem("brain-ring", k); } catch { /* storage unavailable */ } };
   const [profile, setProfile] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [drag, setDrag] = useState({ x: 0, live: false });
+  const swipeRef = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null);
+  const swallowClick = useRef(false);
   const navigate = useNavigate();
   const sendMail = useServerFn(sendInvoiceMail);
   const [layout, setLayout] = useState<WidgetState[]>(readLayout);
@@ -236,11 +239,25 @@ function BrainPage() {
               {w.id === "brain" && (
                 <div className="space-y-3">
                   <div className="relative h-[min(62dvh,128vw)] min-h-[380px] lg:h-[min(74vh,900px)] rounded-3xl overflow-hidden border border-sky-300/10" style={{ background: "radial-gradient(60% 60% at 50% 50%, rgba(30,50,160,0.22), rgba(2,3,10,0.6))" }}>
-                    {ring === "pages"
-                      ? <PerkRing neurons={pages} coreLabel="Solyn" coreValue="Hub OS" selected={null} onSelect={(k) => { if (k) void navigate({ to: k }); }} />
-                      : mode === "perks"
-                        ? <PerkRing neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} />
-                        : <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} images={planetUrls} />}
+                    {ring === "pages" || mode === "perks" ? (
+                      // swipe sideways between clients and pages: the ring follows the finger, then slides home
+                      <div className="absolute inset-0 touch-pan-y" style={{ transform: `translateX(${drag.x}px)`, opacity: 1 - Math.min(0.5, Math.abs(drag.x) / 500), transition: drag.live ? "none" : "transform 380ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 300ms ease" }}
+                        onPointerDown={(e) => { swipeRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false }; }}
+                        onPointerMove={(e) => { const s = swipeRef.current; if (!s || s.id !== e.pointerId) return; const dx = e.clientX - s.x, dy = e.clientY - s.y;
+                          if (!s.moved && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) { s.moved = true; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }
+                          if (s.moved) { const toward = (ring === "clients" && dx < 0) || (ring === "pages" && dx > 0); setDrag({ x: toward ? dx : dx * 0.25, live: true }); } }}
+                        onPointerUp={(e) => { const s = swipeRef.current; swipeRef.current = null; if (!s || !s.moved) return; swallowClick.current = true; const dx = e.clientX - s.x;
+                          if (dx < -70 && ring === "clients") { setDrag({ x: window.innerWidth * -0.4, live: false }); setTimeout(() => { pickRing("pages"); setDrag({ x: window.innerWidth * 0.4, live: true }); requestAnimationFrame(() => requestAnimationFrame(() => setDrag({ x: 0, live: false }))); }, 160); }
+                          else if (dx > 70 && ring === "pages") { setDrag({ x: window.innerWidth * 0.4, live: false }); setTimeout(() => { pickRing("clients"); setDrag({ x: window.innerWidth * -0.4, live: true }); requestAnimationFrame(() => requestAnimationFrame(() => setDrag({ x: 0, live: false }))); }, 160); }
+                          else setDrag({ x: 0, live: false }); }}
+                        onPointerCancel={() => { swipeRef.current = null; setDrag({ x: 0, live: false }); }}
+                        onClickCapture={(e) => { if (swallowClick.current) { swallowClick.current = false; e.stopPropagation(); e.preventDefault(); } }}>
+                        {ring === "pages"
+                          ? <PerkRing neurons={pages} coreLabel="Solyn" coreValue="Hub OS" selected={null} onSelect={(k) => { if (k) void navigate({ to: k }); }} />
+                          : <PerkRing neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} />}
+                      </div>
+                    ) : <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} images={planetUrls} />}
+                    {(ring === "pages" || mode === "perks") && <div className="lg:hidden pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-14 flex gap-1.5" aria-hidden>{(["clients", "pages"] as const).map((k) => <span key={k} className={`h-1.5 rounded-full transition-all ${ring === k ? "w-4 bg-white" : "w-1.5 bg-white/35"}`} />)}</div>}
                     {/* clients or pages on the ring */}
                     <div className="absolute left-3 top-3 max-lg:top-auto max-lg:bottom-3 max-lg:left-1/2 max-lg:-translate-x-1/2 inline-flex rounded-full border border-white/10 bg-[rgba(10,14,30,0.7)] backdrop-blur-xl p-0.5 text-xs" role="group" aria-label="Wat staat er op de ring">
                       {([["clients", "Klanten"], ["pages", "Pagina's"]] as const).map(([k, label]) => (

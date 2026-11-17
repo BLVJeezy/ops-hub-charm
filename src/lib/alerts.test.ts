@@ -43,7 +43,7 @@ describe("ownerAlerts", () => {
     expect(videosExpected(11, "2026-11-10", "2026-11-16")).toBe(0);     // not started
   });
   it("flags a client two or more videos behind, mailed on Monday", () => {
-    const c = { id: "c", name: "DynaMik (SRL Energy Life)", status: "Active", social_videos_per_month: 11 };
+    const c = { id: "c", name: "DynaMik (SRL Energy Life)", status: "Active", social_videos_per_month: 11, social_start_date: "2026-11-01" };
     const vids = (n: number) => Array.from({ length: n }, () => ({ client_id: "c", month: "2026-11-01", sent_at: "2026-11-05T10:00:00Z" }));
     expect(ownerAlerts({ ...base, clients: [c], videos: vids(4) })).toHaveLength(0);          // 5 due, 4 sent: one behind is fine
     const a = ownerAlerts({ ...base, clients: [c], videos: vids(2) })[0];                     // 2026-11-16 is a Monday
@@ -51,5 +51,6 @@ describe("ownerAlerts", () => {
     expect(a.title).toBe("DynaMik: 3 video's achter");
     expect(ownerAlerts({ ...base, today: "2026-11-17", clients: [c], videos: vids(2) })[0].mail).toBe(false);
     expect(ownerAlerts({ ...base, clients: [{ ...c, is_internal: true }], videos: [] })).toHaveLength(0);
+    expect(ownerAlerts({ ...base, clients: [{ ...c, social_start_date: null }], videos: [] })).toHaveLength(0);   // not started yet
   });
 });

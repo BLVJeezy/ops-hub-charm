@@ -17,7 +17,7 @@ type Agreement = {
   id: string; client_id: string; reference: string; title: string; kind: string; body: string;
   status: "Concept" | "Verstuurd" | "Ondertekend" | "Beëindigd"; start_date: string | null; monthly_fee: number | null; signed_at: string | null; created_at: string;
 };
-type Client = { id: string; name: string; status: string; billing_address: string | null; vat_number: string | null; contact_name: string | null; social_monthly_fee: number | null };
+type Client = { id: string; name: string; status: string; billing_address: string | null; vat_number: string | null; contact_name: string | null; contact_email: string | null; contact_phone: string | null; social_monthly_fee: number | null };
 
 const STATUSES = ["Concept", "Verstuurd", "Ondertekend", "Beëindigd"] as const;
 const STATUS_STYLE: Record<string, string> = {
@@ -38,7 +38,7 @@ export function AgreementsTab() {
   async function load() {
     const [a, c] = await Promise.all([
       db.from("client_agreements").select("*").order("created_at"),
-      db.from("clients").select("id,name,status,billing_address,vat_number,contact_name,social_monthly_fee").order("name"),
+      db.from("clients").select("id,name,status,billing_address,vat_number,contact_name,contact_email,contact_phone,social_monthly_fee").order("name"),
     ]);
     setRows(a.data ?? []);
     setClients(c.data ?? []);
@@ -180,7 +180,7 @@ function NewAgreementDialog({ open, onClose, clients, existing, onSaved }: { ope
     if (!c) return toast.error("Kies een klant");
     const input = {
       reference: nextRef(), clientName: f.legal.trim() || c.name, tradeName: f.trade.trim() || null, address: f.address.trim() || null,
-      vatNumber: f.vat.trim() || null, representative: f.rep.trim() || null, startDate: f.start || null, monthlyFee: Number(f.fee) || 0,
+      vatNumber: f.vat.trim() || null, representative: f.rep.trim() || null, email: c.contact_email, phone: c.contact_phone, startDate: f.start || null, monthlyFee: Number(f.fee) || 0,
       videosPerMonth: Number(f.videos) || 0, revisionsPerVideo: Number(f.revisions) || 0, noticeMonths: Number(f.notice) || 1, deliveryDays: Number(f.delivery) || null, trialMonths: Number(f.trial) || null,
     };
     const { data: u } = await supabase.auth.getUser();

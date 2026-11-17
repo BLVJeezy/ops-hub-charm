@@ -9,6 +9,8 @@ export interface SocialAgreementInput {
   address?: string | null;
   vatNumber?: string | null;
   representative?: string | null;
+  email?: string | null;
+  phone?: string | null;
   startDate: string | null; // YYYY-MM-DD; null = the agreement starts when the first payment is received
   monthlyFee: number; // excl. VAT
   videosPerMonth: number;
@@ -37,6 +39,17 @@ export function socialAgreementBody(i: SocialAgreementInput): string {
     `vertegenwoordigd door ${i.representative || "………………………………"}`,
   ].filter(Boolean).join(", ");
 
+  const blank = "………………………………";
+  const iban = (s: string) => s.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
+  const clientData = [
+    `- Naam: ${i.clientName}${i.tradeName && i.tradeName !== i.clientName ? ` (handelsnaam ${i.tradeName})` : ""}`,
+    `- Adres: ${i.address || blank}`,
+    `- Ondernemingsnummer / btw: ${i.vatNumber || blank}`,
+    `- Vertegenwoordigd door: ${i.representative || blank}`,
+    `- E-mail: ${i.email || blank}`,
+    ...(i.phone ? [`- Telefoon: ${i.phone}`] : []),
+  ].join("\n");
+
   return `Referentie: ${i.reference}
 
 ## Partijen
@@ -45,6 +58,18 @@ ${COMPANY.name}, met zetel te ${COMPANY.address}, ingeschreven onder bedrijfsnum
 en
 
 ${party}, hierna "de Opdrachtgever".
+
+## Gegevens van Solyn Global
+- Naam: ${COMPANY.name}
+- Adres: ${COMPANY.address}
+- Bedrijfsnummer (Companies House, VK): ${COMPANY.companyNumber}
+- Vertegenwoordigd door: Jason Balongo
+- E-mail: jason@solynglobal.be
+- Rekeningnummer: ${iban(COMPANY.iban)} (BIC ${COMPANY.bic}), op naam van ${COMPANY.name}
+- Belgische rekening: ${iban(COMPANY.beIban)} (${COMPANY.beBank}, BIC ${COMPANY.beBic}), op naam van ${COMPANY.beName}
+
+## Gegevens van de Opdrachtgever
+${clientData}
 
 ## Artikel 1 – Voorwerp
 Solyn Global maakt voor de Opdrachtgever korte video's voor gebruik op social media (zoals Instagram, TikTok en Facebook). Per maand levert Solyn Global ${i.videosPerMonth} video's af.
@@ -62,6 +87,7 @@ Per video is ${rev} inbegrepen. Een revisie wordt binnen 7 dagen na levering aan
 - De vergoeding bedraagt ${eur(i.monthlyFee)} per maand, exclusief btw, voor ${i.videosPerMonth} video's.
 - De vergoeding wordt vooraf betaald: Solyn Global factureert maandelijks, en de betaling wordt ontvangen vóór de aanvang van de betrokken maand. De productie van een maand start na ontvangst van de betaling.
 - Btw: Solyn Global is gevestigd in het Verenigd Koninkrijk; de btw wordt verlegd naar de Opdrachtgever (verleggingsregeling), tenzij de wet anders bepaalt.
+- Betalingen gebeuren op een van de rekeningen van Solyn Global vermeld bij "Gegevens van Solyn Global", met vermelding van het factuurnummer.
 - Bij laattijdige betaling kan Solyn Global de levering opschorten tot de betaling ontvangen is.
 
 ## Artikel 5 – ${i.trialMonths ? "Proefperiode, verlenging en opzegging" : "Duur en opzegging"}

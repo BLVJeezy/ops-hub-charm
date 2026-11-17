@@ -35,7 +35,7 @@ describe("social media agreement", () => {
   });
   it("parses into headings, paragraphs and bullets", () => {
     const blocks = parseAgreement(body);
-    expect(blocks.filter((b) => b.type === "h").length).toBe(12);
+    expect(blocks.filter((b) => b.type === "h").length).toBe(14);
     expect(blocks.some((b) => b.type === "li" && b.text.startsWith("De vergoeding bedraagt"))).toBe(true);
   });
   it("can start on the first payment and promise delivery within 30 days", () => {
@@ -58,5 +58,15 @@ describe("social media agreement", () => {
     expect(b).toContain("proefperiode van één (1) maand en start op de dag waarop Solyn Global de eerste betaling ontvangt");
     expect(b).toContain("Zonder verlenging eindigt de overeenkomst na de proefperiode");
     expect(socialAgreementBody(input)).toContain("## Artikel 5 – Duur en opzegging");
+  });
+  it("lists both companies' details and the bank accounts", () => {
+    const b = socialAgreementBody({ ...input, email: "michael@example.be" });
+    expect(b).toContain("## Gegevens van Solyn Global");
+    expect(b).toContain("Rekeningnummer: GB50 REVO 2301 2053 1674 37 (BIC REVOGB21)");
+    expect(b).toContain("Belgische rekening: BE48 7390 2803 5627 (KBC Bank, BIC KREDBEBB)");
+    expect(b).toContain("## Gegevens van de Opdrachtgever");
+    expect(b).toContain("- Ondernemingsnummer / btw: BE0839.060.292");
+    expect(b).toContain("- E-mail: michael@example.be");
+    expect(b).toContain("met vermelding van het factuurnummer");
   });
 });

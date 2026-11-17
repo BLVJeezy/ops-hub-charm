@@ -24,7 +24,7 @@ describe("social media agreement", () => {
     expect(body).toContain("Michael Van Immerseel");
   });
   it("states the deal: 11 videos, one revision each, €150 paid before the month starts", () => {
-    expect(body).toContain("levert Solyn Global 11 video's af");
+    expect(body).toContain("Per maand levert Solyn Global 11 video's af");
     expect(body).toContain("één (1) revisieronde");
     expect(body).toContain("€ 150,00 per maand, exclusief btw");
     expect(body).toContain("vóór de aanvang van de betrokken maand");
@@ -48,5 +48,15 @@ describe("social media agreement", () => {
     expect(body).toContain("Zodra de video's zijn afgeleverd, zijn ze volledig van de Opdrachtgever");
     expect(body).toContain("eigen reclame, haar eigen content en haar eigen promotiemateriaal");
     expect(body).not.toContain("bezwaar");
+  });
+  it("gives Solyn full creative freedom", () => {
+    expect(body).toContain("Solyn Global heeft volledige creatieve vrijheid");
+  });
+  it("can be a one-month trial that the parties extend in writing", () => {
+    const b = socialAgreementBody({ ...input, startDate: null, trialMonths: 1 });
+    expect(b).toContain("## Artikel 5 – Proefperiode, verlenging en opzegging");
+    expect(b).toContain("proefperiode van één (1) maand en start op de dag waarop Solyn Global de eerste betaling ontvangt");
+    expect(b).toContain("Zonder verlenging eindigt de overeenkomst na de proefperiode");
+    expect(socialAgreementBody(input)).toContain("## Artikel 5 – Duur en opzegging");
   });
 });

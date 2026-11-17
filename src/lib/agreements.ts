@@ -14,6 +14,8 @@ export interface SocialAgreementInput {
   videosPerMonth: number;
   revisionsPerVideo: number;
   noticeMonths?: number;
+  /** a trial of this many months that the parties can extend; empty = open-ended from the start */
+  trialMonths?: number | null;
   /** the videos are delivered within this many days after payment */
   deliveryDays?: number | null;
 }
@@ -45,10 +47,10 @@ en
 ${party}, hierna "de Opdrachtgever".
 
 ## Artikel 1 – Voorwerp
-Solyn Global maakt voor de Opdrachtgever korte video's voor gebruik op social media (zoals Instagram, TikTok en Facebook). Per kalendermaand levert Solyn Global ${i.videosPerMonth} video's af.
+Solyn Global maakt voor de Opdrachtgever korte video's voor gebruik op social media (zoals Instagram, TikTok en Facebook). Per maand levert Solyn Global ${i.videosPerMonth} video's af.
 
 ## Artikel 2 – Werkwijze en levering
-- De onderwerpen en de planning van de video's worden in onderling overleg vastgelegd.
+- Solyn Global heeft volledige creatieve vrijheid bij het maken van de video's, zoals de keuze van onderwerpen, stijl, muziek en montage. De Opdrachtgever kan vooraf wensen of aandachtspunten doorgeven; Solyn Global houdt daar zo veel mogelijk rekening mee.
 - De Opdrachtgever bezorgt tijdig het nodige materiaal, de toegang tot de locatie en de informatie die nodig is om de video's te maken.
 - De video's worden digitaal afgeleverd in een formaat dat geschikt is voor social media${i.deliveryDays ? `, binnen ${i.deliveryDays} dagen na ontvangst van de betaling` : ""}.
 - Video's die in een maand niet geleverd konden worden door een oorzaak bij de Opdrachtgever, worden niet overgedragen naar een volgende maand, tenzij partijen dit schriftelijk anders afspreken.
@@ -62,8 +64,10 @@ Per video is ${rev} inbegrepen. Een revisie wordt binnen 7 dagen na levering aan
 - Btw: Solyn Global is gevestigd in het Verenigd Koninkrijk; de btw wordt verlegd naar de Opdrachtgever (verleggingsregeling), tenzij de wet anders bepaalt.
 - Bij laattijdige betaling kan Solyn Global de levering opschorten tot de betaling ontvangen is.
 
-## Artikel 5 – Duur en opzegging
-Deze overeenkomst start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"} en geldt voor onbepaalde duur. Elke partij kan de overeenkomst schriftelijk (ook per e-mail) opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.
+## Artikel 5 – ${i.trialMonths ? "Proefperiode, verlenging en opzegging" : "Duur en opzegging"}
+${i.trialMonths
+  ? `Deze overeenkomst geldt als proefperiode van ${i.trialMonths === 1 ? "één (1) maand" : `${i.trialMonths} maanden`} en start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"}. Na de proefperiode kan de samenwerking verlengd worden; partijen bevestigen de verlenging schriftelijk (ook per e-mail). Zonder verlenging eindigt de overeenkomst na de proefperiode. Na verlenging loopt de overeenkomst maandelijks verder onder dezelfde voorwaarden, en kan elke partij ze schriftelijk opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.`
+  : `Deze overeenkomst start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"} en geldt voor onbepaalde duur. Elke partij kan de overeenkomst schriftelijk (ook per e-mail) opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.`}
 
 ## Artikel 6 – Eigendom en gebruik
 Zodra de video's zijn afgeleverd, zijn ze volledig van de Opdrachtgever: de vermogensrechten op de geleverde video's gaan over op de Opdrachtgever, die ze onbeperkt in tijd en op elke manier mag gebruiken, aanpassen en verspreiden. Solyn Global behoudt wel het recht om de video's kosteloos te gebruiken voor haar eigen reclame, haar eigen content en haar eigen promotiemateriaal, zoals haar website, social media en portfolio. Ruwe beeldopnames en werkbestanden blijven bij Solyn Global, tenzij anders afgesproken.

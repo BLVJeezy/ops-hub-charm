@@ -1,12 +1,14 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet,
-  FileText, Search as SearchIcon, LogOut, Activity, Film, Workflow, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff,
+  FileText, Search as SearchIcon, LogOut, Activity, Film, Workflow, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff, Sparkles,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
+import { AssistantPanel } from "./AssistantPanel";
+import { setAssistantOpen } from "@/lib/assistant-store";
 
 const NAV_ITEMS = [
   { to: "/brain", label: "Brain", icon: BrainCircuit },
@@ -115,8 +117,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile: floating pill (search · current section · menu) */}
+      {/* Mobile: floating pill (assistant · current section · menu, with search inside the menu) */}
       <MobileNav />
+
+      {/* Assistant: button on every page */}
+      <AssistantPanel />
     </div>
   );
 }
@@ -126,26 +131,28 @@ function MobileNav() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const [menu, setMenu] = useState(false);
-  const [search, setSearch] = useState(false);
   const [q, setQ] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const here = NAV_ITEMS.find((it) => current === it.to || current.startsWith(it.to + "/")) ?? NAV_ITEMS[0];
   const Here = here.icon;
-  useEffect(() => { setMenu(false); setSearch(false); }, [current]);
-  useEffect(() => { if (search) inputRef.current?.focus(); }, [search]);
+  useEffect(() => { setMenu(false); }, [current]);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (q.trim()) { navigate({ to: "/search", search: { q: q.trim() } }); setSearch(false); }
+    if (q.trim()) { navigate({ to: "/search", search: { q: q.trim() } }); setMenu(false); setQ(""); }
   };
   const pill = "backdrop-blur-xl border shadow-2xl shadow-black/40";
   const pillStyle = { backgroundColor: "hsl(var(--sidebar-background) / 0.85)", borderColor: "hsl(var(--sidebar-border))" };
   return (
     <div className="lg:hidden">
       <div className="edge-fade" aria-hidden />
-      {(menu || search) && <div className="fade-in fixed inset-0 z-30 bg-black/50" onClick={() => { setMenu(false); setSearch(false); }} />}
+      {menu && <div className="fade-in fixed inset-0 z-30 bg-black/50" onClick={() => setMenu(false)} />}
 
       {menu && (
         <div className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-3xl p-3 pop-in ${pill}`} style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}>
+          <form onSubmit={submit} className="mb-2 rounded-full flex items-center gap-2 pl-4 pr-1.5 h-12 border" style={{ backgroundColor: "hsl(var(--muted) / 0.4)", borderColor: "hsl(var(--sidebar-border))" }}>
+            <SearchIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek klanten…" aria-label="Zoeken" className="flex-1 min-w-0 bg-transparent text-base outline-none" />
+            <button type="submit" className="h-9 px-4 rounded-full text-sm font-medium" style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}>Zoek</button>
+          </form>
           <div className="grid grid-cols-3 gap-2">
             {NAV_ITEMS.map((it) => {
               const active = it === here, Icon = it.icon;
@@ -164,24 +171,15 @@ function MobileNav() {
         </div>
       )}
 
-      {search && (
-        <form onSubmit={submit} className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-full flex items-center gap-2 pl-4 pr-1.5 h-12 pop-in ${pill}`} style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}>
-          <SearchIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek klanten, steden, nummers…" className="flex-1 bg-transparent text-sm outline-none" />
-          <button type="submit" className="h-9 px-4 rounded-full text-sm font-medium" style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}>Zoek</button>
-        </form>
-      )}
-
       <nav className={`fixed z-40 left-1/2 -translate-x-1/2 h-14 rounded-full flex items-center gap-1 px-1.5 ${pill}`} style={{ ...pillStyle, bottom: "calc(1rem + env(safe-area-inset-bottom))" }}>
-        <button aria-label="Zoeken" onClick={() => { setSearch(!search); setMenu(false); }} className="w-11 h-11 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: search ? "hsl(var(--primary) / 0.15)" : "transparent", color: search ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
-          {search ? <X className="w-5 h-5" /> : <SearchIcon className="w-5 h-5" />}
+        <button aria-label="Assistent" onClick={() => { setMenu(false); setAssistantOpen(true); }} className="press w-11 h-11 rounded-full flex items-center justify-center" style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}>
+          <Sparkles className="w-5 h-5" />
         </button>
-        <button onClick={() => { setMenu(!menu); setSearch(false); }} className="h-11 px-4 rounded-full flex items-center gap-2 text-sm font-medium whitespace-nowrap" style={{ backgroundColor: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
+        <button onClick={() => { setMenu(!menu); }} className="h-11 px-4 rounded-full flex items-center gap-2 text-sm font-medium whitespace-nowrap" style={{ backgroundColor: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
           <Here className="w-4 h-4" /> {here.label}
         </button>
         <PrivacyButton className="w-11 h-11" />
-        <button aria-label="Menu" aria-expanded={menu} onClick={() => { setMenu(!menu); setSearch(false); }} className="w-11 h-11 rounded-full flex items-center justify-center"
+        <button aria-label="Menu" aria-expanded={menu} onClick={() => { setMenu(!menu); }} className="w-11 h-11 rounded-full flex items-center justify-center"
           style={{ backgroundColor: menu ? "hsl(var(--primary) / 0.15)" : "transparent", color: menu ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
           {menu ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
         </button>

@@ -65,8 +65,8 @@ Per video is ${rev} inbegrepen. Een revisie wordt binnen 7 dagen na levering aan
 ## Artikel 5 – Duur en opzegging
 Deze overeenkomst start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"} en geldt voor onbepaalde duur. Elke partij kan de overeenkomst schriftelijk (ook per e-mail) opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.
 
-## Artikel 6 – Gebruiksrecht
-Na volledige betaling verkrijgt de Opdrachtgever het recht om de geleverde video's onbeperkt in tijd te gebruiken op zijn eigen kanalen en in zijn eigen communicatie. Solyn Global mag de video's tonen in haar portfolio, tenzij de Opdrachtgever daar schriftelijk bezwaar tegen maakt. Ruwe beeldopnames en werkbestanden blijven bij Solyn Global, tenzij anders afgesproken.
+## Artikel 6 – Eigendom en gebruik
+Zodra de video's zijn afgeleverd, zijn ze volledig van de Opdrachtgever: de vermogensrechten op de geleverde video's gaan over op de Opdrachtgever, die ze onbeperkt in tijd en op elke manier mag gebruiken, aanpassen en verspreiden. Solyn Global behoudt wel het recht om de video's kosteloos te gebruiken voor haar eigen reclame, haar eigen content en haar eigen promotiemateriaal, zoals haar website, social media en portfolio. Ruwe beeldopnames en werkbestanden blijven bij Solyn Global, tenzij anders afgesproken.
 
 ## Artikel 7 – Verantwoordelijkheid voor inhoud
 De Opdrachtgever staat in voor de rechten op het materiaal dat hij aanlevert (logo's, muziek, foto's) en voor de toestemming van personen die herkenbaar in beeld komen, waaronder personeel en klanten. De Opdrachtgever keurt de inhoud goed vóór publicatie en blijft verantwoordelijk voor wat hij publiceert.

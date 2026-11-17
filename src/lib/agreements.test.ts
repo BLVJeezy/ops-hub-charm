@@ -44,4 +44,9 @@ describe("social media agreement", () => {
     expect(b).toContain("binnen 30 dagen na ontvangst van de betaling");
     expect(b).toContain("€ 150,00 per maand, exclusief btw, voor 11 video's");
   });
+  it("hands the delivered videos to the client, while Solyn may use them for its own promotion", () => {
+    expect(body).toContain("Zodra de video's zijn afgeleverd, zijn ze volledig van de Opdrachtgever");
+    expect(body).toContain("eigen reclame, haar eigen content en haar eigen promotiemateriaal");
+    expect(body).not.toContain("bezwaar");
+  });
 });

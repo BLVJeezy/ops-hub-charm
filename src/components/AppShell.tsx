@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
+import { AssistantPanel } from "./AssistantPanel";
 
 const NAV_ITEMS = [
   { to: "/brain", label: "Brain", icon: BrainCircuit },
@@ -117,6 +118,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile: floating pill (search · current section · menu) */}
       <MobileNav />
+
+      {/* Assistant: button on every page */}
+      <AssistantPanel />
     </div>
   );
 }

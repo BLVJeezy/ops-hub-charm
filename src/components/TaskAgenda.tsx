@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Check, Lock, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { brusselsToday } from "@/lib/invoice-schedule";
@@ -9,6 +10,8 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 type Client = { id: string; name: string; brand_color: string | null; status: string; is_internal: boolean | null };
+// several task lists can sit on one page; only one of them shows the focus screen
+let focusOwner: symbol | null = null;
 const short = (n: string) => n.replace(/\s*\(.*\)$/, "").replace(/\s+(BV|BVBA|NV|SRL)$/i, "");
 
 /**
@@ -32,6 +35,9 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   const [day, setDay] = useState(today);
   const [weekOf, setWeekOf] = useState(today);
   const [editing, setEditing] = useState<string | null>(null);
+  const me = useRef(Symbol("tasks"));
+  const [owner, setOwner] = useState(false);
+  useEffect(() => { if (!focusOwner) { focusOwner = me.current; setOwner(true); } return () => { if (focusOwner === me.current) focusOwner = null; }; }, []);
   // two ways to read the same tasks: by date, or per client with the client that needs you first on top
   type View = "blocks" | "date" | "client";
   const [view, setView] = useState<View>("blocks");
@@ -78,7 +84,7 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   }
   const bank = (t: AgendaTask) => ({ seconds: elapsed(t, Date.now()), started_at: null });   // stop the clock, keep the time
   async function start(t: AgendaTask) {
-    if (running && running.id !== t.id) await patch(running.id, bank(running));              // one task at a time
+    if (running && running.id !== t.id) { toast("Maak eerst je huidige taak af, of pauzeer ze."); return; }   // one task at a time, finished before the next
     // picking a task up again after a stop is a break taken
     await patch(t.id, { started_at: new Date().toISOString(), breaks: Number(t.breaks || 0) + (Number(t.seconds || 0) > 0 ? 1 : 0) });
   }
@@ -145,6 +151,7 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
           </button>
           {!t.done_at && (isRunning
             ? <span className="text-sm font-semibold tabular-nums text-emerald-400 shrink-0">{clock(sec)}</span>
+            : running ? <span className="w-10 h-10 grid place-items-center shrink-0 opacity-30" aria-label="Op slot tot je huidige taak klaar is"><Lock className="w-4 h-4" /></span>
             : <button type="button" onClick={() => start(t)} aria-label={`Start: ${t.title}`} className="press hit w-10 h-10 rounded-full grid place-items-center shrink-0 border border-current/20 hover:bg-current/10"><Play className="w-4 h-4 translate-x-px" /></button>)}
         </div>
         {editing === t.id && !isRunning && Editor(t)}
@@ -174,6 +181,33 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
         </div>
         {editing === t.id && <div className="mt-2">{Editor(t)}</div>}
       </div>
+    );
+  };
+
+  // while a task runs, it is the only thing on screen: finish it, or pause it on purpose
+  const Focus = (t: AgendaTask) => {
+    const sec = elapsed(t, now), c = t.client_id ? byId[t.client_id] : null, steps = Number(t.steps_total || 0), done = Number(t.steps_done || 0), word = stepWord(t.title), laps = lapTimes(t.laps);
+    return createPortal(
+      <div role="dialog" aria-modal="true" aria-label={`Focus: ${t.title}`} className="fixed inset-0 z-[100] bg-black text-white flex flex-col items-center justify-center px-6 py-10 overflow-y-auto">
+        <div className="w-full max-w-md text-center">
+          <div className="text-sm opacity-70 inline-flex items-center gap-2">{c && <span className="w-2.5 h-2.5 rounded-full" style={{ background: c.brand_color || "#8A93A6" }} />}Focus{c ? ` · ${short(c.name)}` : ""}</div>
+          <h2 className="text-2xl md:text-3xl font-semibold leading-tight mt-3">{t.title}</h2>
+          <div className="text-7xl md:text-8xl font-semibold tabular-nums mt-8 tracking-tight">{clock(sec)}</div>
+          <div className="text-sm opacity-60 mt-2">{Number(t.breaks || 0)} {Number(t.breaks) === 1 ? "pauze" : "pauzes"}{steps > 0 ? ` · ${done} van ${steps} ${steps === 1 ? word.toLowerCase() : ({ Video: "video's", Post: "posts", Stap: "stappen" } as Record<string, string>)[word] ?? word.toLowerCase()} klaar` : ""}</div>
+          {steps > 0 && <div className="h-1.5 rounded-full bg-white/10 mt-5 overflow-hidden"><div className="h-full bg-emerald-400 rounded-full transition-[width]" style={{ width: `${(done / steps) * 100}%` }} /></div>}
+          {laps.length > 0 && <div className="flex flex-wrap justify-center gap-1.5 mt-4">{laps.map((l, i) => <span key={i} className="text-xs rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 tabular-nums">{word} {i + 1}: {spent(l)}</span>)}</div>}
+          <div className="flex flex-col gap-2 mt-10">
+            {steps > 0 && done < steps
+              ? <button type="button" onClick={() => stepDone(t)} className="press h-14 rounded-2xl bg-emerald-500 text-black text-base font-semibold">{word} {done + 1} klaar{done + 1 === steps ? " · taak af" : ""}</button>
+              : <button type="button" onClick={() => toggle(t)} className="press h-14 rounded-2xl bg-emerald-500 text-black text-base font-semibold">Taak klaar</button>}
+            <button type="button" onClick={() => stop(t)} className="press h-12 rounded-2xl border border-white/20 text-sm font-medium inline-flex items-center justify-center gap-1.5"><Pause className="w-4 h-4" />Pauze</button>
+            <button type="button" onClick={() => edit(t)} className="press h-10 text-xs opacity-60 inline-flex items-center justify-center gap-1.5"><Pencil className="w-3.5 h-3.5" />Taak aanpassen</button>
+          </div>
+          {editing === t.id && <div className="mt-3 text-left">{Editor(t)}</div>}
+          <p className="text-xs opacity-45 mt-8">Andere taken staan op slot tot deze klaar of gepauzeerd is.</p>
+        </div>
+      </div>,
+      document.body,
     );
   };
 
@@ -269,7 +303,7 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
                 <span className="text-xs opacity-55 tabular-nums">Blok {n + 1}</span>
                 <span className="text-sm font-semibold truncate">{c ? short(c.name) : ""}</span>
                 <span className="ml-auto text-xs tabular-nums opacity-70">{min} / {BLOCK_MIN} min</span>
-                {first && !live && <button type="button" onClick={() => start(first)} aria-label={`Start blok ${c ? short(c.name) : ""}`} className="press h-8 px-3 rounded-full bg-white text-black text-xs font-semibold inline-flex items-center gap-1"><Play className="w-3 h-3" />Start</button>}
+                {first && !running && <button type="button" onClick={() => start(first)} aria-label={`Start blok ${c ? short(c.name) : ""}`} className="press h-8 px-3 rounded-full bg-white text-black text-xs font-semibold inline-flex items-center gap-1"><Play className="w-3 h-3" />Start</button>}
               </div>
               <div className="h-1 rounded-full bg-current/10 mt-2 overflow-hidden" style={{ backgroundColor: "color-mix(in srgb, currentColor 10%, transparent)" }}><div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} /></div>
               {b.upcoming && <p className="text-xs opacity-60 pt-2">Niets gepland voor {blockDay === "today" ? "vandaag" : "morgen"}. Dit kan je al vooruit doen:</p>}
@@ -340,7 +374,8 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
       </div>
       {!tasks ? <p className="text-sm opacity-60 py-3">Laden…</p> : (
         <>
-          {running && (!clientId || running.client_id === clientId) && Running(running)}
+          {running && owner && Focus(running)}
+          {running && !owner && (!clientId || running.client_id === clientId) && Running(running)}
           {view === "blocks" && !clientId ? Blocks() : view === "client" && !clientId ? PerClient() : narrow ? Calendar() : (
             <>
           {!groups.some((g) => g.key === "late" || g.key === "today" || g.key === "week") && <p className="text-sm opacity-60 py-3">Niets meer voor deze week.</p>}

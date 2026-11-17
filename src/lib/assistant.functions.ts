@@ -1,14 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { brusselsToday } from "@/lib/invoice-schedule";
-import { TOOLS, checkRead, checkTask, cleanMessages, systemPrompt, type ChatMessage } from "@/lib/assistant";
+import { TOOLS, checkLink, checkRead, checkTask, cleanMessages, systemPrompt, type ChatMessage, type HubLink } from "@/lib/assistant";
 
 const API = "https://api.anthropic.com/v1";
 const MAX_STEPS = 10;          // look-ups per question
 const MAX_RESULT_CHARS = 40000; // per look-up, so one wide table cannot fill the conversation
 
 export type AssistantReply =
-  | { ok: true; text: string; did: string[] }
+  | { ok: true; text: string; did: string[]; links: HubLink[] }
   | { ok: false; reason: "no_key" | "bad_key" | "not_staff" | "error"; message: string };
 
 type Block = { type: string; text?: string; id?: string; name?: string; input?: unknown };
@@ -78,6 +78,13 @@ async function remember(db: Db, userId: string, input: unknown, today: string, d
   return "Saved to the company knowledge.";
 }
 
+function showInHub(input: unknown, links: HubLink[]): string {
+  const checked = checkLink(input);
+  if (!checked.ok) return checked.error;
+  if (!links.some((l) => l.path === checked.link.path)) links.push(checked.link);
+  return "A button to it is shown under your answer.";
+}
+
 /** One question to the Hub assistant. It reads the Hub with the signed-in person's own rights, so it sees what they may see. */
 export const askAssistant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -101,6 +108,7 @@ export const askAssistant = createServerFn({ method: "POST" })
     const headers = { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" };
     const messages: { role: "user" | "assistant"; content: unknown }[] = [...data.messages];
     const did: string[] = [];
+    const links: HubLink[] = [];
 
     try {
       const model = await pickModel(headers);
@@ -114,7 +122,7 @@ export const askAssistant = createServerFn({ method: "POST" })
         const reply = (await res.json()) as { content: Block[]; stop_reason: string };
         const text = reply.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n").trim();
         if (reply.stop_reason !== "tool_use") {
-          return { ok: true, text: text || "I have no answer to that.", did };
+          return { ok: true, text: text || "I have no answer to that.", did, links };
         }
         messages.push({ role: "assistant", content: reply.content });
         const results = [];
@@ -123,12 +131,13 @@ export const askAssistant = createServerFn({ method: "POST" })
             b.name === "read_table" ? await readTable(db, b.input)
             : b.name === "create_task" ? await createTask(db, context.userId, b.input, did)
             : b.name === "remember" ? await remember(db, context.userId, b.input, today, did)
+            : b.name === "show_in_hub" ? showInHub(b.input, links)
             : `Unknown tool ${b.name}.`;
           results.push({ type: "tool_result", tool_use_id: b.id, content: out });
         }
         messages.push({ role: "user", content: results });
       }
-      return { ok: true, text: "I needed more look-ups than I am allowed for one question. Ask it in smaller parts and I will get there.", did };
+      return { ok: true, text: "I needed more look-ups than I am allowed for one question. Ask it in smaller parts and I will get there.", did, links };
     } catch (e) {
       if (e instanceof KeyError) return { ok: false, reason: "bad_key", message: "Claude refused the API key. Check the secret ANTHROPIC_API_KEY in Lovable Cloud → Secrets." };
       console.error("[assistant]", e);

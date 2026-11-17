@@ -1,7 +1,8 @@
 # Hub assistant
 
-A chat with Claude on every page of the Hub (gold button, bottom right). It supports the owner and the team with questions
-about the company and everything recorded in the Hub, and it can add tasks.
+A chat with Claude on every page of the Hub. On a phone the gold button in the bottom bar summons it (search moved into the
+menu); on desktop a gold button bottom right. It supports the owner and the team with questions about the company and
+everything recorded in the Hub, and it can add tasks. You can type or talk to it.
 
 ## What it can do
 
@@ -13,6 +14,17 @@ about the company and everything recorded in the Hub, and it can add tasks.
 - **Remember a fact** when asked: it adds a dated line to the company knowledge.
 - **Know the company**: the *Knowledge* tab holds one free text (services, prices, rules, how each client is handled).
   It is read with every question.
+
+- **Open a place in the Hub**: asked for a client's profile or a site, it explains what the Hub holds and adds a button
+  under the answer that opens that profile or page.
+
+## Voice
+
+The microphone button listens for one question, shows the words while you speak, and sends it when you stop (or tap the
+square). An answer to a spoken question is read aloud; *Reads answers aloud* turns that off, *Voice* switches between
+Nederlands and English. Voice uses what the browser offers (speech recognition and speech synthesis): no extra service
+or cost, but it depends on the browser. Where the browser cannot listen, the microphone button is not shown and the
+keyboard's own dictation still works. On an iPhone, Safari supports it; the Hub opened from the home screen may not.
 
 It cannot change or delete other data, send mail or invoices, or reach anything outside the Hub (mail, calendar, Drive,
 social accounts). Keys and tokens (`site_bridges`, `monitored_sites.db_health_apikey`, …) are not readable: the allow-list

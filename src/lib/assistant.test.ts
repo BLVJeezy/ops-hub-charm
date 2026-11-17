@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { READABLE, checkRead, checkTask, cleanMessages, systemPrompt } from "./assistant";
+import { READABLE, checkLink, checkRead, checkTask, cleanMessages, systemPrompt } from "./assistant";
 
 describe("checkRead", () => {
   it("refuses tables and columns that are not on the list", () => {
@@ -65,5 +65,20 @@ describe("systemPrompt", () => {
     expect(p).toContain("SEO from €350 per month");
     expect(p).toContain("- invoices:");
     expect(p).toContain("/clients");
+  });
+});
+
+describe("checkLink", () => {
+  const id = "7C282F61-9810-4f3f-accc-293e1dd6d038";
+  it("builds Hub paths for clients, sites and pages", () => {
+    expect(checkLink({ kind: "client", id, label: "Villa Amano" })).toEqual({ ok: true, link: { label: "Villa Amano", path: `/clients/${id.toLowerCase()}` } });
+    expect(checkLink({ kind: "site", id, label: "Site" })).toEqual({ ok: true, link: { label: "Site", path: `/status/${id.toLowerCase()}` } });
+    expect(checkLink({ kind: "page", page: "/invoices", label: "Invoices" })).toEqual({ ok: true, link: { label: "Invoices", path: "/invoices" } });
+  });
+  it("refuses outside addresses, made-up ids and missing labels", () => {
+    expect(checkLink({ kind: "page", page: "https://example.com", label: "x" }).ok).toBe(false);
+    expect(checkLink({ kind: "page", page: "//example.com", label: "x" }).ok).toBe(false);
+    expect(checkLink({ kind: "client", id: "../auth", label: "x" }).ok).toBe(false);
+    expect(checkLink({ kind: "client", id, label: " " }).ok).toBe(false);
   });
 });

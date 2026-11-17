@@ -3,7 +3,7 @@ import { Check, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { brusselsToday } from "@/lib/invoice-schedule";
-import { byDay, clock, elapsed, groupByClient, groupTasks, dueLabel, lapTimes, spent, stepWord, weekday, type AgendaTask, type GroupKey } from "@/lib/task-agenda";
+import { byDay, clock, dayBlocks, elapsed, groupByClient, groupTasks, dueLabel, lapTimes, spent, stepWord, weekday, type AgendaTask, type GroupKey } from "@/lib/task-agenda";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,9 +33,17 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   const [weekOf, setWeekOf] = useState(today);
   const [editing, setEditing] = useState<string | null>(null);
   // two ways to read the same tasks: by date, or per client with the client that needs you first on top
-  const [view, setView] = useState<"date" | "client">("date");
-  useEffect(() => { try { if (localStorage.getItem("tasks-view") === "client") setView("client"); } catch { /* no storage */ } }, []);
-  const pick = (v: "date" | "client") => { setView(v); try { localStorage.setItem("tasks-view", v); } catch { /* no storage */ } };
+  type View = "blocks" | "date" | "client";
+  const [view, setView] = useState<View>("blocks");
+  useEffect(() => { try { const v = localStorage.getItem("tasks-view"); if (v === "client" || v === "date" || v === "blocks") setView(v); } catch { /* no storage */ } }, []);
+  const pick = (v: View) => { setView(v); try { localStorage.setItem("tasks-view", v); } catch { /* no storage */ } };
+  // the day in blocks: one hour per project; which projects, and in what order, is kept per device
+  const [blockIds, setBlockIds] = useState<string[] | null>(null);
+  useEffect(() => { try { const v = JSON.parse(localStorage.getItem("task-blocks") || "null"); if (Array.isArray(v)) setBlockIds(v); } catch { /* no storage */ } }, []);
+  const saveBlocks = (ids: string[]) => { setBlockIds(ids); try { localStorage.setItem("task-blocks", JSON.stringify(ids)); } catch { /* no storage */ } };
+  const [blockDay, setBlockDay] = useState<"today" | "tomorrow">("today");
+  const [editBlocks, setEditBlocks] = useState(false);
+  const [rest, setRest] = useState(false);
   const [folded, setFolded] = useState<Record<string, boolean>>({});
   const [all, setAll] = useState<Record<string, boolean>>({});
   const [draft, setDraft] = useState({ title: "", due: "", steps: "" });
@@ -219,6 +227,68 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   };
 
 
+  const BLOCK_MIN = 60;
+  const defaultBlocks = () => ["amano", "dyna", "debl"].map((k) => clients.find((c) => c.status === "Active" && c.name.toLowerCase().includes(k))?.id).filter(Boolean) as string[];
+  const Blocks = () => {
+    const ids = (blockIds ?? defaultBlocks()).filter((id) => byId[id]);
+    const d = blockDay === "today" ? today : addDays(today, 1);
+    const blocks = dayBlocks(shown, ids, d, today, now);
+    const other = shown.filter((t) => !ids.includes(t.client_id ?? "") && !t.done_at && (t.due_date === d || (d === today && !!t.due_date && t.due_date < today)));
+    const active = clients.filter((c) => c.status === "Active" && !c.is_internal);
+    return (
+      <div className="mt-2 space-y-2">
+        <div className="flex items-center gap-2">
+          <span role="group" aria-label="Dag" className="inline-flex rounded-full border border-current/15 p-0.5 text-xs">
+            {([["today", "Vandaag"], ["tomorrow", "Morgen"]] as const).map(([v, l]) => <button key={v} type="button" onClick={() => setBlockDay(v)} aria-pressed={blockDay === v} className={`press rounded-full px-3 h-7 ${blockDay === v ? "bg-white text-black font-semibold" : "opacity-70"}`}>{l}</button>)}
+          </span>
+          <span className="text-xs opacity-60">{blocks.length} {blocks.length === 1 ? "blok" : "blokken"} van 1 uur</span>
+          <button type="button" onClick={() => setEditBlocks((v) => !v)} className="press ml-auto text-xs opacity-70 underline-offset-2 hover:underline min-h-8">{editBlocks ? "Klaar" : "Blokken aanpassen"}</button>
+        </div>
+        {editBlocks && (
+          <div className="rounded-2xl border border-current/15 p-2 space-y-1">
+            {[...ids.map((id) => byId[id]), ...active.filter((c) => !ids.includes(c.id))].filter(Boolean).map((c) => {
+              const on = ids.includes(c.id), i = ids.indexOf(c.id);
+              return (
+                <div key={c.id} className="flex items-center gap-2 min-h-10">
+                  <input type="checkbox" checked={on} onChange={() => saveBlocks(on ? ids.filter((x) => x !== c.id) : [...ids, c.id])} aria-label={short(c.name)} className="w-4 h-4" />
+                  <span className="w-2 h-2 rounded-full" style={{ background: c.brand_color || "#8A93A6" }} />
+                  <span className="text-sm flex-1">{short(c.name)}</span>
+                  {on && i > 0 && <button type="button" onClick={() => { const n = [...ids]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; saveBlocks(n); }} aria-label="Eerder" className="press text-xs opacity-70 px-2 min-h-8">↑</button>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {blocks.length === 0 && <p className="text-sm opacity-60 py-3">Nog geen blokken. Kies je projecten via "Blokken aanpassen".</p>}
+        {blocks.map((b, n) => {
+          const c = byId[b.clientId], color = c?.brand_color || "#8A93A6", min = Math.floor(b.seconds / 60), pct = Math.min(100, (b.seconds / (BLOCK_MIN * 60)) * 100);
+          const first = b.tasks.find((t) => !t.done_at), live = !!running && b.tasks.some((t) => t.id === running.id);
+          return (
+            <div key={b.clientId} className={`rounded-2xl border px-3 pt-2.5 ${live ? "border-emerald-400/50" : "border-current/15"}`} style={{ boxShadow: `inset 3px 0 0 ${color}` }}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs opacity-55 tabular-nums">Blok {n + 1}</span>
+                <span className="text-sm font-semibold truncate">{c ? short(c.name) : ""}</span>
+                <span className="ml-auto text-xs tabular-nums opacity-70">{min} / {BLOCK_MIN} min</span>
+                {first && !live && <button type="button" onClick={() => start(first)} aria-label={`Start blok ${c ? short(c.name) : ""}`} className="press h-8 px-3 rounded-full bg-white text-black text-xs font-semibold inline-flex items-center gap-1"><Play className="w-3 h-3" />Start</button>}
+              </div>
+              <div className="h-1 rounded-full bg-current/10 mt-2 overflow-hidden" style={{ backgroundColor: "color-mix(in srgb, currentColor 10%, transparent)" }}><div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} /></div>
+              {b.upcoming && <p className="text-xs opacity-60 pt-2">Niets gepland voor {blockDay === "today" ? "vandaag" : "morgen"}. Dit kan je al vooruit doen:</p>}
+              {b.tasks.length === 0 ? <p className="text-sm opacity-60 py-3">Geen open taken.</p> : <ul className="divide-y divide-current/10">{b.tasks.map((t) => Row(t, "client"))}</ul>}
+            </div>
+          );
+        })}
+        {other.length > 0 && (
+          <div className="rounded-2xl border border-current/10 px-3">
+            <button type="button" onClick={() => setRest((v) => !v)} aria-expanded={rest} className="press w-full flex items-center gap-2 min-h-11 text-left text-sm">
+              <span className="flex-1 font-medium">Buiten de blokken</span><span className="text-xs opacity-70">{other.length}</span><ChevronDown className={`w-4 h-4 opacity-60 transition-transform ${rest ? "rotate-180" : ""}`} />
+            </button>
+            {rest && <ul className="divide-y divide-current/10 pb-1">{other.map((t) => Row(t, t.due_date && t.due_date < today ? "late" : "today"))}</ul>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const PerClient = () => {
     const list = groupByClient(shown, today);
     if (!list.length) return <p className="text-sm opacity-60 py-3">Geen open taken.</p>;
@@ -261,8 +331,8 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
         <h2 className="text-base font-semibold">Taken</h2>
         {!clientId && (
           <span role="group" aria-label="Weergave" className="ml-auto mr-2 inline-flex rounded-full border border-current/15 p-0.5 text-xs">
-            {([["date", narrow ? "Kalender" : "Per datum"], ["client", "Per klant"]] as const).map(([v, l]) => (
-              <button key={v} type="button" onClick={() => pick(v)} aria-pressed={view === v} className={`press rounded-full px-3 h-7 ${view === v ? "bg-white text-black font-semibold" : "opacity-70"}`}>{l}</button>
+            {([["blocks", "Blokken"], ["date", narrow ? "Kalender" : "Datum"], ["client", "Klant"]] as const).map(([v, l]) => (
+              <button key={v} type="button" onClick={() => pick(v)} aria-pressed={view === v} className={`press rounded-full px-2.5 h-7 ${view === v ? "bg-white text-black font-semibold" : "opacity-70"}`}>{l}</button>
             ))}
           </span>
         )}
@@ -271,7 +341,7 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
       {!tasks ? <p className="text-sm opacity-60 py-3">Laden…</p> : (
         <>
           {running && (!clientId || running.client_id === clientId) && Running(running)}
-          {view === "client" && !clientId ? PerClient() : narrow ? Calendar() : (
+          {view === "blocks" && !clientId ? Blocks() : view === "client" && !clientId ? PerClient() : narrow ? Calendar() : (
             <>
           {!groups.some((g) => g.key === "late" || g.key === "today" || g.key === "week") && <p className="text-sm opacity-60 py-3">Niets meer voor deze week.</p>}
           <div className="space-y-2 mt-2">

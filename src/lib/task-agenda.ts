@@ -92,3 +92,21 @@ export function byDay(tasks: AgendaTask[]): { day: string | null; tasks: AgendaT
   for (const t of tasks) { const last = out[out.length - 1]; if (last && last.day === t.due_date) last.tasks.push(t); else out.push({ day: t.due_date, tasks: [t] }); }
   return out;
 }
+
+export type DayBlock = { clientId: string; tasks: AgendaTask[]; upcoming: boolean; seconds: number };
+/**
+ * The working day as blocks: one block per project, in the order given. A block holds that client's tasks for the day
+ * and anything late; on a day without any, the next three tasks, so a block always has work in it.
+ * `seconds` is the time on the clock for the tasks in the block.
+ */
+export function dayBlocks(tasks: AgendaTask[], clientIds: string[], day: string, today: string, now: number): DayBlock[] {
+  const by = (a: AgendaTask, b: AgendaTask) => Number(!!a.done_at) - Number(!!b.done_at) || String(a.due_date ?? "9").localeCompare(String(b.due_date ?? "9")) || a.title.localeCompare(b.title);
+  return clientIds.map((clientId) => {
+    const own = tasks.filter((t) => t.client_id === clientId);
+    let list = own.filter((t) => (t.due_date === day && (!t.done_at || day === today)) || (day === today && !t.done_at && !!t.due_date && t.due_date < today));
+    const upcoming = !list.some((t) => !t.done_at);
+    if (upcoming) list = [...list, ...own.filter((t) => !t.done_at && (!t.due_date || t.due_date > day)).sort(by).slice(0, 3)];
+    list = [...new Map(list.map((t) => [t.id, t])).values()].sort(by);
+    return { clientId, tasks: list, upcoming, seconds: list.reduce((s, t) => s + elapsed(t, now), 0) };
+  });
+}

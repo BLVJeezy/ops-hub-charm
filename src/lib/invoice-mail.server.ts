@@ -52,9 +52,10 @@ export async function deliverInvoice(
   if (!toEmail) throw new Error('Klant heeft geen e-mailadres')
 
   const items = Array.isArray(inv.line_items)
-    ? (inv.line_items as Array<{ description: string; amount?: number; note?: string }>).map((i) => ({
+    ? (inv.line_items as Array<{ description: string; amount?: number; qty?: number; unit_price?: number; note?: string }>).map((i) => ({
         description: i.description,
-        price: fmtEUR(Number(i.amount || 0)),
+        // the invoice form stores qty × unit_price; older lines carry a plain amount
+        price: fmtEUR(Number(i.amount ?? Number(i.qty ?? 1) * Number(i.unit_price ?? 0))),
         note: i.note || inv.vat_note || 'BTW (0% - Reverse Charge)',
       }))
     : []

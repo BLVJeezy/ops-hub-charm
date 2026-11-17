@@ -1,5 +1,30 @@
 // Sorting tasks into what a person asks first: what is late, what is today, what is this week.
-export type AgendaTask = { id: string; client_id: string | null; title: string; assignee: string; due_date: string | null; done_at: string | null; recurring_id?: string | null };
+export type AgendaTask = {
+  id: string; client_id: string | null; title: string; assignee: string; due_date: string | null; done_at: string | null; recurring_id?: string | null;
+  // the timer
+  started_at?: string | null; seconds?: number | null; breaks?: number | null; steps_total?: number | null; steps_done?: number | null; laps?: number[] | null;
+};
+
+/** Seconds worked on a task so far: what was banked plus the run that is going on now. */
+export function elapsed(t: Pick<AgendaTask, "started_at" | "seconds">, now: number): number {
+  const run = t.started_at ? Math.max(0, Math.floor((now - Date.parse(t.started_at)) / 1000)) : 0;
+  return Number(t.seconds || 0) + run;
+}
+/** A running clock: 4:07, 1:02:30. */
+export function clock(sec: number): string {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+}
+/** Time in words for a finished or paused task: "45 sec", "32 min", "1 u 05". */
+export function spent(sec: number): string {
+  if (sec < 60) return `${sec} sec`;
+  const m = Math.round(sec / 60);
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} u ${String(m % 60).padStart(2, "0")}`;
+}
+/** What one piece of a task is called: a task about videos counts videos, anything else counts steps. */
+export const stepWord = (title: string) => (/video/i.test(title) ? "Video" : /post/i.test(title) ? "Post" : "Stap");
+/** How long each finished piece took, from the clock readings at each finish. */
+export const lapTimes = (laps: number[] | null | undefined) => (laps ?? []).map((v, i, a) => v - (i ? a[i - 1] : 0));
 export type GroupKey = "late" | "today" | "week" | "next" | "later" | "none";
 export type AgendaGroup = { key: GroupKey; label: string; range?: string; tasks: AgendaTask[] };
 

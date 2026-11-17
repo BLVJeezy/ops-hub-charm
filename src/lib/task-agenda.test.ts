@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueLabel, groupTasks, weekEnd, type AgendaTask } from "./task-agenda";
+import { clock, dueLabel, elapsed, groupTasks, lapTimes, spent, stepWord, weekEnd, type AgendaTask } from "./task-agenda";
 
 const t = (id: string, due: string | null, done = false): AgendaTask => ({ id, client_id: null, title: id, assignee: "me", due_date: due, done_at: done ? "2026-11-17T08:00:00Z" : null });
 
@@ -32,5 +32,24 @@ describe("dueLabel", () => {
     expect(dueLabel("2026-11-16", "2026-11-17")).toBe("gisteren");
     expect(dueLabel("2026-11-20", "2026-11-17")).toBe("vr 20 nov");
     expect(dueLabel(null, "2026-11-17")).toBe("geen datum");
+  });
+});
+
+describe("timer", () => {
+  const now = Date.parse("2026-11-17T10:00:00Z");
+  it("adds the running stretch to the banked time", () => {
+    expect(elapsed({ started_at: null, seconds: 300 }, now)).toBe(300);
+    expect(elapsed({ started_at: "2026-11-17T09:58:00Z", seconds: 300 }, now)).toBe(420);
+    expect(elapsed({ started_at: "2026-11-17T10:05:00Z", seconds: 0 }, now)).toBe(0);      // a clock that is ahead never gives negative time
+  });
+  it("formats clocks and durations", () => {
+    expect(clock(7)).toBe("0:07"); expect(clock(247)).toBe("4:07"); expect(clock(3750)).toBe("1:02:30");
+    expect(spent(45)).toBe("45 sec"); expect(spent(1920)).toBe("32 min"); expect(spent(3900)).toBe("1 u 05");
+  });
+  it("names the pieces and times each one", () => {
+    expect(stepWord("Video's maken (3 deze week)")).toBe("Video");
+    expect(stepWord("Offerte uitwerken")).toBe("Stap");
+    expect(lapTimes([600, 1500, 1800])).toEqual([600, 900, 300]);
+    expect(lapTimes(null)).toEqual([]);
   });
 });

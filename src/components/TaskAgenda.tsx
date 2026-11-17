@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Plus, Repeat } from "lucide-react";
+import { Check, Pause, Pencil, Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { brusselsToday } from "@/lib/invoice-schedule";
-import { groupTasks, dueLabel, weekday, type AgendaTask, type GroupKey } from "@/lib/task-agenda";
+import { clock, elapsed, groupTasks, dueLabel, lapTimes, spent, stepWord, weekday, type AgendaTask, type GroupKey } from "@/lib/task-agenda";
 import { ChevronDown } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,12 +24,15 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   const [title, setTitle] = useState("");
   const [forClient, setForClient] = useState("");
   const [repeat, setRepeat] = useState<"" | "weekly" | "monthly">("");
+  const [now, setNow] = useState(() => Date.now());
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ title: "", due: "", steps: "" });
 
   const load = useCallback(async () => {
     await db.rpc("generate_recurring_tasks").then(() => null, () => null);   // plan the fixed tasks ahead; never blocks the list
     const since = new Date(Date.now() - 36e5 * 18).toISOString();
     const [t, c] = await Promise.all([
-      db.from("client_tasks").select("id,client_id,title,assignee,due_date,done_at,recurring_id").or(`done_at.is.null,done_at.gte.${since}`).order("due_date", { ascending: true, nullsFirst: false }),
+      db.from("client_tasks").select("id,client_id,title,assignee,due_date,done_at,recurring_id,started_at,seconds,breaks,steps_total,steps_done,laps").or(`done_at.is.null,done_at.gte.${since}`).order("due_date", { ascending: true, nullsFirst: false }),
       db.from("clients").select("id,name,brand_color,status,is_internal").order("name"),
     ]);
     if (t.error) toast.error(t.error.message);
@@ -43,12 +46,51 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
   const groups = useMemo(() => groupTasks(shown, today), [shown, today]);
   const openCount = shown.filter((t) => !t.done_at).length;
 
-  async function toggle(t: AgendaTask) {
-    const done_at = t.done_at ? null : new Date().toISOString();
-    setTasks((all) => (all ?? []).map((x) => (x.id === t.id ? { ...x, done_at } : x)));     // answer the tap at once
-    const { error } = await db.from("client_tasks").update({ done_at }).eq("id", t.id);
+  const running = (tasks ?? []).find((t) => t.started_at && !t.done_at) ?? null;
+  // the clock only ticks while something runs
+  useEffect(() => { if (!running) return; setNow(Date.now()); const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, [running?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Change a task on screen at once, then in the Hub; on failure the list is loaded again. */
+  async function patch(id: string, change: Partial<AgendaTask>) {
+    setTasks((all) => (all ?? []).map((x) => (x.id === id ? { ...x, ...change } : x)));
+    const { error } = await db.from("client_tasks").update(change).eq("id", id);
     if (error) { toast.error(error.message); void load(); } else onChange?.();
   }
+  const bank = (t: AgendaTask) => ({ seconds: elapsed(t, Date.now()), started_at: null });   // stop the clock, keep the time
+  async function start(t: AgendaTask) {
+    if (running && running.id !== t.id) await patch(running.id, bank(running));              // one task at a time
+    // picking a task up again after a stop is a break taken
+    await patch(t.id, { started_at: new Date().toISOString(), breaks: Number(t.breaks || 0) + (Number(t.seconds || 0) > 0 ? 1 : 0) });
+  }
+  const stop = (t: AgendaTask) => patch(t.id, bank(t));
+  async function stepDone(t: AgendaTask) {
+    const at = elapsed(t, Date.now()), done = Number(t.steps_done || 0) + 1, last = !!t.steps_total && done >= t.steps_total;
+    await patch(t.id, { steps_done: done, laps: [...(t.laps ?? []), at], ...(last ? { done_at: new Date().toISOString(), seconds: at, started_at: null } : {}) });
+  }
+  const toggle = (t: AgendaTask) => patch(t.id, t.done_at ? { done_at: null } : { done_at: new Date().toISOString(), ...(t.started_at ? bank(t) : {}) });
+  function edit(t: AgendaTask) { setEditing(editing === t.id ? null : t.id); setDraft({ title: t.title, due: t.due_date ?? "", steps: t.steps_total ? String(t.steps_total) : "" }); }
+  async function save(t: AgendaTask) {
+    const title = draft.title.trim(); if (!title) return;
+    const steps = Math.max(0, Math.min(50, Math.floor(Number(draft.steps) || 0)));
+    await patch(t.id, { title, due_date: draft.due || null, steps_total: steps || null });   // the clock keeps running
+    setEditing(null);
+  }
+  async function remove(t: AgendaTask) {
+    setTasks((all) => (all ?? []).filter((x) => x.id !== t.id)); setEditing(null);
+    const { error } = await db.from("client_tasks").delete().eq("id", t.id);
+    if (error) { toast.error(error.message); void load(); } else onChange?.();
+  }
+  const Editor = (t: AgendaTask) => (
+    <form onSubmit={(e) => { e.preventDefault(); void save(t); }} className="pb-3 pt-1 space-y-1.5">
+      <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label="Titel" className="w-full h-10 rounded-xl border border-current/15 bg-transparent px-3 text-sm outline-none focus:border-current/40" />
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <input type="date" value={draft.due} onChange={(e) => setDraft({ ...draft, due: e.target.value })} aria-label="Datum" className="h-10 rounded-xl border border-current/15 px-2 text-sm bg-transparent [color-scheme:dark]" />
+        <label className="inline-flex items-center gap-1.5 text-xs opacity-80">Aantal stuks<input type="number" inputMode="numeric" min={0} max={50} value={draft.steps} onChange={(e) => setDraft({ ...draft, steps: e.target.value })} placeholder="0" className="w-16 h-10 rounded-xl border border-current/15 px-2 text-sm bg-transparent" /></label>
+        <button type="submit" className="press h-10 px-4 rounded-xl bg-white text-black text-sm font-semibold ml-auto">Bewaar</button>
+        <button type="button" onClick={() => remove(t)} aria-label="Verwijder taak" className="press hit w-10 h-10 rounded-xl grid place-items-center border border-current/15 text-red-400"><Trash2 className="w-4 h-4" /></button>
+      </div>
+    </form>
+  );
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const text = title.trim(); if (!text) return;
@@ -63,22 +105,56 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
 
   const Row = (t: AgendaTask, group: GroupKey) => {
     const c = t.client_id ? byId[t.client_id] : null, late = !t.done_at && !!t.due_date && t.due_date < today;
+    const sec = elapsed(t, now), isRunning = !!t.started_at && !t.done_at, steps = Number(t.steps_total || 0);
     return (
       <li key={t.id}>
-        <button type="button" onClick={() => toggle(t)} aria-pressed={!!t.done_at} className="press w-full flex items-center gap-3 min-h-[52px] py-1.5 text-left">
+        <div className="flex items-center gap-2.5 min-h-[52px] py-1.5">
           {(group === "week" || group === "next") && t.due_date && <span className="w-7 shrink-0 text-xs font-semibold uppercase opacity-70 text-center">{weekday(t.due_date)}</span>}
-          <span className={`w-7 h-7 rounded-full grid place-items-center shrink-0 border-2 transition-colors ${t.done_at ? "bg-emerald-500 border-emerald-500 text-black" : late ? "border-red-400" : "border-current opacity-40"}`}>{t.done_at && <Check className="w-4 h-4" strokeWidth={3} />}</span>
-          <span className="min-w-0 flex-1">
+          <button type="button" onClick={() => toggle(t)} aria-pressed={!!t.done_at} aria-label={t.done_at ? `Zet terug: ${t.title}` : `Klaar: ${t.title}`} className="press hit shrink-0">
+            <span className={`w-7 h-7 rounded-full grid place-items-center border-2 transition-colors ${t.done_at ? "bg-emerald-500 border-emerald-500 text-black" : late ? "border-red-400" : "border-current opacity-40"}`}>{t.done_at && <Check className="w-4 h-4" strokeWidth={3} />}</span>
+          </button>
+          <button type="button" onClick={() => edit(t)} aria-expanded={editing === t.id} className="min-w-0 flex-1 text-left">
             <span className={`block text-[15px] leading-snug ${t.done_at ? "line-through opacity-45" : ""}`}>{t.title}</span>
-            <span className="flex items-center gap-1.5 text-xs opacity-60">
+            <span className="flex flex-wrap items-center gap-x-1.5 text-xs opacity-60">
               {c && <><span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.brand_color || "#8A93A6" }} /><span className="truncate">{short(c.name)}</span></>}
               {group !== "today" && group !== "week" && group !== "next" && <span className={late ? "text-red-400 opacity-100 font-medium" : ""}>{dueLabel(t.due_date, today)}</span>}
               {t.assignee === "client" && <span>wacht op klant</span>}
+              {steps > 0 && <span className="tabular-nums">{Number(t.steps_done || 0)}/{steps}</span>}
+              {sec > 0 && !isRunning && <span className="tabular-nums">{spent(sec)}{Number(t.breaks) ? ` · ${t.breaks} ${t.breaks === 1 ? "pauze" : "pauzes"}` : ""}</span>}
               {t.recurring_id && <Repeat className="w-3 h-3" aria-label="vaste taak" />}
             </span>
-          </span>
-        </button>
+          </button>
+          {!t.done_at && (isRunning
+            ? <span className="text-sm font-semibold tabular-nums text-emerald-400 shrink-0">{clock(sec)}</span>
+            : <button type="button" onClick={() => start(t)} aria-label={`Start: ${t.title}`} className="press hit w-10 h-10 rounded-full grid place-items-center shrink-0 border border-current/20 hover:bg-current/10"><Play className="w-4 h-4 translate-x-px" /></button>)}
+        </div>
+        {editing === t.id && !isRunning && Editor(t)}
       </li>
+    );
+  };
+  // the task on the clock gets its own card: the time, the breaks, and one button per finished piece
+  const Running = (t: AgendaTask) => {
+    const sec = elapsed(t, now), c = t.client_id ? byId[t.client_id] : null, steps = Number(t.steps_total || 0), done = Number(t.steps_done || 0), word = stepWord(t.title), laps = lapTimes(t.laps);
+    return (
+      <div className="rounded-2xl border border-emerald-400/50 bg-emerald-500/[0.08] p-3 mt-2">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-xs text-emerald-400 font-medium flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />Bezig{c ? ` · ${short(c.name)}` : ""}</div>
+            <button type="button" onClick={() => edit(t)} className="block text-left text-[15px] font-medium leading-snug mt-0.5">{t.title} <Pencil className="inline w-3.5 h-3.5 opacity-50 -mt-0.5" /></button>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-3xl font-semibold tabular-nums leading-none">{clock(sec)}</div>
+            <div className="text-xs opacity-60 mt-1">{Number(t.breaks || 0)} {Number(t.breaks) === 1 ? "pauze" : "pauzes"}</div>
+          </div>
+        </div>
+        {laps.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2">{laps.map((l, i) => <span key={i} className="text-xs rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 tabular-nums">{word} {i + 1}: {spent(l)}</span>)}</div>}
+        <div className="flex gap-2 mt-3">
+          {steps > 0 && done < steps && <button type="button" onClick={() => stepDone(t)} className="press flex-1 h-11 rounded-xl bg-emerald-500 text-black text-sm font-semibold">{word} {done + 1} klaar{done + 1 === steps ? " · taak af" : ""}</button>}
+          {steps === 0 && <button type="button" onClick={() => toggle(t)} className="press flex-1 h-11 rounded-xl bg-emerald-500 text-black text-sm font-semibold">Klaar</button>}
+          <button type="button" onClick={() => stop(t)} className="press flex-1 h-11 rounded-xl border border-current/25 text-sm font-semibold inline-flex items-center justify-center gap-1.5"><Pause className="w-4 h-4" />Stop</button>
+        </div>
+        {editing === t.id && <div className="mt-2">{Editor(t)}</div>}
+      </div>
     );
   };
 
@@ -90,6 +166,7 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
       </div>
       {!tasks ? <p className="text-sm opacity-60 py-3">Laden…</p> : (
         <>
+          {running && (!clientId || running.client_id === clientId) && Running(running)}
           {!groups.some((g) => g.key === "late" || g.key === "today" || g.key === "week") && <p className="text-sm opacity-60 py-3">Niets meer voor deze week.</p>}
           <div className="space-y-2 mt-2">
             {groups.map((g) => {

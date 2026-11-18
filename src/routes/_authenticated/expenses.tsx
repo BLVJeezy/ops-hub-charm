@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/format";
 import { EXPENSE_CATEGORY_COLORS } from "@/lib/constants";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { MonthlyCosts } from "@/components/MonthlyCosts";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
   component: Expenses,
@@ -162,6 +163,7 @@ function Expenses() {
         </div>
       )}
 
+      <MonthlyCosts />
         </div>
       </div>
 

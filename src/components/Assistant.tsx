@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Send, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
 import { askAssistant } from "@/lib/assistant.functions";
 import { speechText, type ChatMessage } from "@/lib/assistant";
+import { FREE_IDEAS, freeAnswer, type FreeData } from "@/lib/assistant-free";
+import { supabase } from "@/integrations/supabase/client";
 
 export const toggleAssistant = () => window.dispatchEvent(new Event("assistant:toggle"));
 
 const REASONS: Record<string, string> = {
-  "no-key": "De assistent is nog niet aangesloten: de sleutel ANTHROPIC_API_KEY ontbreekt bij de geheimen van de Hub.",
   "bad-key": "De sleutel van de assistent wordt geweigerd. Kijk ANTHROPIC_API_KEY na.",
   "bad-model": "Het ingestelde AI-model bestaat niet. Kijk ASSISTANT_MODEL na.",
   "no-access": "Alleen een beheerder kan de assistent gebruiken.",
@@ -14,7 +15,26 @@ const REASONS: Record<string, string> = {
   "too-long": "Die vraag vroeg te veel opzoekwerk. Stel ze wat preciezer.",
   failed: "Dat lukte niet. Probeer het opnieuw.",
 };
-const IDEAS = ["Wat was de omzet de laatste 30 dagen?", "Wat moet ik vandaag doen?", "Welke facturen staan nog open?"];
+/** The Hub's own numbers for the free version: read with the signed-in user's rights, nothing leaves the Hub. */
+async function loadFreeData(): Promise<FreeData> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any, since = new Date(Date.now() - 400 * 864e5).toISOString();
+  const [inv, tasks, exp, rec, sites] = await Promise.all([
+    db.from("invoices").select("invoice_number, client_name, date, total, status"),
+    db.from("client_tasks").select("title, due_date, assignee, clients:client_id(name)").is("done_at", null).order("due_date"),
+    db.from("expenses").select("name, monthly_cost"),
+    db.from("site_records").select("kind, source_created_at, synced_at, monitored_sites:site_id(name)").gte("synced_at", since).limit(5000),
+    db.from("monitored_sites").select("name, last_status").eq("enabled", true),
+  ]);
+  const n = (v: unknown) => Number(v) || 0;
+  return {
+    invoices: (inv.data ?? []).map((i: Record<string, unknown>) => ({ ...i, total: n(i.total) })),
+    tasks: (tasks.data ?? []).map((t: { title: string; due_date: string | null; assignee: string | null; clients: { name: string } | null }) => ({ title: t.title, due_date: t.due_date, assignee: t.assignee, client: t.clients?.name?.split(" (")[0] ?? null })),
+    expenses: (exp.data ?? []).map((e: Record<string, unknown>) => ({ name: String(e.name), monthly_cost: n(e.monthly_cost) })),
+    records: (rec.data ?? []).map((r: { kind: string; source_created_at: string | null; synced_at: string; monitored_sites: { name: string } | null }) => ({ kind: r.kind, site: r.monitored_sites?.name ?? null, created: r.source_created_at ?? r.synced_at })),
+    sites: (sites.data ?? []).map((x: { name: string; last_status: string | null }) => ({ name: x.name, status: x.last_status })),
+  };
+}
 type Lang = "nl-BE" | "en-GB";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const recognition = () => (typeof window === "undefined" ? null : ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition ?? null));
@@ -32,6 +52,8 @@ export function Assistant() {
   const [speak, setSpeak] = useState(true);
   const [lang, setLang] = useState<Lang>("nl-BE");
   const [canListen, setCanListen] = useState(false);
+  // without a key for the AI model the box answers the common questions from the Hub's own numbers
+  const [free, setFree] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,9 +95,14 @@ export function Assistant() {
     const next = [...messages, { role: "user" as const, text: q }];
     setMessages(next); setText(""); setError(null); setBusy(true);
     try {
-      const r = await askAssistant({ data: { messages: next } });
+      const r = free ? { ok: false as const, reason: "no-key" as const } : await askAssistant({ data: { messages: next } });
       if (r.ok) { setMessages([...next, { role: "assistant", text: r.text }]); say(r.text); }
-      else setError(REASONS[r.reason] ?? REASONS.failed);
+      else if (r.reason === "no-key") {
+        setFree(true);
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
+        const answer = freeAnswer(q, await loadFreeData(), today, lang === "nl-BE" ? "nl" : "en");
+        setMessages([...next, { role: "assistant", text: answer }]); say(answer);
+      } else setError(REASONS[r.reason] ?? REASONS.failed);
     } catch {
       setError(REASONS.failed);
     } finally {
@@ -105,7 +132,7 @@ export function Assistant() {
       style={{ backgroundColor: "hsl(var(--sidebar-background) / 0.96)", borderColor: "hsl(var(--sidebar-border))" }}>
       <header className="flex items-center gap-2 pl-4 pr-2 h-12 border-b shrink-0" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
         <Sparkles className="w-4 h-4 text-[#C9A14A]" />
-        <h2 className="text-sm font-semibold flex-1">Assistent</h2>
+        <h2 className="text-sm font-semibold flex-1">Assistent{free && <span className="ml-2 text-[11px] font-normal text-muted-foreground">gratis versie</span>}</h2>
         <button type="button" onClick={() => { const l = lang === "nl-BE" ? "en-GB" : "nl-BE"; setLang(l); store("assistant-lang", l); }} aria-label={`Spraak in het ${lang === "nl-BE" ? "Nederlands" : "Engels"}. Tik om te wisselen.`}
           className="press h-8 px-2.5 rounded-full border border-border text-xs font-medium">{lang === "nl-BE" ? "NL" : "EN"}</button>
         <button type="button" onClick={() => { const v = !speak; setSpeak(v); store("assistant-speak", v ? "on" : "off"); if (!v) quiet(); }} aria-pressed={speak} aria-label={speak ? "Voorlezen staat aan" : "Voorlezen staat uit"}
@@ -118,7 +145,7 @@ export function Assistant() {
           <div className="py-2">
             <p className="text-sm text-muted-foreground px-1">Vraag iets over je klanten, facturen, taken, kosten of websites. Ik zoek het op in de Hub.</p>
             <div className="flex flex-col gap-1.5 mt-3">
-              {IDEAS.map((q) => <button key={q} type="button" onClick={() => ask(q)} className="press text-left text-sm rounded-2xl border border-border px-3 py-2.5 hover:bg-muted/40">{q}</button>)}
+              {FREE_IDEAS[lang === "nl-BE" ? "nl" : "en"].map((q) => <button key={q} type="button" onClick={() => ask(q)} className="press text-left text-sm rounded-2xl border border-border px-3 py-2.5 hover:bg-muted/40">{q}</button>)}
             </div>
           </div>
         )}

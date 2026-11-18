@@ -1,12 +1,13 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet,
-  FileText, Search as SearchIcon, LogOut, Activity, Film, Workflow, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff,
+  FileText, Search as SearchIcon, LogOut, Activity, Film, Workflow, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff, Sparkles,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
+import { Assistant, toggleAssistant } from "@/components/Assistant";
 
 const NAV_ITEMS = [
   { to: "/brain", label: "Brain", icon: BrainCircuit },
@@ -107,7 +108,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="w-full pl-9 pr-3 h-9 rounded-md bg-card border border-input text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </form>
-        <PrivacyButton className="ml-auto" />
+        {role === "admin" && (
+          <button type="button" onClick={toggleAssistant} className="press ml-auto mr-2 h-9 px-3 rounded-full border border-[#C9A14A]/50 bg-[#C9A14A]/10 text-[#C9A14A] text-sm inline-flex items-center gap-2">
+            <Sparkles className="w-4 h-4" /> Assistent
+          </button>
+        )}
+        <PrivacyButton className={role === "admin" ? "" : "ml-auto"} />
       </header>
 
       {/* Content */}
@@ -116,12 +122,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       {/* Mobile: floating pill (search · current section · menu) */}
-      <MobileNav />
+      <MobileNav assistant={role === "admin"} />
+      {role === "admin" && <Assistant />}
     </div>
   );
 }
 
-function MobileNav() {
+function MobileNav({ assistant }: { assistant: boolean }) {
   const current = useRouterState({ select: (st) => st.location.pathname });
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -180,6 +187,11 @@ function MobileNav() {
         <button onClick={() => { setMenu(!menu); setSearch(false); }} className="h-11 px-4 rounded-full flex items-center gap-2 text-sm font-medium whitespace-nowrap" style={{ backgroundColor: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
           <Here className="w-4 h-4" /> {here.label}
         </button>
+        {assistant && (
+          <button type="button" aria-label="Assistent" onClick={() => { setMenu(false); setSearch(false); toggleAssistant(); }} className="press w-11 h-11 rounded-full flex items-center justify-center text-[#C9A14A]">
+            <Sparkles className="w-5 h-5" />
+          </button>
+        )}
         <PrivacyButton className="w-11 h-11" />
         <button aria-label="Menu" aria-expanded={menu} onClick={() => { setMenu(!menu); setSearch(false); }} className="w-11 h-11 rounded-full flex items-center justify-center"
           style={{ backgroundColor: menu ? "hsl(var(--primary) / 0.15)" : "transparent", color: menu ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>

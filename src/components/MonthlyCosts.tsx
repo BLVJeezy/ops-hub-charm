@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
-import { costLines, lastMonths, monthTotal, type CostTx } from "@/lib/expense-months";
+import { costLines, lastMonths, monthTotal, passedOn, type CostTx } from "@/lib/expense-months";
 
 const MONTHS = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 const LONG = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
@@ -33,7 +33,7 @@ export function MonthlyCosts() {
   return (
     <section className="rounded-xl border border-border bg-card p-3.5 mt-3" aria-label="Kosten per maand">
       <h2 className="font-semibold">Kosten per maand</h2>
-      <p className="text-[11px] text-muted-foreground">Uit je bankrekening, zonder je eigen opnames. Tik op een maand.</p>
+      <p className="text-[11px] text-muted-foreground">Uit je bankrekening, zonder je eigen opnames en zonder wat je doorbetaalt aan Les Autres. Tik op een maand.</p>
       <div className="flex items-end gap-1 h-28 mt-3" role="group" aria-label="Kies een maand">
         {months.map((m, i) => (
           <button key={m} type="button" onClick={() => setPick(m)} aria-pressed={m === sel} aria-label={`${label(m, true)}: ${formatCurrency(totals[i])}`}
@@ -64,6 +64,11 @@ export function MonthlyCosts() {
           );
         })}
       </ul>
+      {passedOn(txs, sel).map((p) => (
+        <p key={p.client} className="text-[11px] text-muted-foreground border-t border-border pt-2 mt-1">
+          Doorbetaald aan {p.client}: <span className="tabular-nums text-foreground">{formatCurrency(p.amount)}</span>. Geen kost: dat is hun geld, Solyn houdt een commissie.
+        </p>
+      ))}
     </section>
   );
 }

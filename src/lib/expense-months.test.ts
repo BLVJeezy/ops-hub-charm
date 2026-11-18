@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { costLines, lastMonths, monthTotal, vendor } from "./expense-months";
+import { costLines, lastMonths, monthTotal, passedOn, vendor } from "./expense-months";
 
 describe("expense months", () => {
   it("names vendors from bank descriptions", () => {
@@ -24,5 +24,16 @@ describe("expense months", () => {
     expect(lines.map((l) => [l.name, l.total])).toEqual([["Auto, transport & reizen", 40], ["Higgsfield", 30.97]]);
     expect(lines[1].months).toEqual({ "2026-09": 9.18, "2026-10": 21.79 });
     expect(monthTotal(lines, "2026-10")).toBe(61.79);
+  });
+});
+
+describe("pass-through", () => {
+  it("keeps money passed on to Les Autres out of the costs and lists it apart", () => {
+    const txs = [
+      { date: "2026-10-10", amount: -380.16, description: "To Muhammad Masae • Solyn Global - Les Autres", account: "Freelancers & onderaanneming" },
+      { date: "2026-10-12", amount: -25, description: "Lovable", account: "Software & tools" },
+    ];
+    expect(costLines(txs, ["2026-10"]).map((l) => l.name)).toEqual(["Lovable"]);
+    expect(passedOn(txs, "2026-10")).toEqual([{ client: "Les Autres", amount: 380.16 }]);
   });
 });

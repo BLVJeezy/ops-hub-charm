@@ -4,6 +4,9 @@ export type CostLine = { name: string; group: string; months: Record<string, num
 
 /** Ledger accounts that are not costs of the business: the owner's current account and currency moves. */
 const NOT_COSTS = [/rekening-courant/i, /vreemde valuta/i];
+/** Money passed on to a client, not a cost: Les Autres (Muhammad Masae) is a client that Solyn sells for on commission. */
+export const PASS_THROUGH: [RegExp, string][] = [[/muhammad masae/i, "Les Autres"]];
+export const passThrough = (description: string) => PASS_THROUGH.find(([re]) => re.test(description))?.[1] ?? null;
 const VENDORS: [RegExp, string][] = [
   [/higgsfield/i, "Higgsfield"], [/anthropic|claude/i, "Claude / Anthropic"], [/openai|chatgpt/i, "ChatGPT / OpenAI"],
   [/leadsnap/i, "LeadSnap"], [/lovable/i, "Lovable"], [/resend/i, "Resend"], [/cookieyes/i, "CookieYes"], [/base44/i, "Base44"],
@@ -11,7 +14,7 @@ const VENDORS: [RegExp, string][] = [
   [/instantly/i, "Instantly"], [/ionos/i, "IONOS"], [/godaddy/i, "GoDaddy"], [/calendly/i, "Calendly"], [/artlist/i, "Artlist"],
   [/shopify/i, "Shopify"], [/zoom\.com/i, "Zoom"], [/zadarma/i, "Zadarma"], [/gamma/i, "Gamma"], [/myclaw/i, "MyClaw"],
   [/wetracked/i, "WeTracked"], [/x developer/i, "X Developer"], [/flowagent/i, "FlowAgent"], [/dodopay|clickcast/i, "Clickcast"],
-  [/revolut/i, "Revolut Business"], [/facebk|facebook|meta/i, "Facebook-advertenties"], [/muhammad masae/i, "Muhammad Masae (freelancer)"],
+  [/revolut/i, "Revolut Business"], [/facebk|facebook|meta/i, "Facebook-advertenties"],
 ];
 export function vendor(description: string): string {
   for (const [re, name] of VENDORS) if (re.test(description)) return name;
@@ -28,7 +31,7 @@ export function lastMonths(upTo: string, count: number): string[] {
 export function costLines(txs: CostTx[], months: string[]): CostLine[] {
   const keep = new Set(months), map = new Map<string, CostLine>();
   for (const t of txs) {
-    if (t.amount >= 0 || !keep.has(monthKey(t.date)) || NOT_COSTS.some((re) => re.test(t.account ?? ""))) continue;
+    if (t.amount >= 0 || !keep.has(monthKey(t.date)) || NOT_COSTS.some((re) => re.test(t.account ?? "")) || passThrough(t.description)) continue;
     const group = t.account ?? "Niet ingedeeld";
     const byVendor = /software|bank|marketing|freelanc/i.test(group);
     const name = byVendor ? vendor(t.description) : group;
@@ -41,3 +44,10 @@ export function costLines(txs: CostTx[], months: string[]): CostLine[] {
   return [...map.values()].sort((a, b) => b.total - a.total);
 }
 export const monthTotal = (lines: CostLine[], m: string) => Math.round(lines.reduce((s, l) => s + (l.months[m] ?? 0), 0) * 100) / 100;
+
+/** What was passed on to clients that Solyn sells for, per client per month. */
+export function passedOn(txs: CostTx[], m: string): { client: string; amount: number }[] {
+  const map = new Map<string, number>();
+  for (const t of txs) { const c = passThrough(t.description); if (c && t.amount < 0 && monthKey(t.date) === m) map.set(c, Math.round(((map.get(c) ?? 0) - t.amount) * 100) / 100); }
+  return [...map.entries()].map(([client, amount]) => ({ client, amount }));
+}

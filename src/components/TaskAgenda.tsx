@@ -262,7 +262,7 @@ export function TaskAgenda({ className = "", clientId, onChange, tick = 0 }: { c
 
 
   const BLOCK_MIN = 60;
-  const defaultBlocks = () => ["amano", "dyna", "debl"].map((k) => clients.find((c) => c.status === "Active" && c.name.toLowerCase().includes(k))?.id).filter(Boolean) as string[];
+  const defaultBlocks = () => ["neuron", "amano", "dyna", "debl"].map((k) => clients.find((c) => c.status === "Active" && c.name.toLowerCase().includes(k))?.id).filter(Boolean) as string[];
   const Blocks = () => {
     const ids = (blockIds ?? defaultBlocks()).filter((id) => byId[id]);
     const d = blockDay === "today" ? today : addDays(today, 1);

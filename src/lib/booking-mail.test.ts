@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { clientMail, ownerMail, type BookingMail } from "./booking-mail";
 
-const b: BookingMail = { name: "Ann <b>Peeters</b>", email: "ann@bakkerij.be", phone: "+32 470 12 34 56", company: "Bakkerij Peeters", note: "Nieuwe website", when: "vrijdag 20 november om 15:00", mode: "onsite", location: "Markt 1, Tongeren", topics: ["SEO", "Webdesign"], files: { sent: 2, stored: 2 } };
+const b: BookingMail = {
+  name: "Ann <b>Peeters</b>",
+  email: "ann@bakkerij.be",
+  phone: "+32 470 12 34 56",
+  company: "Bakkerij Peeters",
+  note: "Nieuwe website",
+  when: "vrijdag 20 november om 15:00",
+  mode: "onsite",
+  location: "Markt 1, Tongeren",
+  topics: ["SEO", "Webdesign"],
+  files: { sent: 2, stored: 2 },
+};
 
 describe("booking mails", () => {
   it("confirms to the client and says where to turn", () => {
@@ -13,8 +24,10 @@ describe("booking mails", () => {
       expect(part).toContain("Wil je je afspraak wijzigen of annuleren?");
       expect(part).toContain("jason@solynglobal.be");
     }
-    expect(m.html).not.toContain("<b>Peeters</b>");   // what a visitor typed is never markup
-    expect(clientMail({ ...b, mode: "online", location: "" }, "jason@solynglobal.be").text).toContain("Online meeting");
+    expect(m.html).not.toContain("<b>Peeters</b>"); // what a visitor typed is never markup
+    expect(
+      clientMail({ ...b, mode: "online", location: "" }, "jason@solynglobal.be").text,
+    ).toContain("Online meeting");
   });
   it("tells the owner everything the client filled in", () => {
     const m = ownerMail(b, "https://hub.example/agenda");

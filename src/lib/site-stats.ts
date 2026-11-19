@@ -1,6 +1,13 @@
 // Pure aggregation of site_daily_stats rows. Tested in site-stats.test.ts.
 
-export type DailyRow = { day: string; kind: string; checks: number; ok: number; avg_ms: number | null; p95_ms: number | null };
+export type DailyRow = {
+  day: string;
+  kind: string;
+  checks: number;
+  ok: number;
+  avg_ms: number | null;
+  p95_ms: number | null;
+};
 
 export type KindSummary = { kind: string; checks: number; ok: number; rate: number | null };
 
@@ -57,10 +64,15 @@ export function summarise(rows: DailyRow[], days: number, today: string): StatsS
 }
 
 /** Mean time to resolve, in minutes, for resolved incidents. */
-export function mttrMinutes(incidents: Array<{ opened_at: string; resolved_at: string | null }>): number | null {
+export function mttrMinutes(
+  incidents: Array<{ opened_at: string; resolved_at: string | null }>,
+): number | null {
   const done = incidents.filter((i) => i.resolved_at);
   if (!done.length) return null;
-  const total = done.reduce((s, i) => s + (new Date(i.resolved_at!).getTime() - new Date(i.opened_at).getTime()), 0);
+  const total = done.reduce(
+    (s, i) => s + (new Date(i.resolved_at!).getTime() - new Date(i.opened_at).getTime()),
+    0,
+  );
   return Math.round(total / done.length / 60000);
 }
 
@@ -71,7 +83,9 @@ export function shiftDay(iso: string, n: number): string {
 
 /** Extract <loc> URLs from a sitemap or sitemap index. */
 export function parseSitemap(xml: string): { urls: string[]; sitemaps: string[] } {
-  const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => m[1].replace(/&amp;/g, "&"));
+  const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) =>
+    m[1].replace(/&amp;/g, "&"),
+  );
   const isIndex = /<sitemapindex[\s>]/i.test(xml);
   return isIndex ? { urls: [], sitemaps: locs } : { urls: locs, sitemaps: [] };
 }

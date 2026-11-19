@@ -10,22 +10,52 @@ const CSV = `Date started (UTC),Date completed (UTC),ID,Type,State,Description,R
 
 describe("bank import", () => {
   it("splits quoted csv", () => {
-    expect(parseCsv('a,b\n"x, y",2\n')).toEqual([["a", "b"], ["x, y", "2"]]);
-    expect(parseCsv("a;b\n1,5;2\n")).toEqual([["a", "b"], ["1,5", "2"]]);
+    expect(parseCsv('a,b\n"x, y",2\n')).toEqual([
+      ["a", "b"],
+      ["x, y", "2"],
+    ]);
+    expect(parseCsv("a;b\n1,5;2\n")).toEqual([
+      ["a", "b"],
+      ["1,5", "2"],
+    ]);
   });
   it("parses a Revolut Business csv", () => {
     const { rows, skipped } = parseRevolutCsv(CSV);
     expect(skipped).toBe(2); // pending + USD account
     expect(rows).toHaveLength(3);
-    expect(rows[0]).toMatchObject({ hash: "rvcsv-abc-1", date: "2026-11-10", type: "MOA", amount: 500, description: "Money added from RIORY • XQJ68I3" });
-    expect(rows[1]).toMatchObject({ type: "CAR", amount: -18.87, orig_currency: "GBP", orig_amount: 15.58, fee: 0.18 });
+    expect(rows[0]).toMatchObject({
+      hash: "rvcsv-abc-1",
+      date: "2026-11-10",
+      type: "MOA",
+      amount: 500,
+      description: "Money added from RIORY • XQJ68I3",
+    });
+    expect(rows[1]).toMatchObject({
+      type: "CAR",
+      amount: -18.87,
+      orig_currency: "GBP",
+      orig_amount: 15.58,
+      fee: 0.18,
+    });
     expect(rows[2]).toMatchObject({ type: "EXO", amount: -6.39 });
     expect(parseRevolutCsv("foo,bar\n1,2").error).toBeTruthy();
   });
   it("detects duplicates from the pdf import", () => {
-    const existing = [{ date: "2026-11-10", amount: 500, description: "Money added from RIORY • XQJ68I3" }];
-    expect(isDuplicate({ date: "2026-11-10", amount: 500, description: "Money added from RIORY" }, existing)).toBe(true);
-    expect(isDuplicate({ date: "2026-11-10", amount: 501, description: "Money added from RIORY" }, existing)).toBe(false);
+    const existing = [
+      { date: "2026-11-10", amount: 500, description: "Money added from RIORY • XQJ68I3" },
+    ];
+    expect(
+      isDuplicate(
+        { date: "2026-11-10", amount: 500, description: "Money added from RIORY" },
+        existing,
+      ),
+    ).toBe(true);
+    expect(
+      isDuplicate(
+        { date: "2026-11-10", amount: 501, description: "Money added from RIORY" },
+        existing,
+      ),
+    ).toBe(false);
   });
   it("suggests rule patterns", () => {
     expect(rulePattern("CAR", "Shell 7684 Tongere 0684")).toBe("CAR Shell%");

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addDays, nextOccurrence, advanceMonthNames, brusselsHour, brusselsToday, isDueAt, nextMonthlyDate } from "./invoice-schedule";
+import {
+  addDays,
+  nextOccurrence,
+  advanceMonthNames,
+  brusselsHour,
+  brusselsToday,
+  isDueAt,
+  nextMonthlyDate,
+} from "./invoice-schedule";
 
 describe("nextMonthlyDate", () => {
   it("moves to the same day next month", () =>
@@ -49,7 +57,8 @@ describe("hours", () => {
 });
 
 describe("nextOccurrence", () => {
-  it("uses this month when the day is still ahead", () => expect(nextOccurrence("2026-11-13", 29)).toBe("2026-11-29"));
+  it("uses this month when the day is still ahead", () =>
+    expect(nextOccurrence("2026-11-13", 29)).toBe("2026-11-29"));
   it("uses next month when the day has passed or is today", () => {
     expect(nextOccurrence("2026-11-13", 1)).toBe("2026-12-01");
     expect(nextOccurrence("2026-11-13", 13)).toBe("2026-12-13");

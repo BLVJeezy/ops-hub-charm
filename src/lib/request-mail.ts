@@ -1,5 +1,16 @@
 /** Mails to a client about their request: "we started" and "we're done". Plain, short, in Dutch. */
-export type MailReq = { title: string; client: string; contactName?: string | null; link: string };
+export type MailReq = {
+  title: string;
+  client: string;
+  contactName?: string | null;
+  link: string;
+  /** e.g. "2 uur"; shown when I gave an estimate */
+  estimate?: string | null;
+  /** image that shows the time worked, fetched fresh each time the mail is opened */
+  timerUrl?: string | null;
+  /** total time worked, for the "done" mail */
+  worked?: string | null;
+};
 export type Mail = { subject: string; html: string; text: string };
 
 const esc = (s: string) =>
@@ -25,10 +36,14 @@ export function startedMail(r: MailReq): Mail {
   const html = frame(
     r,
     "Goed nieuws: we zijn begonnen aan je aanvraag.",
-    `<p style="margin:0">We laten je weten zodra het klaar is. Je kunt de stand altijd volgen op je klantenpagina.</p>`,
+    `${r.estimate ? `<p style="margin:0 0 12px">Geschatte tijd: <strong>${esc(r.estimate)}</strong></p>` : ""}${
+      r.timerUrl
+        ? `<p style="margin:0 0 6px;color:#555;font-size:13px">Tijd aan je aanvraag gewerkt (bijgewerkt telkens je deze mail opent):</p><p style="margin:0 0 14px"><img src="${esc(r.timerUrl)}" alt="Tijd gewerkt" height="54" style="display:block;height:54px;border-radius:10px"></p>`
+        : ""
+    }<p style="margin:0">We laten je weten zodra het klaar is. Op je klantenpagina loopt de timer live mee.</p>`,
     "Bekijk je aanvragen",
   );
-  const text = `${hello(r)},\n\nGoed nieuws: we zijn begonnen aan je aanvraag:\n${r.title}\n\nWe laten je weten zodra het klaar is. Volg de stand op je klantenpagina:\n${r.link}\n\nMet vriendelijke groet,\nJason · Solyn Global`;
+  const text = `${hello(r)},\n\nGoed nieuws: we zijn begonnen aan je aanvraag:\n${r.title}\n${r.estimate ? `Geschatte tijd: ${r.estimate}\n` : ""}\nWe laten je weten zodra het klaar is. Volg de stand op je klantenpagina:\n${r.link}\n\nMet vriendelijke groet,\nJason · Solyn Global`;
   return { subject, html, text };
 }
 
@@ -36,8 +51,8 @@ export function startedMail(r: MailReq): Mail {
 export function doneMail(r: MailReq, note?: string | null): Mail {
   const n = (note ?? "").trim();
   const subject = `Je aanvraag is klaar – ${r.title}`;
-  const body = `${n ? `<p style="margin:0 0 12px;white-space:pre-wrap">${esc(n)}</p>` : ""}<p style="margin:0">Is er nog iets dat niet klopt? Antwoord gewoon op deze mail of dien een nieuwe aanvraag in.</p>`;
+  const body = `${r.worked ? `<p style="margin:0 0 12px">Tijd eraan gewerkt: <strong>${esc(r.worked)}</strong></p>` : ""}${n ? `<p style="margin:0 0 12px;white-space:pre-wrap">${esc(n)}</p>` : ""}<p style="margin:0">Is er nog iets dat niet klopt? Antwoord gewoon op deze mail of dien een nieuwe aanvraag in.</p>`;
   const html = frame(r, "We zijn klaar met je aanvraag.", body, "Nieuwe aanvraag of afspraak");
-  const text = `${hello(r)},\n\nWe zijn klaar met je aanvraag:\n${r.title}\n\n${n ? `${n}\n\n` : ""}Is er nog iets dat niet klopt? Antwoord op deze mail of dien een nieuwe aanvraag in:\n${r.link}\n\nMet vriendelijke groet,\nJason · Solyn Global`;
+  const text = `${hello(r)},\n\nWe zijn klaar met je aanvraag:\n${r.title}\n${r.worked ? `Tijd eraan gewerkt: ${r.worked}\n` : ""}\n${n ? `${n}\n\n` : ""}Is er nog iets dat niet klopt? Antwoord op deze mail of dien een nieuwe aanvraag in:\n${r.link}\n\nMet vriendelijke groet,\nJason · Solyn Global`;
   return { subject, html, text };
 }

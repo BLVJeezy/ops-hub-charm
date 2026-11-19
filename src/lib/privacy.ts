@@ -11,7 +11,11 @@ let observer: MutationObserver | null = null;
 export const MONEY_RE = /[€$]\s?-?\d|-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}\b/;
 
 function read(): boolean {
-  try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
+  try {
+    return localStorage.getItem(KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function isPrivate(): boolean {
@@ -22,7 +26,8 @@ function markMoney(root: Node) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const el = n.parentElement;
-    if (el && !el.classList.contains("money") && MONEY_RE.test(n.nodeValue ?? "")) el.classList.add("money");
+    if (el && !el.classList.contains("money") && MONEY_RE.test(n.nodeValue ?? ""))
+      el.classList.add("money");
   }
 }
 
@@ -34,8 +39,10 @@ function apply(on: boolean) {
     if (!observer) {
       observer = new MutationObserver((muts) => {
         for (const m of muts) {
-          if (m.type === "characterData") { if (m.target.parentElement && MONEY_RE.test(m.target.nodeValue ?? "")) m.target.parentElement.classList.add("money"); }
-          else m.addedNodes.forEach((a) => markMoney(a));
+          if (m.type === "characterData") {
+            if (m.target.parentElement && MONEY_RE.test(m.target.nodeValue ?? ""))
+              m.target.parentElement.classList.add("money");
+          } else m.addedNodes.forEach((a) => markMoney(a));
         }
       });
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
@@ -47,7 +54,11 @@ function apply(on: boolean) {
 }
 
 export function setPrivacy(on: boolean) {
-  try { localStorage.setItem(KEY, on ? "1" : "0"); } catch { /* storage unavailable */ }
+  try {
+    localStorage.setItem(KEY, on ? "1" : "0");
+  } catch {
+    /* storage unavailable */
+  }
   apply(on);
   listeners.forEach((l) => l());
 }
@@ -63,7 +74,10 @@ export function initPrivacy() {
 
 export function usePrivacy(): boolean {
   return useSyncExternalStore(
-    (cb) => { listeners.add(cb); return () => listeners.delete(cb); },
+    (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
     () => isPrivate(),
     () => false,
   );

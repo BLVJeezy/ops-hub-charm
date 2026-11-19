@@ -20,7 +20,13 @@ export type Snapshot = {
   day: string;
   generated_at?: string;
   sites: SnapSite[];
-  invoices?: { open_count?: number; open_total?: number; overdue_count?: number; draft_count?: number; paid_30d?: number };
+  invoices?: {
+    open_count?: number;
+    open_total?: number;
+    overdue_count?: number;
+    draft_count?: number;
+    paid_30d?: number;
+  };
   backups?: { target: string; ok: boolean; at: string; stale?: boolean; error?: string | null }[];
 };
 export type SiteState = "ok" | "warn" | "down";
@@ -29,7 +35,12 @@ export type BriefingStatus = "ok" | "warning" | "critical";
 export function siteState(s: SnapSite): SiteState {
   const open = (s.incidents ?? []).filter((i) => i.status === "open");
   if (s.last_status === "down" || open.some((i) => i.severity === "critical")) return "down";
-  if (s.last_status === "degraded" || open.length || (s.uptime24 != null && Number(s.uptime24) < 99)) return "warn";
+  if (
+    s.last_status === "degraded" ||
+    open.length ||
+    (s.uptime24 != null && Number(s.uptime24) < 99)
+  )
+    return "warn";
   return "ok";
 }
 
@@ -45,7 +56,8 @@ export function briefingStatus(snap: Snapshot): BriefingStatus {
 }
 
 export function totals(snap: Snapshot) {
-  const sum = (k: keyof SnapSite) => (snap.sites ?? []).reduce((a, s) => a + (Number(s[k]) || 0), 0);
+  const sum = (k: keyof SnapSite) =>
+    (snap.sites ?? []).reduce((a, s) => a + (Number(s[k]) || 0), 0);
   return {
     visitors: sum("visitors_yesterday"),
     week: sum("visitors_7d"),
@@ -57,7 +69,10 @@ export function totals(snap: Snapshot) {
 }
 
 const esc = (s: unknown) =>
-  String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  String(s ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
 
 const LABEL: Record<BriefingStatus, { word: string; color: string }> = {
   ok: { word: "Alles in orde", color: "#16a34a" },
@@ -70,7 +85,10 @@ export function briefingMail(snap: Snapshot, link: string | null, hasVideo: bool
   const T = totals(snap);
   const L = LABEL[status];
   const rows = [...(snap.sites ?? [])]
-    .sort((a, b) => ["down", "warn", "ok"].indexOf(siteState(a)) - ["down", "warn", "ok"].indexOf(siteState(b)))
+    .sort(
+      (a, b) =>
+        ["down", "warn", "ok"].indexOf(siteState(a)) - ["down", "warn", "ok"].indexOf(siteState(b)),
+    )
     .map((s) => {
       const st = siteState(s);
       const dot = st === "down" ? "#dc2626" : st === "warn" ? "#d97706" : "#16a34a";
@@ -105,5 +123,13 @@ export function briefingMail(snap: Snapshot, link: string | null, hasVideo: bool
 
 /** Brussels wall-clock hour for a date (handles DST). */
 export function brusselsHour(d = new Date()): number {
-  return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Brussels", hour: "2-digit", hour12: false }).format(d)) % 24;
+  return (
+    Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Brussels",
+        hour: "2-digit",
+        hour12: false,
+      }).format(d),
+    ) % 24
+  );
 }

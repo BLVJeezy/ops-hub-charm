@@ -10,9 +10,11 @@ import {
   Link2,
   ListPlus,
   Mail,
+  Pause,
   Paperclip,
   Play,
   RotateCcw,
+  Timer,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -38,6 +40,15 @@ import {
   type Status,
   type Urgency,
 } from "@/lib/client-requests";
+import {
+  backPatch,
+  clockLabel,
+  ESTIMATES,
+  estimateLabel,
+  pausePatch,
+  startPatch,
+  workedSeconds,
+} from "@/lib/request-timer";
 import { updateRequest } from "@/lib/request-update.functions";
 
 export const Route = createFileRoute("/_authenticated/aanvragen")({ component: RequestsPage });
@@ -65,6 +76,9 @@ type Req = {
   done_at: string | null;
   start_mailed_at: string | null;
   done_mailed_at: string | null;
+  estimate_minutes: number | null;
+  run_started_at: string | null;
+  worked_seconds: number | null;
 };
 type Client = {
   id: string;
@@ -81,7 +95,11 @@ const STAGES: { id: Stage; label: string; empty: string }[] = [
   { id: "klaar", label: "Klaar", empty: "Nog niets afgerond" },
 ];
 const stageOf = (s: Status): Stage =>
-  s === "bezig" ? "bezig" : s === "klaar" || s === "afgewezen" ? "klaar" : "binnen";
+  s === "bezig" || s === "gepauzeerd"
+    ? "bezig"
+    : s === "klaar" || s === "afgewezen"
+      ? "klaar"
+      : "binnen";
 const date = (d: string) =>
   new Date(d).toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
 const stamp = (d: string) =>
@@ -93,7 +111,17 @@ const stamp = (d: string) =>
     minute: "2-digit",
   });
 
-/** Client requests as a pipeline: in → started (client mailed) → done (client mailed, with my note). */
+/** One shared second-tick for every running clock on the page. */
+function useTick(on: boolean) {
+  const [, set] = useState(0);
+  useEffect(() => {
+    if (!on) return;
+    const t = setInterval(() => set((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [on]);
+}
+
+/** Client requests as a pipeline: in → busy (clock runs, client mailed) → done (client mailed, with my note). */
 function RequestsPage() {
   const [rows, setRows] = useState<Req[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -110,7 +138,7 @@ function RequestsPage() {
       db
         .from("client_requests")
         .select("*")
-        .or(`status.in.(nieuw,ingepland,bezig),updated_at.gte.${since}`)
+        .or(`status.in.(nieuw,ingepland,bezig,gepauzeerd),updated_at.gte.${since}`)
         .order("created_at", { ascending: false })
         .limit(300),
       db
@@ -135,6 +163,7 @@ function RequestsPage() {
       supabase.removeChannel(ch);
     };
   }, [load]);
+  useTick(rows.some((r) => r.run_started_at));
 
   const byId = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
   const shown = useMemo(() => rows.filter((r) => !only || r.client_id === only), [rows, only]);
@@ -142,7 +171,10 @@ function RequestsPage() {
     const m: Record<Stage, Req[]> = { binnen: [], bezig: [], klaar: [] };
     for (const r of shown) m[stageOf(r.status)].push(r);
     m.binnen = byPriority(m.binnen);
-    m.bezig = byPriority(m.bezig);
+    // running first, then paused
+    m.bezig = byPriority(m.bezig).sort(
+      (a, b) => Number(!a.run_started_at) - Number(!b.run_started_at),
+    );
     m.klaar.sort((a, b) => (b.done_at ?? b.created_at).localeCompare(a.done_at ?? a.created_at));
     return m;
   }, [shown]);
@@ -201,8 +233,8 @@ function RequestsPage() {
             <Inbox className="w-6 h-6 shrink-0" /> Aanvragen
           </h1>
           <p className="text-sm text-muted-foreground mt-1 hidden md:block">
-            Binnen → bezig → klaar. Bij starten en afronden kan de klant een mail krijgen. Wat niet
-            werkt staat altijd bovenaan.
+            Binnen → bezig → klaar. Bij starten loopt de timer, ook in de mail aan de klant. Wat
+            niet werkt staat altijd bovenaan.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -321,6 +353,11 @@ function RequestCard({
   const due = stage === "binnen" ? answerBy(r) : null;
   const overdue = !!due && due < new Date().toISOString();
   const fix = r.kind === "probleem";
+  const runs = !!r.run_started_at,
+    paused = r.status === "gepauzeerd";
+  const worked = workedSeconds(r),
+    est = r.estimate_minutes ? r.estimate_minutes * 60 : 0,
+    over = !!est && worked > est;
   return (
     <li
       className={`rounded-xl border bg-card ${fix && stage !== "klaar" ? "border-red-500/40" : r.status === "nieuw" ? "border-foreground/25" : "border-border"} ${r.status === "afgewezen" ? "opacity-50" : ""}`}
@@ -377,24 +414,41 @@ function RequestCard({
                 taak
               </span>
             )}
-            {stage === "bezig" && r.started_at && (
-              <span>
-                · gestart {date(r.started_at)}
-                {r.start_mailed_at ? " · klant gemaild" : ""}
-              </span>
-            )}
+            {stage === "binnen" && worked > 0 && <span>· al {clockLabel(worked)} gewerkt</span>}
+            {stage === "bezig" && r.start_mailed_at && <span>· klant gemaild</span>}
             {stage === "klaar" && (
               <span>
                 ·{" "}
                 {r.status === "afgewezen"
                   ? "niet uitgevoerd"
-                  : `klaar ${date(r.done_at ?? r.created_at)}`}
+                  : `klaar ${date(r.done_at ?? r.created_at)}${worked ? ` · ${clockLabel(worked)}` : ""}`}
                 {r.done_mailed_at ? " · klant gemaild" : ""}
               </span>
             )}
           </span>
         </span>
       </button>
+
+      {stage === "bezig" && (
+        <div className="mx-3 mb-2 ml-6 flex items-center gap-2 rounded-lg bg-muted/50 px-2.5 py-1.5">
+          <Timer
+            className={`w-4 h-4 shrink-0 ${runs ? "text-emerald-400" : "text-muted-foreground"}`}
+          />
+          <span
+            className={`font-mono text-base tabular-nums ${over ? "text-amber-400" : ""}`}
+            aria-live="off"
+          >
+            {clockLabel(worked)}
+          </span>
+          <span className="text-xs text-muted-foreground truncate">
+            {paused ? "gepauzeerd" : "loopt"}
+            {r.estimate_minutes
+              ? ` · geschat ${estimateLabel(r.estimate_minutes)}${over ? " · erover" : ""}`
+              : ""}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 px-3 pb-3 pl-6">
         {stage !== "klaar" && (
           <div
@@ -425,6 +479,27 @@ function RequestCard({
           >
             <Play className="w-3.5 h-3.5" />
             Start
+          </button>
+        )}
+        {stage === "bezig" && runs && (
+          <button
+            type="button"
+            onClick={() => onPatch(pausePatch(r) as Partial<Req>)}
+            aria-label="Pauzeer"
+            className="h-8 rounded-full border border-border px-2.5 text-xs inline-flex items-center gap-1 hover:bg-muted"
+          >
+            <Pause className="w-3.5 h-3.5" />
+            Pauze
+          </button>
+        )}
+        {stage === "bezig" && paused && (
+          <button
+            type="button"
+            onClick={() => onPatch(startPatch(r) as Partial<Req>)}
+            className="h-8 rounded-full border border-border px-2.5 text-xs inline-flex items-center gap-1 hover:bg-muted"
+          >
+            <Play className="w-3.5 h-3.5" />
+            Hervat
           </button>
         )}
         {stage === "bezig" && (
@@ -463,7 +538,10 @@ function RequestCard({
               ))}
             </div>
           )}
-          <p className="text-xs text-muted-foreground">Binnengekomen {stamp(r.created_at)}</p>
+          <p className="text-xs text-muted-foreground">
+            Binnengekomen {stamp(r.created_at)}
+            {r.started_at ? ` · eerst gestart ${stamp(r.started_at)}` : ""}
+          </p>
           <div className="flex flex-wrap gap-1.5 pt-1">
             {!r.task_id && stage !== "klaar" && (
               <button
@@ -488,17 +566,17 @@ function RequestCard({
             {stage === "bezig" && (
               <button
                 type="button"
-                onClick={() => onPatch({ status: "nieuw" })}
+                onClick={() => onPatch(backPatch(r) as Partial<Req>)}
                 className="h-8 rounded-full border border-border px-2.5 text-xs inline-flex items-center gap-1 hover:bg-muted"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Terug naar binnen
+                Terug naar binnengekomen
               </button>
             )}
             {stage === "klaar" && (
               <button
                 type="button"
-                onClick={() => onPatch({ status: "bezig", done_at: null })}
+                onClick={() => onPatch({ status: "gepauzeerd", done_at: null })}
                 className="h-8 rounded-full border border-border px-2.5 text-xs inline-flex items-center gap-1 hover:bg-muted"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -512,7 +590,7 @@ function RequestCard({
   );
 }
 
-/** Start or finish a request, and say whether the client gets a mail. */
+/** Start or finish a request: an estimate when starting, and whether the client gets a mail. */
 function StepDialog({
   step,
   client,
@@ -528,24 +606,26 @@ function StepDialog({
   const to = step.r.contact_email || client?.contact_email || "";
   const [mail, setMail] = useState(!!to);
   const [note, setNote] = useState("");
+  const [estimate, setEstimate] = useState<number | null>(step.r.estimate_minutes);
   const [busy, setBusy] = useState(false);
   const start = step.stage === "start";
   const go = async () => {
     setBusy(true);
     try {
-      const res = await run({ data: { id: step.r.id, stage: step.stage, mail, note } });
+      const res = await run({
+        data: { id: step.r.id, stage: step.stage, mail, note, estimateMinutes: estimate },
+      });
       const now = new Date().toISOString();
-      onDone(
-        start
-          ? { status: "bezig", started_at: now, start_mailed_at: res.mailed ? now : null }
-          : { status: "klaar", done_at: now, done_mailed_at: res.mailed ? now : null },
-      );
+      onDone({
+        ...(res.change as Partial<Req>),
+        ...(res.mailed ? (start ? { start_mailed_at: now } : { done_mailed_at: now }) : {}),
+      });
       if (res.mailed)
         toast.success(start ? "Gestart, klant gemaild" : "Afgerond, klant gemaild", {
           description: res.to,
         });
       else
-        toast.success(start ? "Gestart" : "Afgerond", {
+        toast.success(start ? "Gestart, timer loopt" : "Afgerond", {
           description: mail ? `Geen mail: ${res.reason}` : undefined,
         });
     } catch (e) {
@@ -563,16 +643,36 @@ function StepDialog({
             {step.r.title} · {client?.name}
           </DialogDescription>
         </DialogHeader>
+        {start && (
+          <div>
+            <div className="text-sm font-medium">Geschatte tijd</div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="Geschatte tijd">
+              {ESTIMATES.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setEstimate(estimate === m ? null : m)}
+                  aria-pressed={estimate === m}
+                  className={`h-8 rounded-full border px-3 text-xs ${estimate === m ? "border-foreground bg-foreground text-background font-semibold" : "border-border hover:bg-muted"}`}
+                >
+                  {estimateLabel(m)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <label className="flex items-start justify-between gap-3 rounded-xl border border-border p-3">
           <span className="min-w-0">
             <span className="flex items-center gap-1.5 text-sm font-medium">
               <Mail className="w-4 h-4" />
               Mail de klant
             </span>
-            <span className="block text-xs text-muted-foreground mt-0.5 truncate">
-              {to
-                ? `${start ? "“We zijn begonnen aan je aanvraag”" : "“Je aanvraag is klaar”"} naar ${to}`
-                : "Geen e-mailadres bij deze klant of aanvraag"}
+            <span className="block text-xs text-muted-foreground mt-0.5">
+              {!to
+                ? "Geen e-mailadres bij deze klant of aanvraag"
+                : start
+                  ? `“We zijn begonnen”${estimate ? `, geschat ${estimateLabel(estimate)}` : ""}, met een timer die bij elke keer openen bijgewerkt is. Naar ${to}`
+                  : `“Je aanvraag is klaar”, met de gewerkte tijd. Naar ${to}`}
             </span>
           </span>
           <Switch

@@ -36,12 +36,13 @@ export const URGENCY = [
 ] as const;
 export type Urgency = (typeof URGENCY)[number]["id"];
 
-export const STATUS = ["nieuw", "ingepland", "bezig", "klaar", "afgewezen"] as const;
+export const STATUS = ["nieuw", "ingepland", "bezig", "gepauzeerd", "klaar", "afgewezen"] as const;
 export type Status = (typeof STATUS)[number];
 export const STATUS_LABEL: Record<Status, string> = {
   nieuw: "Ontvangen",
   ingepland: "Ingepland",
   bezig: "Bezig",
+  gepauzeerd: "Gepauzeerd",
   klaar: "Klaar",
   afgewezen: "Niet uitgevoerd",
 };
@@ -107,7 +108,7 @@ export type RequestRow = {
 };
 
 const URGENCY_RANK: Record<Urgency, number> = { dringend: 1, hoog: 2, normaal: 3, laag: 4 };
-const OPEN: Status[] = ["nieuw", "ingepland", "bezig"];
+const OPEN: Status[] = ["nieuw", "ingepland", "bezig", "gepauzeerd"];
 export const isOpen = (s: Status) => OPEN.includes(s);
 
 /**

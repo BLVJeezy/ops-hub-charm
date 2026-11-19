@@ -66,11 +66,18 @@ export async function syncVercelAnalytics(opts: {
   const breakdownFor = days.slice(-Math.max(0, opts.breakdownDays ?? 2));
   const results: VercelSyncResult[] = [];
 
-  for (const site of (sites ?? []) as Array<{ id: string; name: string; vercel_project_id: string }>) {
+  for (const site of (sites ?? []) as Array<{
+    id: string;
+    name: string;
+    vercel_project_id: string;
+  }>) {
     try {
       const base = { projectId: site.vercel_project_id, teamId };
       const series = parseDays(
-        await query(aggregateUrl({ ...base, since: opts.since, until: opts.until, by: "day" }), token),
+        await query(
+          aggregateUrl({ ...base, since: opts.since, until: opts.until, by: "day" }),
+          token,
+        ),
       );
       // Days without visits come back missing: store them as 0 so the chart is complete.
       const byDay = new Map(series.map((r) => [r.day, r]));
@@ -82,7 +89,9 @@ export async function syncVercelAnalytics(opts: {
         source: "vercel",
       }));
       if (visitRows.length) {
-        const { error: e } = await db.from("site_visits_daily").upsert(visitRows, { onConflict: "site_id,day" });
+        const { error: e } = await db
+          .from("site_visits_daily")
+          .upsert(visitRows, { onConflict: "site_id,day" });
         if (e) throw new Error(e.message);
       }
 
@@ -92,20 +101,36 @@ export async function syncVercelAnalytics(opts: {
       for (const day of breakdownFor) {
         for (const dim of DIMS) {
           const list = parseDim(
-            await query(aggregateUrl({ ...base, since: day, until: day, by: dim, limit: 25 }), token),
+            await query(
+              aggregateUrl({ ...base, since: day, until: day, by: dim, limit: 25 }),
+              token,
+            ),
             dim,
           );
           for (const { label, value } of list) {
-            if (dim === "requestPath") pages.push({ site_id: site.id, day, path: label, views: value });
-            else if (dim === "referrerHostname") sources.push({ site_id: site.id, day, source: label, views: value });
-            else breakdown.push({ site_id: site.id, day, dim: dim === "deviceType" ? "device" : "country", label, value });
+            if (dim === "requestPath")
+              pages.push({ site_id: site.id, day, path: label, views: value });
+            else if (dim === "referrerHostname")
+              sources.push({ site_id: site.id, day, source: label, views: value });
+            else
+              breakdown.push({
+                site_id: site.id,
+                day,
+                dim: dim === "deviceType" ? "device" : "country",
+                label,
+                value,
+              });
           }
         }
       }
       if (breakdownFor.length) {
         // Replace those days so a re-run never double counts.
         for (const table of ["site_pages_daily", "site_sources_daily", "site_breakdown_daily"]) {
-          const { error: e } = await db.from(table).delete().eq("site_id", site.id).in("day", breakdownFor);
+          const { error: e } = await db
+            .from(table)
+            .delete()
+            .eq("site_id", site.id)
+            .in("day", breakdownFor);
           if (e) throw new Error(e.message);
         }
         if (pages.length) await db.from("site_pages_daily").insert(pages);
@@ -113,7 +138,10 @@ export async function syncVercelAnalytics(opts: {
         if (breakdown.length) await db.from("site_breakdown_daily").insert(breakdown);
       }
 
-      await db.from("monitored_sites").update({ analytics_synced_at: new Date().toISOString() }).eq("id", site.id);
+      await db
+        .from("monitored_sites")
+        .update({ analytics_synced_at: new Date().toISOString() })
+        .eq("id", site.id);
       results.push({
         site: site.name,
         ok: true,
@@ -122,7 +150,11 @@ export async function syncVercelAnalytics(opts: {
         pageviews: visitRows.reduce((a, r) => a + r.pageviews, 0),
       });
     } catch (e) {
-      results.push({ site: site.name, ok: false, error: e instanceof Error ? e.message : String(e) });
+      results.push({
+        site: site.name,
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
   return { results };

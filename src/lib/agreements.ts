@@ -24,26 +24,44 @@ export interface SocialAgreementInput {
   lang?: "nl" | "fr";
 }
 
-const eur = (n: number) => `€ ${n.toLocaleString("nl-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const dateNl = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("nl-BE", { day: "numeric", month: "long", year: "numeric" });
+const eur = (n: number) =>
+  `€ ${n.toLocaleString("nl-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const dateNl = (iso: string) =>
+  new Date(iso + "T12:00:00").toLocaleDateString("nl-BE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
 export function socialAgreementTitle(i: SocialAgreementInput): string {
-  return i.lang === "fr" ? `Contrat de collaboration réseaux sociaux – ${i.tradeName || i.clientName}` : `Samenwerkingsovereenkomst social media – ${i.tradeName || i.clientName}`;
+  return i.lang === "fr"
+    ? `Contrat de collaboration réseaux sociaux – ${i.tradeName || i.clientName}`
+    : `Samenwerkingsovereenkomst social media – ${i.tradeName || i.clientName}`;
 }
 
 export function socialAgreementBody(i: SocialAgreementInput): string {
   if (i.lang === "fr") return socialAgreementBodyFr(i);
   const notice = i.noticeMonths ?? 1;
-  const rev = i.revisionsPerVideo === 1 ? "één (1) revisieronde" : `${i.revisionsPerVideo} revisierondes`;
+  const rev =
+    i.revisionsPerVideo === 1 ? "één (1) revisieronde" : `${i.revisionsPerVideo} revisierondes`;
   const party = [
-    i.clientName + (i.tradeName && i.tradeName !== i.clientName ? `, handelend onder de naam ${i.tradeName}` : ""),
+    i.clientName +
+      (i.tradeName && i.tradeName !== i.clientName
+        ? `, handelend onder de naam ${i.tradeName}`
+        : ""),
     i.address ? `met zetel te ${i.address}` : null,
     i.vatNumber ? `ondernemingsnummer ${i.vatNumber}` : null,
     `vertegenwoordigd door ${i.representative || "………………………………"}`,
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const blank = "………………………………";
-  const iban = (s: string) => s.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
+  const iban = (s: string) =>
+    s
+      .replace(/\s+/g, "")
+      .replace(/(.{4})/g, "$1 ")
+      .trim();
   const clientData = [
     `- Naam: ${i.clientName}${i.tradeName && i.tradeName !== i.clientName ? ` (handelsnaam ${i.tradeName})` : ""}`,
     `- Adres: ${i.address || blank}`,
@@ -94,9 +112,11 @@ Per video is ${rev} inbegrepen. Een revisie wordt binnen 7 dagen na levering aan
 - Bij laattijdige betaling kan Solyn Global de levering opschorten tot de betaling ontvangen is.
 
 ## Artikel 5 – ${i.trialMonths ? "Proefperiode, verlenging en opzegging" : "Duur en opzegging"}
-${i.trialMonths
-  ? `Deze overeenkomst geldt als proefperiode van ${i.trialMonths === 1 ? "één (1) maand" : `${i.trialMonths} maanden`} en start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"}. Na de proefperiode kan de samenwerking verlengd worden; partijen bevestigen de verlenging schriftelijk (ook per e-mail). Zonder verlenging eindigt de overeenkomst na de proefperiode. Na verlenging loopt de overeenkomst maandelijks verder onder dezelfde voorwaarden, en kan elke partij ze schriftelijk opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.`
-  : `Deze overeenkomst start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"} en geldt voor onbepaalde duur. Elke partij kan de overeenkomst schriftelijk (ook per e-mail) opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.`}
+${
+  i.trialMonths
+    ? `Deze overeenkomst geldt als proefperiode van ${i.trialMonths === 1 ? "één (1) maand" : `${i.trialMonths} maanden`} en start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"}. Na de proefperiode kan de samenwerking verlengd worden; partijen bevestigen de verlenging schriftelijk (ook per e-mail). Zonder verlenging eindigt de overeenkomst na de proefperiode. Na verlenging loopt de overeenkomst maandelijks verder onder dezelfde voorwaarden, en kan elke partij ze schriftelijk opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.`
+    : `Deze overeenkomst start ${i.startDate ? `op ${dateNl(i.startDate)}` : "op de dag waarop Solyn Global de eerste betaling ontvangt"} en geldt voor onbepaalde duur. Elke partij kan de overeenkomst schriftelijk (ook per e-mail) opzeggen met een opzegtermijn van ${notice} ${notice === 1 ? "maand" : "maanden"}. Reeds betaalde maanden worden volledig uitgevoerd; betaalde bedragen worden niet terugbetaald.`
+}
 
 ## Artikel 6 – Eigendom en gebruik
 Zodra de video's zijn afgeleverd, zijn ze volledig van de Opdrachtgever: de vermogensrechten op de geleverde video's gaan over op de Opdrachtgever, die ze onbeperkt in tijd en op elke manier mag gebruiken, aanpassen en verspreiden. Solyn Global behoudt wel het recht om de video's kosteloos te gebruiken voor haar eigen reclame, haar eigen content en haar eigen promotiemateriaal, zoals haar website, social media en portfolio. Ruwe beeldopnames en werkbestanden blijven bij Solyn Global, tenzij anders afgesproken.
@@ -117,24 +137,44 @@ Op deze overeenkomst is Belgisch recht van toepassing voor zover wettelijk toege
 Wijzigingen of aanvullingen gelden enkel als beide partijen ze schriftelijk (ook per e-mail) bevestigen.`;
 }
 
-const eurFr = (n: number) => `${n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f|\u00a0/g, " ")} €`;
-const dateFr = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("fr-BE", { day: "numeric", month: "long", year: "numeric" });
+const eurFr = (n: number) =>
+  `${n.toLocaleString("fr-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f|\u00a0/g, " ")} €`;
+const dateFr = (iso: string) =>
+  new Date(iso + "T12:00:00").toLocaleDateString("fr-BE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
 /** The same agreement in French (for clients in Wallonia or Brussels). Kept article for article in step with the Dutch text. */
 function socialAgreementBodyFr(i: SocialAgreementInput): string {
   i = { ...i, address: i.address?.replace(/,?\s*België$/i, ", Belgique") ?? i.address };
   const notice = i.noticeMonths ?? 1;
   const blank = "………………………………";
-  const iban = (s: string) => s.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
-  const rev = i.revisionsPerVideo === 1 ? "une (1) série de corrections" : `${i.revisionsPerVideo} séries de corrections`;
-  const ofMonths = (n: number) => (n === 1 ? "d'un (1) mois" : `de ${n} mois`);   // "de" + "un" elides to "d'un"
-  const start = i.startDate ? `le ${dateFr(i.startDate)}` : "le jour où Solyn Global reçoit le premier paiement";
+  const iban = (s: string) =>
+    s
+      .replace(/\s+/g, "")
+      .replace(/(.{4})/g, "$1 ")
+      .trim();
+  const rev =
+    i.revisionsPerVideo === 1
+      ? "une (1) série de corrections"
+      : `${i.revisionsPerVideo} séries de corrections`;
+  const ofMonths = (n: number) => (n === 1 ? "d'un (1) mois" : `de ${n} mois`); // "de" + "un" elides to "d'un"
+  const start = i.startDate
+    ? `le ${dateFr(i.startDate)}`
+    : "le jour où Solyn Global reçoit le premier paiement";
   const party = [
-    i.clientName + (i.tradeName && i.tradeName !== i.clientName ? `, agissant sous le nom commercial ${i.tradeName}` : ""),
+    i.clientName +
+      (i.tradeName && i.tradeName !== i.clientName
+        ? `, agissant sous le nom commercial ${i.tradeName}`
+        : ""),
     i.address ? `dont le siège est situé ${i.address}` : null,
     i.vatNumber ? `numéro d'entreprise ${i.vatNumber}` : null,
     `représentée par ${i.representative || blank}`,
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(", ");
   const clientData = [
     `- Nom : ${i.clientName}${i.tradeName && i.tradeName !== i.clientName ? ` (nom commercial ${i.tradeName})` : ""}`,
     `- Adresse : ${i.address || blank}`,
@@ -185,9 +225,11 @@ Chaque vidéo comprend ${rev}. Une demande de correction est introduite dans les
 - En cas de retard de paiement, Solyn Global peut suspendre la livraison jusqu'à réception du paiement.
 
 ## Article 5 – ${i.trialMonths ? "Période d'essai, prolongation et résiliation" : "Durée et résiliation"}
-${i.trialMonths
-  ? `Le présent contrat constitue une période d'essai ${ofMonths(i.trialMonths)} et prend effet ${start}. À l'issue de la période d'essai, la collaboration peut être prolongée ; les parties confirment la prolongation par écrit (y compris par e-mail). À défaut de prolongation, le contrat prend fin à l'issue de la période d'essai. Après prolongation, le contrat se poursuit de mois en mois aux mêmes conditions, et chaque partie peut le résilier par écrit moyennant un préavis ${ofMonths(notice)}. Les mois déjà payés sont intégralement exécutés ; les montants payés ne sont pas remboursés.`
-  : `Le présent contrat prend effet ${start} et est conclu pour une durée indéterminée. Chaque partie peut le résilier par écrit (y compris par e-mail) moyennant un préavis ${ofMonths(notice)}. Les mois déjà payés sont intégralement exécutés ; les montants payés ne sont pas remboursés.`}
+${
+  i.trialMonths
+    ? `Le présent contrat constitue une période d'essai ${ofMonths(i.trialMonths)} et prend effet ${start}. À l'issue de la période d'essai, la collaboration peut être prolongée ; les parties confirment la prolongation par écrit (y compris par e-mail). À défaut de prolongation, le contrat prend fin à l'issue de la période d'essai. Après prolongation, le contrat se poursuit de mois en mois aux mêmes conditions, et chaque partie peut le résilier par écrit moyennant un préavis ${ofMonths(notice)}. Les mois déjà payés sont intégralement exécutés ; les montants payés ne sont pas remboursés.`
+    : `Le présent contrat prend effet ${start} et est conclu pour une durée indéterminée. Chaque partie peut le résilier par écrit (y compris par e-mail) moyennant un préavis ${ofMonths(notice)}. Les mois déjà payés sont intégralement exécutés ; les montants payés ne sont pas remboursés.`
+}
 
 ## Article 6 – Propriété et utilisation
 Dès leur livraison, les vidéos appartiennent entièrement au Client : les droits patrimoniaux sur les vidéos livrées sont cédés au Client, qui peut les utiliser, les modifier et les diffuser sans limite de durée et de toute manière. Solyn Global conserve toutefois le droit d'utiliser gratuitement les vidéos pour sa propre publicité, son propre contenu et son propre matériel promotionnel, tels que son site web, ses réseaux sociaux et son portfolio. Les rushes et fichiers de travail restent la propriété de Solyn Global, sauf accord contraire.
@@ -214,72 +256,148 @@ export type AgreementBlock = { type: "h" | "p" | "li"; text: string };
 export function parseAgreement(body: string): AgreementBlock[] {
   const out: AgreementBlock[] = [];
   let para: string[] = [];
-  const flush = () => { if (para.length) { out.push({ type: "p", text: para.join(" ") }); para = []; } };
+  const flush = () => {
+    if (para.length) {
+      out.push({ type: "p", text: para.join(" ") });
+      para = [];
+    }
+  };
   for (const raw of body.split("\n")) {
     const line = raw.trim();
-    if (!line) { flush(); continue; }
-    if (line.startsWith("## ")) { flush(); out.push({ type: "h", text: line.slice(3) }); }
-    else if (line.startsWith("- ")) { flush(); out.push({ type: "li", text: line.slice(2) }); }
-    else para.push(line);
+    if (!line) {
+      flush();
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      flush();
+      out.push({ type: "h", text: line.slice(3) });
+    } else if (line.startsWith("- ")) {
+      flush();
+      out.push({ type: "li", text: line.slice(2) });
+    } else para.push(line);
   }
   flush();
   return out;
 }
 
-export async function downloadAgreementPDF(a: { reference: string; title: string; body: string; clientName: string; representative?: string | null; place?: string; lang?: "nl" | "fr" }) {
+export async function downloadAgreementPDF(a: {
+  reference: string;
+  title: string;
+  body: string;
+  clientName: string;
+  representative?: string | null;
+  place?: string;
+  lang?: "nl" | "fr";
+}) {
   const fr = a.lang === "fr" || a.body.startsWith("Référence");
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const L = 20, R = 190, W = R - L, BOTTOM = 280;
+  const L = 20,
+    R = 190,
+    W = R - L,
+    BOTTOM = 280;
   let y = 22;
-  const ensure = (h: number) => { if (y + h > BOTTOM) { doc.addPage(); y = 22; } };
+  const ensure = (h: number) => {
+    if (y + h > BOTTOM) {
+      doc.addPage();
+      y = 22;
+    }
+  };
 
-  doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(150, 120, 50);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(150, 120, 50);
   doc.text("SOLYN GLOBAL", L, y);
-  doc.setFont("helvetica", "normal"); doc.setTextColor(120);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(120);
   doc.text(a.reference, R, y, { align: "right" });
   y += 10;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(30);
-  for (const l of doc.splitTextToSize(a.title, W)) { doc.text(l, L, y); y += 7; }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(30);
+  for (const l of doc.splitTextToSize(a.title, W)) {
+    doc.text(l, L, y);
+    y += 7;
+  }
   y += 3;
 
   for (const b of parseAgreement(a.body)) {
     if (b.text.startsWith("Referentie:") || b.text.startsWith("Référence :")) continue;
     if (b.type === "h") {
-      ensure(14); y += 3;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(30);
-      doc.text(b.text, L, y); y += 6;
+      ensure(14);
+      y += 3;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(30);
+      doc.text(b.text, L, y);
+      y += 6;
     } else {
-      doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(50);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(50);
       const indent = b.type === "li" ? 5 : 0;
       const lines = doc.splitTextToSize(b.text, W - indent);
       ensure(lines.length * 5 + 2);
       if (b.type === "li") doc.text("•", L + 1, y);
-      for (const l of lines) { doc.text(l, L + indent, y); y += 5; }
+      for (const l of lines) {
+        doc.text(l, L + indent, y);
+        y += 5;
+      }
       y += 2;
     }
   }
 
   // signatures
-  ensure(60); y += 8;
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(50);
-  doc.text(fr ? `Fait en deux exemplaires à ${a.place ?? "Tongeren"} le ……………………, chaque partie ayant reçu le sien.` : `Opgemaakt in twee exemplaren te ${a.place ?? "Tongeren"} op ……………………, waarvan elke partij er één ontvangt.`, L, y);
+  ensure(60);
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(50);
+  doc.text(
+    fr
+      ? `Fait en deux exemplaires à ${a.place ?? "Tongeren"} le ……………………, chaque partie ayant reçu le sien.`
+      : `Opgemaakt in twee exemplaren te ${a.place ?? "Tongeren"} op ……………………, waarvan elke partij er één ontvangt.`,
+    L,
+    y,
+  );
   y += 14;
   const col = (x: number, who: string, name: string) => {
-    doc.setFont("helvetica", "bold"); doc.text(who, x, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(who, x, y);
     doc.setFont("helvetica", "normal");
     doc.text(name, x, y + 6);
-    doc.setDrawColor(180); doc.line(x, y + 26, x + 70, y + 26);
-    doc.setFontSize(8); doc.setTextColor(120); doc.text(fr ? "Signature, précédée de la mention \"lu et approuvé\"" : "Handtekening, voorafgegaan door \"gelezen en goedgekeurd\"", x, y + 31);
-    doc.setFontSize(10); doc.setTextColor(50);
+    doc.setDrawColor(180);
+    doc.line(x, y + 26, x + 70, y + 26);
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(
+      fr
+        ? 'Signature, précédée de la mention "lu et approuvé"'
+        : 'Handtekening, voorafgegaan door "gelezen en goedgekeurd"',
+      x,
+      y + 31,
+    );
+    doc.setFontSize(10);
+    doc.setTextColor(50);
   };
   col(L, fr ? "Pour Solyn Global" : "Voor Solyn Global", "Jason Balongo");
-  col(L + 90, fr ? "Pour le Client" : "Voor de Opdrachtgever", a.representative ? `${a.representative} – ${a.clientName}` : a.clientName);
+  col(
+    L + 90,
+    fr ? "Pour le Client" : "Voor de Opdrachtgever",
+    a.representative ? `${a.representative} – ${a.clientName}` : a.clientName,
+  );
 
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
-    doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150);
-    doc.text(`${COMPANY.name} · ${a.reference} · ${fr ? "page" : "pagina"} ${i}/${pages}`, 105, 290, { align: "center" });
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(
+      `${COMPANY.name} · ${a.reference} · ${fr ? "page" : "pagina"} ${i}/${pages}`,
+      105,
+      290,
+      { align: "center" },
+    );
   }
   doc.save(`${a.reference} ${a.clientName}.pdf`.replace(/[\\/:*?"<>|]/g, ""));
 }

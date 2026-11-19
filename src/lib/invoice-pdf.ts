@@ -196,24 +196,33 @@ export function generateInvoicePDF(inv: InvoicePDFInput, logoDataUrl?: string | 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(DARK);
-  doc.text(`Betaaltermijn: 7 dagen - te betalen vóór ${formatDueDate(inv.date)}`, L, fy); fy += 6;
+  doc.text(`Betaaltermijn: 7 dagen - te betalen vóór ${formatDueDate(inv.date)}`, L, fy);
+  fy += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(DARK);
-  doc.text(`Bedrijfsnaam: ${COMPANY.name}`, L, fy); fy += 5;
+  doc.text(`Bedrijfsnaam: ${COMPANY.name}`, L, fy);
+  fy += 5;
   const addrLines = doc.splitTextToSize(COMPANY.address, R - L);
-  doc.text(addrLines, L, fy); fy += addrLines.length * 5;
-  doc.text(`Bedrijfsnummer: ${COMPANY.companyNumber}`, L, fy); fy += 5;
-  doc.text(`Rekeningnummer: ${COMPANY.iban}`, L, fy); fy += 5;
-  doc.text(`BIC: ${COMPANY.bic}`, L, fy); fy += 7;
-  doc.text(`Belgische rekening: ${COMPANY.beIban} (${COMPANY.beBank}) - ${COMPANY.beName}`, L, fy); fy += 5;
-  doc.text(`BIC: ${COMPANY.beBic}`, L, fy); fy += 8;
+  doc.text(addrLines, L, fy);
+  fy += addrLines.length * 5;
+  doc.text(`Bedrijfsnummer: ${COMPANY.companyNumber}`, L, fy);
+  fy += 5;
+  doc.text(`Rekeningnummer: ${COMPANY.iban}`, L, fy);
+  fy += 5;
+  doc.text(`BIC: ${COMPANY.bic}`, L, fy);
+  fy += 7;
+  doc.text(`Belgische rekening: ${COMPANY.beIban} (${COMPANY.beBank}) - ${COMPANY.beName}`, L, fy);
+  fy += 5;
+  doc.text(`BIC: ${COMPANY.beBic}`, L, fy);
+  fy += 8;
 
   if (inv.vat_note) {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
     doc.setTextColor(MUTED);
-    const legal = "Btw verlegd: De medecontractant is gehouden tot voldoening van de belasting overeenkomstig artikel 196 van Richtlijn 2006/112/EG.";
+    const legal =
+      "Btw verlegd: De medecontractant is gehouden tot voldoening van de belasting overeenkomstig artikel 196 van Richtlijn 2006/112/EG.";
     const legalLines = doc.splitTextToSize(legal, R - L);
     doc.text(legalLines, L, fy);
   }

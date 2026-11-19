@@ -19,7 +19,10 @@ describe("summarise", () => {
     expect(s.daily[6]).toEqual({ day: "2026-11-13", uptime: 95.8, avgMs: 300 });
   });
   it("summarises per check type in a fixed order", () =>
-    expect(s.byKind.map((k) => [k.kind, k.rate])).toEqual([["http", 97.9], ["db", 100]]));
+    expect(s.byKind.map((k) => [k.kind, k.rate])).toEqual([
+      ["http", 97.9],
+      ["db", 100],
+    ]));
   it("handles no data", () => expect(summarise([], 7, "2026-11-13").uptime).toBeNull());
 });
 
@@ -36,12 +39,17 @@ describe("mttrMinutes", () => {
 
 describe("parseSitemap", () => {
   it("reads urls", () =>
-    expect(parseSitemap("<urlset><url><loc>https://a.be/</loc></url><url><loc> https://a.be/x?a=1&amp;b=2 </loc></url></urlset>").urls).toEqual([
-      "https://a.be/",
-      "https://a.be/x?a=1&b=2",
-    ]));
+    expect(
+      parseSitemap(
+        "<urlset><url><loc>https://a.be/</loc></url><url><loc> https://a.be/x?a=1&amp;b=2 </loc></url></urlset>",
+      ).urls,
+    ).toEqual(["https://a.be/", "https://a.be/x?a=1&b=2"]));
   it("detects a sitemap index", () =>
-    expect(parseSitemap("<sitemapindex><sitemap><loc>https://a.be/s1.xml</loc></sitemap></sitemapindex>")).toEqual({
+    expect(
+      parseSitemap(
+        "<sitemapindex><sitemap><loc>https://a.be/s1.xml</loc></sitemap></sitemapindex>",
+      ),
+    ).toEqual({
       urls: [],
       sitemaps: ["https://a.be/s1.xml"],
     }));

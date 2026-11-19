@@ -31,12 +31,16 @@ describe("social media agreement", () => {
     expect(body).toContain("16 november 2026");
   });
   it("leaves a blank for an unknown representative", () => {
-    expect(socialAgreementBody({ ...input, representative: null })).toContain("vertegenwoordigd door ………");
+    expect(socialAgreementBody({ ...input, representative: null })).toContain(
+      "vertegenwoordigd door ………",
+    );
   });
   it("parses into headings, paragraphs and bullets", () => {
     const blocks = parseAgreement(body);
     expect(blocks.filter((b) => b.type === "h").length).toBe(14);
-    expect(blocks.some((b) => b.type === "li" && b.text.startsWith("De vergoeding bedraagt"))).toBe(true);
+    expect(blocks.some((b) => b.type === "li" && b.text.startsWith("De vergoeding bedraagt"))).toBe(
+      true,
+    );
   });
   it("can start on the first payment and promise delivery within 30 days", () => {
     const b = socialAgreementBody({ ...input, startDate: null, deliveryDays: 30 });
@@ -45,7 +49,9 @@ describe("social media agreement", () => {
     expect(b).toContain("€ 150,00 per maand, exclusief btw, voor 11 video's");
   });
   it("hands the delivered videos to the client, while Solyn may use them for its own promotion", () => {
-    expect(body).toContain("Zodra de video's zijn afgeleverd, zijn ze volledig van de Opdrachtgever");
+    expect(body).toContain(
+      "Zodra de video's zijn afgeleverd, zijn ze volledig van de Opdrachtgever",
+    );
     expect(body).toContain("eigen reclame, haar eigen content en haar eigen promotiemateriaal");
     expect(body).not.toContain("bezwaar");
   });
@@ -55,7 +61,9 @@ describe("social media agreement", () => {
   it("can be a one-month trial that the parties extend in writing", () => {
     const b = socialAgreementBody({ ...input, startDate: null, trialMonths: 1 });
     expect(b).toContain("## Artikel 5 – Proefperiode, verlenging en opzegging");
-    expect(b).toContain("proefperiode van één (1) maand en start op de dag waarop Solyn Global de eerste betaling ontvangt");
+    expect(b).toContain(
+      "proefperiode van één (1) maand en start op de dag waarop Solyn Global de eerste betaling ontvangt",
+    );
     expect(b).toContain("Zonder verlenging eindigt de overeenkomst na de proefperiode");
     expect(socialAgreementBody(input)).toContain("## Artikel 5 – Duur en opzegging");
   });
@@ -71,12 +79,24 @@ describe("social media agreement", () => {
   });
   it("has a French version, article for article", () => {
     const nl = socialAgreementBody({ ...input, startDate: null, trialMonths: 1, deliveryDays: 30 });
-    const fr = socialAgreementBody({ ...input, startDate: null, trialMonths: 1, deliveryDays: 30, lang: "fr" });
-    expect(socialAgreementTitle({ ...input, lang: "fr" })).toBe("Contrat de collaboration réseaux sociaux – DynaMik");
-    expect(parseAgreement(fr).filter((b) => b.type === "h").length).toBe(parseAgreement(nl).filter((b) => b.type === "h").length);
+    const fr = socialAgreementBody({
+      ...input,
+      startDate: null,
+      trialMonths: 1,
+      deliveryDays: 30,
+      lang: "fr",
+    });
+    expect(socialAgreementTitle({ ...input, lang: "fr" })).toBe(
+      "Contrat de collaboration réseaux sociaux – DynaMik",
+    );
+    expect(parseAgreement(fr).filter((b) => b.type === "h").length).toBe(
+      parseAgreement(nl).filter((b) => b.type === "h").length,
+    );
     expect(fr).toContain("150,00 € par mois, hors TVA, pour 11 vidéos");
     expect(fr).toContain("totale liberté créative");
-    expect(fr).toContain("période d'essai d'un (1) mois et prend effet le jour où Solyn Global reçoit le premier paiement");
+    expect(fr).toContain(
+      "période d'essai d'un (1) mois et prend effet le jour où Solyn Global reçoit le premier paiement",
+    );
     expect(fr).toContain("dans les 30 jours suivant la réception du paiement");
     expect(fr).toContain("BE48 7390 2803 5627");
     expect(fr).toContain("propre matériel promotionnel");

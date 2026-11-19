@@ -3,7 +3,9 @@ import { aggregateUrl, dayRange, isoDay, labelFor, parseDays, parseDim } from ".
 
 describe("vercel analytics helpers", () => {
   it("builds the aggregate url with team default", () => {
-    const u = new URL(aggregateUrl({ projectId: "prj_1", since: "2026-11-01", until: "2026-11-07", by: "day" }));
+    const u = new URL(
+      aggregateUrl({ projectId: "prj_1", since: "2026-11-01", until: "2026-11-07", by: "day" }),
+    );
     expect(u.pathname).toBe("/v1/query/web-analytics/visits/aggregate");
     expect(u.searchParams.get("teamId")).toBe("team_LMDAIL57CfPMVXgRrEHeVIzi");
     expect(u.searchParams.get("since")).toBe("2026-11-01");
@@ -28,7 +30,13 @@ describe("vercel analytics helpers", () => {
   it("parses dimensions and labels", () => {
     expect(
       parseDim(
-        { data: [{ referrerHostname: "www.Google.com", pageviews: 4 }, { referrerHostname: null, pageviews: 2 }, { referrerHostname: "Others", pageviews: 9 }] },
+        {
+          data: [
+            { referrerHostname: "www.Google.com", pageviews: 4 },
+            { referrerHostname: null, pageviews: 2 },
+            { referrerHostname: "Others", pageviews: 9 },
+          ],
+        },
         "referrerHostname",
       ),
     ).toEqual([
@@ -41,7 +49,12 @@ describe("vercel analytics helpers", () => {
   });
 
   it("day helpers", () => {
-    expect(dayRange("2026-10-30", "2026-11-02")).toEqual(["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"]);
+    expect(dayRange("2026-10-30", "2026-11-02")).toEqual([
+      "2026-10-30",
+      "2026-10-31",
+      "2026-11-01",
+      "2026-11-02",
+    ]);
     expect(isoDay("2026-11-13")).toBe("2026-11-13");
     expect(isoDay("13/11")).toBeNull();
   });

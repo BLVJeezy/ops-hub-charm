@@ -33,7 +33,13 @@ async function fetchBridge(b: Bridge): Promise<unknown> {
   return res.json();
 }
 
-export type RecordsSyncResult = { site_id: string; ok: boolean; records?: number; removed?: number; error?: string };
+export type RecordsSyncResult = {
+  site_id: string;
+  ok: boolean;
+  records?: number;
+  removed?: number;
+  error?: string;
+};
 
 export async function syncSiteRecords(siteId?: string): Promise<RecordsSyncResult[]> {
   const db = await admin();
@@ -62,11 +68,22 @@ export async function syncSiteRecords(siteId?: string): Promise<RecordsSyncResul
         .lt("synced_at", now)
         .select("id");
       if (e2) throw new Error(e2.message);
-      await db.from("site_bridges").update({ last_sync_at: now, last_error: null }).eq("site_id", b.site_id);
-      results.push({ site_id: b.site_id, ok: true, records: rows.length, removed: gone?.length ?? 0 });
+      await db
+        .from("site_bridges")
+        .update({ last_sync_at: now, last_error: null })
+        .eq("site_id", b.site_id);
+      results.push({
+        site_id: b.site_id,
+        ok: true,
+        records: rows.length,
+        removed: gone?.length ?? 0,
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      await db.from("site_bridges").update({ last_error: msg.slice(0, 300) }).eq("site_id", b.site_id);
+      await db
+        .from("site_bridges")
+        .update({ last_error: msg.slice(0, 300) })
+        .eq("site_id", b.site_id);
       results.push({ site_id: b.site_id, ok: false, error: msg });
     }
   }

@@ -57,7 +57,10 @@ export function normaliseRecords(input: unknown): BridgeRecord[] {
       message: str(r.message, 1000),
       amount,
       source: str(r.source, 60),
-      extra: r.extra && typeof r.extra === "object" && !Array.isArray(r.extra) ? (r.extra as Record<string, unknown>) : {},
+      extra:
+        r.extra && typeof r.extra === "object" && !Array.isArray(r.extra)
+          ? (r.extra as Record<string, unknown>)
+          : {},
       source_created_at: ts(r.source_created_at),
     });
   }

@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---- tiny in-memory stand-in for the Supabase query builder (only what the scheduler uses) ----
-type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
 let rows: Row[] = [];
 let nextNumber = 100;
 
@@ -13,7 +13,6 @@ function builder() {
   let inserted: Row | null = null;
   let wantSingle = false;
   const b: any = {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     select() {
       return b;
     },

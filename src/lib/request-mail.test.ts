@@ -14,6 +14,17 @@ describe("request mails", () => {
     expect(m.text).toContain("Dag Anne-Sophie");
     expect(m.html).toContain("Nieuwe foto&#39;s &lt;home&gt;");
     expect(m.html).toContain(r.link);
+    expect(m.html).not.toContain("<img");
+    const t = startedMail({
+      ...r,
+      estimate: "2 uur",
+      timerUrl: "https://solyn22.lovable.app/api/public/request-timer?id=x",
+    });
+    expect(t.html).toContain("Geschatte tijd: <strong>2 uur</strong>");
+    expect(t.html).toContain(
+      '<img src="https://solyn22.lovable.app/api/public/request-timer?id=x"',
+    );
+    expect(t.text).toContain("Geschatte tijd: 2 uur");
   });
   it("tells the client we're done, with my own note escaped", () => {
     const m = doneMail({ ...r, contactName: null }, "Alles staat online.\n<b>Check</b> even");
@@ -21,5 +32,6 @@ describe("request mails", () => {
     expect(m.text).toContain("Alles staat online.");
     expect(m.html).toContain("&lt;b&gt;Check&lt;/b&gt;");
     expect(doneMail(r).html).not.toContain("white-space:pre-wrap");
+    expect(doneMail({ ...r, worked: "1:30:00" }).text).toContain("Tijd eraan gewerkt: 1:30:00");
   });
 });

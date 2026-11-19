@@ -2,10 +2,24 @@ import { describe, expect, it } from "vitest";
 import { widgetPayload } from "./widget";
 
 const site = (name: string, last_status: string, y: number, b: number) =>
-  ({ id: name, name, last_status, last_response_ms: 200, visitors_yesterday: y, visitors_day_before: b, new_24h: 1, upcoming_7d: 2, incidents: [] }) as never;
+  ({
+    id: name,
+    name,
+    last_status,
+    last_response_ms: 200,
+    visitors_yesterday: y,
+    visitors_day_before: b,
+    new_24h: 1,
+    upcoming_7d: 2,
+    incidents: [],
+  }) as never;
 
 describe("widgetPayload", () => {
-  const snap = { day: "2026-11-14", sites: [site("A", "up", 30, 20), site("B", "down", 10, 20)], invoices: { open_count: 2, open_total: 585.4 } };
+  const snap = {
+    day: "2026-11-14",
+    sites: [site("A", "up", 30, 20), site("B", "down", 10, 20)],
+    invoices: { open_count: 2, open_total: 585.4 },
+  };
   const p = widgetPayload(snap, [], 500, new Date("2026-11-14T10:00:00Z"));
 
   it("summarises status, sites and traffic", () => {
@@ -26,6 +40,8 @@ describe("widgetPayload", () => {
   });
 
   it("has no delta without a previous day", () => {
-    expect(widgetPayload({ day: "x", sites: [site("A", "up", 5, 0)] }, [], 0).visitorsDelta).toBeNull();
+    expect(
+      widgetPayload({ day: "x", sites: [site("A", "up", 5, 0)] }, [], 0).visitorsDelta,
+    ).toBeNull();
   });
 });

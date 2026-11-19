@@ -25,6 +25,7 @@ import {
   type Kind,
   type Status,
 } from "@/lib/client-requests";
+import { clockLabel, estimateLabel, workedSeconds } from "@/lib/request-timer";
 
 export const Route = createFileRoute("/aanvraag/$token")({
   ssr: false,
@@ -45,11 +46,15 @@ type Mine = {
   estimate_eur: number | null;
   wished_date: string | null;
   created_at: string;
+  worked_seconds?: number | null;
+  run_started_at?: string | null;
+  estimate_minutes?: number | null;
 };
 const STATUS_TONE: Record<Status, string> = {
   nieuw: "bg-black/[0.06]",
   ingepland: "bg-sky-100 text-sky-900",
   bezig: "bg-amber-100 text-amber-900",
+  gepauzeerd: "bg-stone-200 text-stone-700",
   klaar: "bg-emerald-100 text-emerald-900",
   afgewezen: "bg-black/[0.04] text-black/50",
 };
@@ -77,6 +82,13 @@ function RequestPage() {
   const { token } = Route.useParams();
   const [client, setClient] = useState<string | null>(null);
   const [mine, setMine] = useState<Mine[]>([]);
+  const [, setTick] = useState(0);
+  const ticking = mine.some((r) => r.run_started_at);
+  useEffect(() => {
+    if (!ticking) return;
+    const t = setInterval(() => setTick((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [ticking]);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [kind, setKind] = useState<Kind | null>(null);
   const [form, setForm] = useState({
@@ -499,6 +511,28 @@ function RequestPage() {
                             {r.estimate_eur ? ` · €${Number(r.estimate_eur)}` : ""}
                             {r.wished_date ? ` · gewenst ${date(r.wished_date)}` : ""}
                           </div>
+                          {(r.status === "bezig" || r.status === "gepauzeerd") && (
+                            <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-black/[0.05] px-2 py-0.5 text-xs">
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${r.run_started_at ? "bg-emerald-500 animate-pulse" : "bg-stone-400"}`}
+                              />
+                              <span className="font-mono tabular-nums">
+                                {clockLabel(
+                                  workedSeconds({
+                                    status: r.status,
+                                    worked_seconds: r.worked_seconds ?? 0,
+                                    run_started_at: r.run_started_at ?? null,
+                                  }),
+                                )}
+                              </span>
+                              <span className="text-black/50">
+                                {r.run_started_at ? "aan het werk" : "gepauzeerd"}
+                                {r.estimate_minutes
+                                  ? ` · geschat ${estimateLabel(r.estimate_minutes)}`
+                                  : ""}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <span
                           className={`text-xs rounded-full px-2.5 py-1 shrink-0 ${STATUS_TONE[r.status]}`}

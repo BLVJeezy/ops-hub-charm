@@ -100,7 +100,7 @@ export const Route = createFileRoute("/api/public/request")({
           const { data } = await (supabaseAdmin as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             .from("client_requests")
             .select(
-              "id, title, kind, pages, urgency, status, estimate_eur, wished_date, created_at",
+              "id, title, kind, pages, urgency, status, estimate_eur, wished_date, created_at, worked_seconds, run_started_at, estimate_minutes",
             )
             .eq("client_id", client.id)
             .order("created_at", { ascending: false })

@@ -28,16 +28,22 @@ export function aggregateUrl(opts: {
 
 function rows(json: unknown): Array<Record<string, unknown>> {
   const data = (json as { data?: unknown } | null)?.data;
-  return Array.isArray(data) ? (data.filter((r) => r && typeof r === "object") as Array<Record<string, unknown>>) : [];
+  return Array.isArray(data)
+    ? (data.filter((r) => r && typeof r === "object") as Array<Record<string, unknown>>)
+    : [];
 }
 
-const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.round(v)) : 0);
+const num = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.round(v)) : 0;
 
 /** by=day → one row per UTC day. */
-export function parseDays(json: unknown): Array<{ day: string; pageviews: number; visitors: number }> {
+export function parseDays(
+  json: unknown,
+): Array<{ day: string; pageviews: number; visitors: number }> {
   const out = new Map<string, { day: string; pageviews: number; visitors: number }>();
   for (const r of rows(json)) {
-    const ts = typeof r.timestamp === "string" ? r.timestamp : typeof r.day === "string" ? r.day : "";
+    const ts =
+      typeof r.timestamp === "string" ? r.timestamp : typeof r.day === "string" ? r.day : "";
     const day = ts.slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
     const prev = out.get(day) ?? { day, pageviews: 0, visitors: 0 };
@@ -52,7 +58,13 @@ const DEVICE: Record<string, string> = { desktop: "Desktop", mobile: "Mobile", t
 
 export function labelFor(dim: Dim, raw: unknown): string {
   const s = typeof raw === "string" ? raw.trim() : "";
-  if (dim === "referrerHostname") return s ? s.replace(/^www\./, "").toLowerCase().slice(0, 100) : "Direct";
+  if (dim === "referrerHostname")
+    return s
+      ? s
+          .replace(/^www\./, "")
+          .toLowerCase()
+          .slice(0, 100)
+      : "Direct";
   if (dim === "deviceType") return DEVICE[s.toLowerCase()] ?? (s || "Onbekend");
   if (dim === "country") return s ? s.toUpperCase().slice(0, 10) : "Onbekend";
   return (s || "/").slice(0, 200);
@@ -69,7 +81,9 @@ export function parseDim(json: unknown, dim: Dim): Array<{ label: string; value:
     if (!value) continue;
     out.set(label, (out.get(label) ?? 0) + value);
   }
-  return [...out.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  return [...out.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
 }
 
 /** Inclusive list of YYYY-MM-DD days. */
@@ -86,5 +100,7 @@ export function dayRange(since: string, until: string, max = 90): string[] {
 }
 
 export function isoDay(v: unknown): string | null {
-  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) ? v : null;
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v))
+    ? v
+    : null;
 }

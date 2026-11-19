@@ -1,6 +1,10 @@
 // Fee computation helpers
 
-export function computeMonthly(freq: string, monthly?: number | null, yearly?: number | null): number {
+export function computeMonthly(
+  freq: string,
+  monthly?: number | null,
+  yearly?: number | null,
+): number {
   const m = Number(monthly || 0);
   const y = Number(yearly || 0);
   if (freq === "Yearly") return y > 0 ? y / 12 : m;
@@ -16,9 +20,17 @@ export function computeMRR(client: {
   website_yearly_fee?: number | null;
   website_needed?: boolean | null;
 }): number {
-  const seo = computeMonthly(client.billing_frequency || "Monthly", client.monthly_fee, client.yearly_fee);
+  const seo = computeMonthly(
+    client.billing_frequency || "Monthly",
+    client.monthly_fee,
+    client.yearly_fee,
+  );
   const web = client.website_needed
-    ? computeMonthly(client.website_billing_frequency || "Monthly", client.website_monthly_fee, client.website_yearly_fee)
+    ? computeMonthly(
+        client.website_billing_frequency || "Monthly",
+        client.website_monthly_fee,
+        client.website_yearly_fee,
+      )
     : 0;
   return seo + web;
 }
@@ -78,9 +90,10 @@ export function clientMRRBreakdown(c: FeeClient): { seo: number; website: number
     if (c.billing_frequency === "Yearly" && Number(c.yearly_fee)) seo = Number(c.yearly_fee) / 12;
     else seo = Number(c.monthly_fee || 0);
   }
-  const website = c.website_billing_frequency === "Yearly" && Number(c.website_yearly_fee)
-    ? Number(c.website_yearly_fee) / 12
-    : Number(c.website_monthly_fee || 0);
+  const website =
+    c.website_billing_frequency === "Yearly" && Number(c.website_yearly_fee)
+      ? Number(c.website_yearly_fee) / 12
+      : Number(c.website_monthly_fee || 0);
   return { seo, website, social: socialMonthly(c) };
 }
 
@@ -92,10 +105,19 @@ export function clientMRR(c: FeeClient): number {
 
 /** MRR per service across clients, with how many clients pay for each. */
 export function serviceMRR(clients: FeeClient[]) {
-  const out = { seo: { mrr: 0, clients: 0 }, website: { mrr: 0, clients: 0 }, social: { mrr: 0, clients: 0 } };
+  const out = {
+    seo: { mrr: 0, clients: 0 },
+    website: { mrr: 0, clients: 0 },
+    social: { mrr: 0, clients: 0 },
+  };
   for (const c of clients) {
     const b = clientMRRBreakdown(c);
-    (["seo", "website", "social"] as const).forEach((k) => { if (b[k] > 0) { out[k].mrr += b[k]; out[k].clients++; } });
+    (["seo", "website", "social"] as const).forEach((k) => {
+      if (b[k] > 0) {
+        out[k].mrr += b[k];
+        out[k].clients++;
+      }
+    });
   }
   return out;
 }
@@ -159,7 +181,8 @@ export function clientRevenueForMonth(c: FeeClient, year: number, month: number)
     const e = c.social_end_date ? new Date(c.social_end_date) : null;
     if (s <= mEnd && (!e || e >= mStart)) {
       rev += Number(c.social_monthly_fee);
-      if (s.getFullYear() === year && s.getMonth() === month) rev += Number(c.social_setup_fee || 0);
+      if (s.getFullYear() === year && s.getMonth() === month)
+        rev += Number(c.social_setup_fee || 0);
     }
   }
 

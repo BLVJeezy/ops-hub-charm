@@ -35,6 +35,7 @@ import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticated/status_.$id'
 import { Route as ApiPublicBookingRouteImport } from './routes/api/public/booking'
 import { Route as ApiPublicRequestRouteImport } from './routes/api/public/request'
+import { Route as ApiPublicRequestTimerRouteImport } from './routes/api/public/request-timer'
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
 import { Route as ApiPublicWidgetRouteImport } from './routes/api/public/widget'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -183,6 +184,11 @@ const ApiPublicRequestRoute = ApiPublicRequestRouteImport.update({
   path: '/api/public/request',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRequestTimerRoute = ApiPublicRequestTimerRouteImport.update({
+  id: '/api/public/request-timer',
+  path: '/api/public/request-timer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTRoute = ApiPublicTRouteImport.update({
   id: '/api/public/t',
   path: '/api/public/t',
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
+  '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -336,6 +343,7 @@ export interface FileRoutesByTo {
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
+  '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -380,6 +388,7 @@ export interface FileRoutesById {
   '/_authenticated/status_/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
+  '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -424,6 +433,7 @@ export interface FileRouteTypes {
     | '/status/$id'
     | '/api/public/booking'
     | '/api/public/request'
+    | '/api/public/request-timer'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -465,6 +475,7 @@ export interface FileRouteTypes {
     | '/status/$id'
     | '/api/public/booking'
     | '/api/public/request'
+    | '/api/public/request-timer'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -508,6 +519,7 @@ export interface FileRouteTypes {
     | '/_authenticated/status_/$id'
     | '/api/public/booking'
     | '/api/public/request'
+    | '/api/public/request-timer'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -536,6 +548,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ApiPublicBookingRoute: typeof ApiPublicBookingRoute
   ApiPublicRequestRoute: typeof ApiPublicRequestRoute
+  ApiPublicRequestTimerRoute: typeof ApiPublicRequestTimerRoute
   ApiPublicTRoute: typeof ApiPublicTRoute
   ApiPublicWidgetRoute: typeof ApiPublicWidgetRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -737,6 +750,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRequestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/request-timer': {
+      id: '/api/public/request-timer'
+      path: '/api/public/request-timer'
+      fullPath: '/api/public/request-timer'
+      preLoaderRoute: typeof ApiPublicRequestTimerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/t': {
       id: '/api/public/t'
       path: '/api/public/t'
@@ -907,6 +927,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ApiPublicBookingRoute: ApiPublicBookingRoute,
   ApiPublicRequestRoute: ApiPublicRequestRoute,
+  ApiPublicRequestTimerRoute: ApiPublicRequestTimerRoute,
   ApiPublicTRoute: ApiPublicTRoute,
   ApiPublicWidgetRoute: ApiPublicWidgetRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,

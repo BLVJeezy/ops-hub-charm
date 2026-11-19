@@ -8,7 +8,10 @@ async function getText(url: string): Promise<string | null> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, headers: { "user-agent": "SolynStatusHub/1.0" } });
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "user-agent": "SolynStatusHub/1.0" },
+    });
     return res.ok ? await res.text() : null;
   } catch {
     return null;

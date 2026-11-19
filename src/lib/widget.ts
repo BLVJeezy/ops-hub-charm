@@ -37,12 +37,20 @@ export function widgetPayload(
     label: LABEL[status],
     online: sites.filter((s) => siteState(s) !== "down").length,
     total: sites.length,
-    sites: sites.map((s) => ({ name: s.name, state: siteState(s), ms: s.last_response_ms ?? null })),
+    sites: sites.map((s) => ({
+      name: s.name,
+      state: siteState(s),
+      ms: s.last_response_ms ?? null,
+    })),
     visitors: t.visitors,
     visitorsDelta: before > 0 ? Math.round(((t.visitors - before) / before) * 100) : null,
     fresh: t.fresh,
     upcoming: t.upcoming,
-    mrr: Math.round(clients.filter((c) => c.status === "Active" && !c.is_internal).reduce((a, c) => a + clientMRR(c), 0)),
+    mrr: Math.round(
+      clients
+        .filter((c) => c.status === "Active" && !c.is_internal)
+        .reduce((a, c) => a + clientMRR(c), 0),
+    ),
     openInvoices: t.open,
     openTotal: Math.round(Number(snap.invoices?.open_total) || 0),
     paidThisMonth: Math.round(paidThisMonth),

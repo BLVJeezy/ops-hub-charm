@@ -36,8 +36,13 @@ describe("camera maths", () => {
     expect(project3([0, 0, 0.8], 0, 0).s).toBeGreaterThan(project3([0, 0, -0.8], 0, 0).s);
   });
   it("springs settle without overshoot", () => {
-    let v = 0, x = 0, max = 0;
-    for (let i = 0; i < 300; i++) { [x, v] = springStep(x, v, 1, 1 / 120); max = Math.max(max, x); }
+    let v = 0,
+      x = 0,
+      max = 0;
+    for (let i = 0; i < 300; i++) {
+      [x, v] = springStep(x, v, 1, 1 / 120);
+      max = Math.max(max, x);
+    }
     expect(x).toBeCloseTo(1, 2);
     expect(max).toBeLessThanOrEqual(1.01);
   });

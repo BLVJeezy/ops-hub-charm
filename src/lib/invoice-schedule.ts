@@ -30,14 +30,22 @@ export function nextMonthlyDate(fromIso: string, day: number): string {
 
 /** Current hour (0–23) in Belgium. */
 export function brusselsHour(now: Date = new Date()): number {
-  const h = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Brussels", hour: "2-digit", hourCycle: "h23" }).format(now);
+  const h = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Brussels",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(now);
   return Number(h) % 24;
 }
 
 export const DEFAULT_SEND_HOUR = 10;
 
 /** Is something planned for `dateIso` at `hour` (Belgian time) due at `now`? */
-export function isDueAt(dateIso: string, hour: number | null | undefined, now: Date = new Date()): boolean {
+export function isDueAt(
+  dateIso: string,
+  hour: number | null | undefined,
+  now: Date = new Date(),
+): boolean {
   const today = brusselsToday(now);
   if (dateIso < today) return true;
   if (dateIso > today) return false;
@@ -156,7 +164,8 @@ export type PlannedInvoice = {
 export function addMonthsIso(iso: string, months: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const t = y * 12 + (m - 1) + months;
-  const year = Math.floor(t / 12), month0 = t % 12;
+  const year = Math.floor(t / 12),
+    month0 = t % 12;
   const day = Math.min(d, daysInMonth(year, month0));
   return `${year}-${String(month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
@@ -166,23 +175,31 @@ export function addMonthsIso(iso: string, months: number): string {
  * each scheduled draft once, and every monthly repeat once per month it falls in the window.
  * Returns the number of invoices and their total.
  */
-export function plannedForecast(rows: PlannedInvoice[], today: string, months = 6): { count: number; total: number; until: string } {
+export function plannedForecast(
+  rows: PlannedInvoice[],
+  today: string,
+  months = 6,
+): { count: number; total: number; until: string } {
   const until = addMonthsIso(today, months);
-  let count = 0, total = 0;
+  let count = 0,
+    total = 0;
   for (const r of rows) {
     const amount = Number(r.total || 0);
     let first: string | null = null;
     if (r.status === "Draft" && r.scheduled_send_at) first = r.scheduled_send_at;
-    else if (r.repeat_monthly && (r.status === "Sent" || r.status === "Paid") && r.next_repeat_on) first = r.next_repeat_on;
+    else if (r.repeat_monthly && (r.status === "Sent" || r.status === "Paid") && r.next_repeat_on)
+      first = r.next_repeat_on;
     if (!first) continue;
     if (first < today) first = today; // overdue: goes out at the next run
     if (first > until) continue;
-    count++; total += amount;
+    count++;
+    total += amount;
     if (!r.repeat_monthly) continue;
     const day = r.repeat_day ?? Number(first.slice(8, 10));
     let d = nextMonthlyDate(first, day);
     for (let i = 0; i < 240 && d <= until; i++) {
-      count++; total += amount;
+      count++;
+      total += amount;
       d = nextMonthlyDate(d, day);
     }
   }
@@ -190,9 +207,21 @@ export function plannedForecast(rows: PlannedInvoice[], today: string, months = 
 }
 
 export type ServiceKey = "seo" | "website" | "social" | "oneoff";
-export type ForecastLine = { description?: string | null; qty?: number | null; unit_price?: number | null; price?: number | null };
+export type ForecastLine = {
+  description?: string | null;
+  qty?: number | null;
+  unit_price?: number | null;
+  price?: number | null;
+};
 export type ForecastInvoice = PlannedInvoice & { line_items?: ForecastLine[] | null };
-export type ServiceMonth = { month: string; seo: number; website: number; social: number; oneoff: number; total: number };
+export type ServiceMonth = {
+  month: string;
+  seo: number;
+  website: number;
+  social: number;
+  oneoff: number;
+  total: number;
+};
 
 /** Which service an invoice line belongs to, from its description. Website development and anything unrecognised count as website. */
 export function lineService(description: string): ServiceKey {
@@ -206,14 +235,28 @@ export function lineService(description: string): ServiceKey {
  * What will be invoiced per calendar month and per service, from the current month
  * through `months` months ahead. Scheduled drafts count once, monthly repeats every month.
  */
-export function forecastByService(rows: ForecastInvoice[], today: string, months = 6): ServiceMonth[] {
+export function forecastByService(
+  rows: ForecastInvoice[],
+  today: string,
+  months = 6,
+): ServiceMonth[] {
   const out: ServiceMonth[] = [];
-  for (let i = 0; i <= months; i++) out.push({ month: addMonthsIso(today.slice(0, 8) + "01", i).slice(0, 7), seo: 0, website: 0, social: 0, oneoff: 0, total: 0 });
+  for (let i = 0; i <= months; i++)
+    out.push({
+      month: addMonthsIso(today.slice(0, 8) + "01", i).slice(0, 7),
+      seo: 0,
+      website: 0,
+      social: 0,
+      oneoff: 0,
+      total: 0,
+    });
   const last = out[out.length - 1].month;
   const add = (date: string, r: ForecastInvoice) => {
     const m = out.find((x) => x.month === date.slice(0, 7));
     if (!m) return;
-    const lines = r.line_items?.length ? r.line_items : [{ description: "", qty: 1, unit_price: Number(r.total || 0) }];
+    const lines = r.line_items?.length
+      ? r.line_items
+      : [{ description: "", qty: 1, unit_price: Number(r.total || 0) }];
     for (const l of lines) {
       const amount = Number(l.qty ?? 1) * Number(l.unit_price ?? l.price ?? 0);
       m[lineService(l.description ?? "")] += amount;
@@ -223,15 +266,26 @@ export function forecastByService(rows: ForecastInvoice[], today: string, months
   for (const r of rows) {
     let first: string | null = null;
     if (r.status === "Draft" && r.scheduled_send_at) first = r.scheduled_send_at;
-    else if (r.repeat_monthly && (r.status === "Sent" || r.status === "Paid") && r.next_repeat_on) first = r.next_repeat_on;
+    else if (r.repeat_monthly && (r.status === "Sent" || r.status === "Paid") && r.next_repeat_on)
+      first = r.next_repeat_on;
     if (!first) continue;
     if (first < today) first = today;
     add(first, r);
     if (!r.repeat_monthly) continue;
     const day = r.repeat_day ?? Number(first.slice(8, 10));
     let d = nextMonthlyDate(first, day);
-    for (let i = 0; i < 240 && d.slice(0, 7) <= last; i++) { add(d, r); d = nextMonthlyDate(d, day); }
+    for (let i = 0; i < 240 && d.slice(0, 7) <= last; i++) {
+      add(d, r);
+      d = nextMonthlyDate(d, day);
+    }
   }
   const round = (n: number) => Math.round(n * 100) / 100;
-  return out.map((m) => ({ ...m, seo: round(m.seo), website: round(m.website), social: round(m.social), oneoff: round(m.oneoff), total: round(m.total) }));
+  return out.map((m) => ({
+    ...m,
+    seo: round(m.seo),
+    website: round(m.website),
+    social: round(m.social),
+    oneoff: round(m.oneoff),
+    total: round(m.total),
+  }));
 }

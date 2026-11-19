@@ -9,7 +9,6 @@ export function canEditActions(role: Role | null | undefined, _status?: string |
   return role === "admin" || role === "sales" || role === "ops";
 }
 
-
 export function isAdmin(role: Role | null | undefined): boolean {
   return role === "admin";
 }

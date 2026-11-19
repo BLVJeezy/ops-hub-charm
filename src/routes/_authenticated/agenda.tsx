@@ -9,7 +9,8 @@ export const Route = createFileRoute("/_authenticated/agenda")({ component: Agen
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
-const BOOK_PATH = "/afspraak";
+// the link clients get: the booking page on the company website
+const BOOK_URL = "https://solynglobal.be/afspraak";
 const FILTERS: [AgendaKind | "all", string][] = [["all", "Alles"], ["booking", "Afspraken"], ["block", "Werkblokken"], ["pathe", "Pathé"]];
 const dayLabel = (d: string) => new Intl.DateTimeFormat("nl-BE", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${d}T12:00:00Z`));
 
@@ -48,7 +49,7 @@ function AgendaPage() {
   const upcoming = (items ?? []).filter((i) => i.kind === "booking" && i.start > new Date().toISOString()).length;
 
   const copy = async () => {
-    const url = `${window.location.origin}${BOOK_PATH}`;
+    const url = BOOK_URL;
     try { await navigator.clipboard.writeText(url); toast.success("Boekingslink gekopieerd"); } catch { toast(url); }
   };
   const cancel = async (i: AgendaItem) => {

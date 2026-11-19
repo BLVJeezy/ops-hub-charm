@@ -8,7 +8,7 @@ import {
   kindLabel,
   LIMITS,
   PAGE_RATE,
-  urgencyLabel,
+  autoPriority,
   type RequestInput,
   type Status,
 } from "@/lib/client-requests";
@@ -142,7 +142,7 @@ export const Route = createFileRoute("/api/public/request")({
           details: raw.details?.trim() || undefined,
           kind: raw.kind as RequestInput["kind"],
           pages: raw.pages ? Number(raw.pages) : null,
-          urgency: raw.urgency as RequestInput["urgency"],
+          urgency: (raw.urgency || undefined) as RequestInput["urgency"],
           wished_date: raw.wished_date || null,
           contact_name: raw.contact_name?.trim().slice(0, 80) || undefined,
           contact_email: raw.contact_email?.trim().slice(0, 120) || undefined,
@@ -193,7 +193,8 @@ export const Route = createFileRoute("/api/public/request")({
               details: input.details ?? null,
               kind: input.kind,
               pages: input.kind === "nieuwe-pagina" ? input.pages || 1 : null,
-              urgency: input.urgency,
+              urgency: input.urgency ?? "normaal",
+              priority: autoPriority(input.kind!),
               wished_date: input.wished_date,
               contact_name: input.contact_name ?? null,
               contact_email: input.contact_email ?? null,
@@ -229,9 +230,11 @@ export const Route = createFileRoute("/api/public/request")({
                   ? ` (${input.pages || 1} × €${PAGE_RATE} = €${price})`
                   : ""),
             ],
-            ["Hoe dringend", urgencyLabel(input.urgency!)],
-            ...(answerWithin(input.kind!, input.urgency!)
-              ? [["Antwoord", answerWithin(input.kind!, input.urgency!)!.label] as [string, string]]
+            ...(input.kind === "probleem"
+              ? [["Prioriteit", "Eerst: er werkt iets niet"] as [string, string]]
+              : []),
+            ...(answerWithin(input.kind!, input.urgency)
+              ? [["Antwoord", answerWithin(input.kind!, input.urgency)!.label] as [string, string]]
               : []),
             ...(input.wished_date
               ? [["Gewenst tegen", input.wished_date] as [string, string]]

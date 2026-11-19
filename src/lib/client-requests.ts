@@ -11,7 +11,11 @@ export const KINDS = [
   { id: "nieuwe-pagina", label: "Nieuwe pagina", hint: `Minimaal €${PAGE_RATE} per pagina` },
   { id: "seo", label: "Gevonden worden (SEO)", hint: "Google, zoekwoorden, Google-profiel" },
   { id: "social", label: "Social media", hint: "Posts, video's, planning" },
-  { id: "probleem", label: "Er werkt iets niet", hint: "Een fout op de site of in de app" },
+  {
+    id: "probleem",
+    label: "Er werkt iets niet",
+    hint: "Een fout op de site of in de app. Dit krijgt altijd voorrang.",
+  },
   {
     id: "andere",
     label: "Iets anders",
@@ -55,7 +59,7 @@ export type RequestInput = {
   details?: string;
   kind: Kind;
   pages?: number | null;
-  urgency: Urgency;
+  urgency?: Urgency;
   wished_date?: string | null;
   contact_name?: string;
   contact_email?: string;
@@ -77,7 +81,8 @@ export function checkRequest(r: Partial<RequestInput>, today: string): string | 
   if ((r.details ?? "").length > LIMITS.details)
     return `De uitleg mag maximaal ${LIMITS.details} tekens zijn.`;
   if (!KINDS.some((k) => k.id === r.kind)) return "Kies wat voor aanvraag het is.";
-  if (!URGENCY.some((u) => u.id === r.urgency)) return "Kies hoe dringend het is.";
+  // the client no longer picks urgency; old links may still send one
+  if (r.urgency && !URGENCY.some((u) => u.id === r.urgency)) return "Kies hoe dringend het is.";
   if (r.kind === "nieuwe-pagina") {
     const p = Number(r.pages ?? 1);
     if (!Number.isInteger(p) || p < 1 || p > LIMITS.pages)
@@ -140,12 +145,14 @@ export const requestLink = (token: string, name: string) =>
 /** How soon the client hears back: urgent within 24 hours, a general question within 48 to 72 hours. Null when the urgency already says it. */
 export function answerWithin(
   kind: Kind,
-  urgency: Urgency,
+  urgency?: Urgency,
 ): { hours: number; label: string } | null {
-  if (urgency === "dringend") return { hours: 24, label: "binnen 24 uur" };
+  if (kind === "probleem" || urgency === "dringend") return { hours: 24, label: "binnen 24 uur" };
   if (kind === "andere") return { hours: 72, label: "binnen 48 à 72 uur" };
   return null;
 }
+/** Our own priority for a new request: something that does not work always goes first. */
+export const autoPriority = (kind: Kind): number | null => (kind === "probleem" ? 1 : null);
 /** The latest moment to answer a new request, or null when no answer time applies. */
 export function answerBy(r: { kind: Kind; urgency: Urgency; created_at: string }): string | null {
   const w = answerWithin(r.kind, r.urgency);

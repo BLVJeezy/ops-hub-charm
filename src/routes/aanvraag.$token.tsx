@@ -18,14 +18,12 @@ import {
   KINDS,
   PAGE_RATE,
   STATUS_LABEL,
-  URGENCY,
   answerWithin,
   checkRequest,
   estimate,
   kindLabel,
   type Kind,
   type Status,
-  type Urgency,
 } from "@/lib/client-requests";
 
 export const Route = createFileRoute("/aanvraag/$token")({
@@ -81,7 +79,6 @@ function RequestPage() {
   const [mine, setMine] = useState<Mine[]>([]);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [kind, setKind] = useState<Kind | null>(null);
-  const [urgency, setUrgency] = useState<Urgency>("normaal");
   const [form, setForm] = useState({
     title: "",
     details: "",
@@ -149,7 +146,6 @@ function RequestPage() {
       details: form.details,
       kind: kind ?? undefined,
       pages,
-      urgency,
       wished_date: form.wished_date || null,
       contact_email: form.contact_email || undefined,
     };
@@ -164,17 +160,15 @@ function RequestPage() {
     body.set("token", token);
     Object.entries(form).forEach(([k, v]) => body.set(k, k === "pages" ? String(pages) : v));
     body.set("kind", kind!);
-    body.set("urgency", urgency);
     files.forEach((f) => body.append("files", f));
     try {
       const r = await fetch("/api/public/request", { method: "POST", body });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error);
-      setPromise(kind ? (answerWithin(kind, urgency)?.label ?? null) : null);
+      setPromise(kind ? (answerWithin(kind)?.label ?? null) : null);
       setSent(true);
       setForm((f) => ({ ...f, title: "", details: "", pages: "1", wished_date: "" }));
       setKind(null);
-      setUrgency("normaal");
       setFiles([]);
       load();
     } catch (err) {
@@ -191,7 +185,6 @@ function RequestPage() {
   const chip = (on: boolean) =>
     `rounded-xl border transition-colors active:scale-[0.97] ${on ? "border-black bg-black text-white" : "border-black/15 bg-white hover:border-black/40"}`;
   const kindHint = kind ? KINDS.find((k) => k.id === kind)?.hint : null;
-  const urgHint = URGENCY.find((u) => u.id === urgency)?.hint;
 
   return (
     <main
@@ -371,33 +364,6 @@ function RequestPage() {
                       />
                     </div>
 
-                    <fieldset>
-                      <legend className="text-sm font-semibold">Hoe dringend?</legend>
-                      <div className="mt-2 grid grid-cols-4 gap-1.5 md:gap-2">
-                        {URGENCY.map((u) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onClick={() => setUrgency(u.id)}
-                            aria-pressed={urgency === u.id}
-                            className={`${chip(urgency === u.id)} h-11 px-1 text-xs font-semibold leading-tight`}
-                          >
-                            {u.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p
-                        className={
-                          urgency === "dringend"
-                            ? "mt-2 rounded-xl bg-amber-100 text-amber-900 px-3 py-2 text-xs leading-snug"
-                            : "mt-1.5 text-xs text-black/50"
-                        }
-                        role={urgency === "dringend" ? "note" : undefined}
-                      >
-                        {urgHint}
-                      </p>
-                    </fieldset>
-
                     <div className="flex flex-wrap gap-2">
                       <label
                         className={`h-10 rounded-full border px-3 inline-flex items-center gap-2 text-sm ${form.wished_date ? "border-black" : "border-black/15"}`}
@@ -497,7 +463,7 @@ function RequestPage() {
                       <div className="mx-auto max-w-2xl flex items-center gap-3">
                         <div className="flex-1 min-w-0 text-xs text-black/55 md:hidden truncate">
                           {kind
-                            ? `${SHORT[kind]}${price ? ` · €${price}` : ""} · ${URGENCY.find((u) => u.id === urgency)?.label}`
+                            ? `${SHORT[kind]}${price ? ` · €${price}` : ""}`
                             : "Kies waarover het gaat"}
                         </div>
                         <button

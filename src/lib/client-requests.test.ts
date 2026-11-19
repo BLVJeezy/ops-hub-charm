@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   answerBy,
   answerWithin,
+  autoPriority,
   byPriority,
   checkRequest,
   estimate,
@@ -56,6 +57,11 @@ describe("client requests", () => {
     ]);
     expect(list.map((x) => x.id)).toEqual(["mine1", "urgent", "dated", "plain", "later", "done"]);
   });
+  it("puts what does not work first, and no longer asks the client for urgency", () => {
+    expect(autoPriority("probleem")).toBe(1);
+    expect(autoPriority("wijziging")).toBeNull();
+    expect(checkRequest({ title: "Formulier stuk", kind: "probleem" }, "2026-11-19")).toBeNull();
+  });
   it("builds the client link on the company website", () => {
     expect(slugOf("Villa Amano")).toBe("villa-amano");
     expect(slugOf("DynaMik (SRL Energy Life)")).toBe("dynamik");
@@ -68,6 +74,7 @@ describe("client requests", () => {
     expect(answerWithin("wijziging", "dringend")?.hours).toBe(24);
     expect(answerWithin("andere", "dringend")?.hours).toBe(24);
     expect(answerWithin("wijziging", "normaal")).toBeNull();
+    expect(answerWithin("probleem")?.hours).toBe(24);
     expect(
       answerBy({ kind: "andere", urgency: "laag", created_at: "2026-11-19T10:00:00.000Z" }),
     ).toBe("2026-11-22T10:00:00.000Z");

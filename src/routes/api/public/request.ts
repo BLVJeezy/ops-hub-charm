@@ -60,7 +60,9 @@ async function clientFor(db: any, token: string | null) {
 export const Route = createFileRoute("/api/public/request")({
   server: {
     handlers: {
+      OPTIONS: async ({ request }) => new Response(null, { status: 204, headers: cors(request) }),
       GET: async ({ request }) => {
+        const json = jsonWith(cors(request));
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const client = await clientFor(
@@ -80,13 +82,24 @@ export const Route = createFileRoute("/api/public/request")({
             .eq("client_id", client.id)
             .order("created_at", { ascending: false })
             .limit(50);
-          return json({ client: client.name, pageRate: PAGE_RATE, requests: data ?? [] });
+          return json({
+            client: client.name,
+            pageRate: PAGE_RATE,
+            requests: data ?? [],
+            // the client's own contact details, so the booking form starts filled in
+            contact: {
+              name: client.contact_name ?? "",
+              email: client.contact_email ?? "",
+              phone: client.contact_phone ?? "",
+            },
+          });
         } catch (e) {
           console.error("[request] list failed", e instanceof Error ? e.message : e);
           return json({ error: "Even niet bereikbaar. Probeer het straks opnieuw." }, 500);
         }
       },
       POST: async ({ request }) => {
+        const json = jsonWith(cors(request));
         let raw: Record<string, string>,
           files: File[] = [];
         try {

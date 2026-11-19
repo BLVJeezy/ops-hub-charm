@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Check, Copy, Inbox, ListPlus, Paperclip } from "lucide-react";
+import { CalendarClock, Check, Copy, Inbox, Link2, ListPlus, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -53,6 +53,13 @@ const URGENCY_TONE: Record<Urgency, string> = {
   normaal: "bg-muted text-muted-foreground",
   laag: "bg-muted text-muted-foreground",
 };
+const STATUS_TONE: Record<Status, string> = {
+  nieuw: "bg-sky-500/15 text-sky-300",
+  ingepland: "bg-violet-500/15 text-violet-300",
+  bezig: "bg-amber-500/15 text-amber-300",
+  klaar: "bg-emerald-500/15 text-emerald-300",
+  afgewezen: "bg-muted text-muted-foreground",
+};
 const date = (d: string) =>
   new Date(d).toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
 
@@ -64,6 +71,7 @@ function RequestsPage() {
   const [only, setOnly] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [links, setLinks] = useState(false);
 
   const load = useCallback(async () => {
     const [r, c] = await Promise.all([
@@ -101,6 +109,7 @@ function RequestsPage() {
   const value = rows
     .filter((r) => isOpen(r.status))
     .reduce((s, r) => s + Number(r.estimate_eur ?? 0), 0);
+  const today = new Date().toISOString().slice(0, 10);
 
   const patch = async (r: Req, change: Partial<Req>) => {
     setRows((xs) => xs.map((x) => (x.id === r.id ? { ...x, ...change } : x)));
@@ -130,31 +139,32 @@ function RequestsPage() {
   };
   const copy = async (c: Client) => {
     if (!c.request_token) return toast.error("Deze klant heeft nog geen link");
-    await navigator.clipboard.writeText(requestLink(c.request_token, window.location.origin));
+    await navigator.clipboard.writeText(requestLink(c.request_token, c.name));
     toast.success(`Link voor ${c.name} gekopieerd`);
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl 3xl:max-w-[1500px] mx-auto space-y-5">
-      <header>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Inbox className="w-6 h-6 shrink-0" /> Aanvragen
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Wat klanten vragen, in de volgorde om het af te werken. Elke klant heeft een eigen link om
-          iets aan te vragen.
-        </p>
-        <div className="grid grid-cols-3 gap-2 mt-3 max-w-md">
-          <Count n={fresh} label="nieuw" warn={fresh > 0} />
-          <Count n={openCount} label="open" />
-          <Count n={value} label="richtprijs open" euro />
+    <div className="p-4 md:p-6 max-w-6xl 3xl:max-w-[1500px] mx-auto space-y-4 md:space-y-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Inbox className="w-6 h-6 shrink-0" /> Aanvragen
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 hidden md:block">
+            Wat klanten vragen, in de volgorde om het af te werken.
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          <Stat n={fresh} label="nieuw" tone={fresh ? "text-sky-400" : ""} />
+          <Stat n={openCount} label="open" />
+          <Stat n={`€${Math.round(value)}`} label="richtprijs" priv />
         </div>
       </header>
 
-      <div className="grid lg:grid-cols-[1fr_300px] gap-5 items-start">
+      <div className="grid lg:grid-cols-[1fr_280px] gap-4 lg:gap-5 items-start">
         <section className="space-y-2 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-full border border-border p-0.5 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-full border border-border p-0.5 text-sm shrink-0">
               {(["open", "all"] as const).map((v) => (
                 <button
                   key={v}
@@ -169,7 +179,7 @@ function RequestsPage() {
             <select
               value={only}
               onChange={(e) => setOnly(e.target.value)}
-              className="h-9 rounded-full border border-border bg-background px-3 text-sm"
+              className="h-9 min-w-0 max-w-[170px] rounded-full border border-border bg-background px-3 text-sm"
               aria-label="Klant"
             >
               <option value="">Alle klanten</option>
@@ -181,16 +191,31 @@ function RequestsPage() {
                   </option>
                 ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setLinks((v) => !v)}
+              aria-expanded={links}
+              className={`lg:hidden ml-auto h-9 shrink-0 rounded-full border px-3 text-sm inline-flex items-center gap-1.5 ${links ? "border-foreground/40 bg-muted" : "border-border"}`}
+            >
+              <Link2 className="w-4 h-4" />
+              Links
+            </button>
           </div>
+
+          {links && (
+            <div className="lg:hidden">
+              <LinkList clients={clients} onCopy={copy} />
+            </div>
+          )}
 
           {loading ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Laden…</p>
           ) : list.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-border p-6 text-center">
               <p className="font-medium">{show === "open" ? "Niets open" : "Nog geen aanvragen"}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Stuur een klant zijn link (rechts) zodat vragen hier binnenkomen in plaats van via
-                losse berichten.
+                Stuur een klant zijn link, dan komen vragen hier binnen in plaats van via losse
+                berichten.
               </p>
             </div>
           ) : (
@@ -198,50 +223,50 @@ function RequestsPage() {
               {list.map((r, i) => {
                 const c = byId.get(r.client_id),
                   expanded = openId === r.id,
-                  late =
-                    r.wished_date &&
-                    isOpen(r.status) &&
-                    r.wished_date < new Date().toISOString().slice(0, 10);
+                  late = !!r.wished_date && isOpen(r.status) && r.wished_date < today;
                 return (
                   <li
                     key={r.id}
                     className={`rounded-2xl border bg-card ${r.status === "nieuw" ? "border-foreground/25" : "border-border"} ${isOpen(r.status) ? "" : "opacity-60"}`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(expanded ? null : r.id)}
-                      aria-expanded={expanded}
-                      className="w-full text-left p-3 flex items-start gap-3"
-                    >
-                      <span className="w-6 text-sm tabular-nums text-muted-foreground pt-0.5 shrink-0">
+                    <div className="flex items-start gap-2.5 p-3 pb-2">
+                      <span className="w-5 text-xs tabular-nums text-muted-foreground pt-1 shrink-0 text-right">
                         {isOpen(r.status) ? i + 1 : "–"}
                       </span>
                       <span
                         className="w-1 self-stretch rounded-full shrink-0"
                         style={{ background: c?.brand_color ?? "hsl(0 0% 50%)" }}
                       />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span className="font-medium">{r.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(expanded ? null : r.id)}
+                        aria-expanded={expanded}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <span className="block font-medium leading-snug">
                           {r.status === "nieuw" && (
-                            <span className="text-[10px] rounded-full bg-sky-500/15 text-sky-400 px-1.5 py-0.5">
-                              nieuw
-                            </span>
+                            <span
+                              className="inline-block w-2 h-2 rounded-full bg-sky-400 mr-1.5 align-middle"
+                              aria-label="nieuw"
+                            />
                           )}
+                          {r.title}
                         </span>
-                        <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
                           <span className="text-foreground/80">{c?.name ?? "Klant"}</span>
                           <span>
                             · {kindLabel(r.kind)}
                             {r.pages ? ` (${r.pages})` : ""}
                           </span>
-                          {r.estimate_eur ? <span>· €{Number(r.estimate_eur)}</span> : null}
-                          <span className={`rounded-full px-1.5 py-0.5 ${URGENCY_TONE[r.urgency]}`}>
+                          {r.estimate_eur ? (
+                            <span data-private="">· €{Number(r.estimate_eur)}</span>
+                          ) : null}
+                          <span className={`rounded-full px-1.5 py-px ${URGENCY_TONE[r.urgency]}`}>
                             {urgencyLabel(r.urgency)}
                           </span>
                           {r.wished_date && (
                             <span
-                              className={`inline-flex items-center gap-1 ${late ? "text-red-400" : ""}`}
+                              className={`inline-flex items-center gap-0.5 ${late ? "text-red-400" : ""}`}
                             >
                               <CalendarClock className="w-3 h-3" />
                               {date(r.wished_date)}
@@ -260,53 +285,57 @@ function RequestsPage() {
                             </span>
                           )}
                         </span>
-                      </span>
-                    </button>
-                    <div className="px-3 pb-3 pl-12 flex flex-wrap items-center gap-2">
-                      <label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        Prioriteit
-                        <select
-                          value={r.priority ?? ""}
-                          onChange={(e) =>
-                            patch(r, { priority: e.target.value ? Number(e.target.value) : null })
-                          }
-                          className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-                        >
-                          <option value="">volgens klant</option>
-                          {[1, 2, 3, 4].map((p) => (
-                            <option key={p} value={p}>
-                              {p} · {PRIORITY_LABEL[p]}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        Status
-                        <select
-                          value={r.status}
-                          onChange={(e) => patch(r, { status: e.target.value as Status })}
-                          className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-                        >
-                          {STATUS.map((s) => (
-                            <option key={s} value={s}>
-                              {STATUS_LABEL[s]}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      </button>
+                      <select
+                        value={r.status}
+                        onChange={(e) => patch(r, { status: e.target.value as Status })}
+                        aria-label="Status"
+                        className={`h-8 w-[104px] shrink-0 truncate rounded-full border-0 pl-2.5 pr-1 text-xs font-medium ${STATUS_TONE[r.status]}`}
+                      >
+                        {STATUS.map((st) => (
+                          <option key={st} value={st}>
+                            {STATUS_LABEL[st]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 pb-3 pl-[2.6rem]">
+                      <div
+                        className="inline-flex rounded-full border border-border p-0.5"
+                        role="group"
+                        aria-label="Prioriteit"
+                      >
+                        {[1, 2, 3, 4].map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => patch(r, { priority: r.priority === p ? null : p })}
+                            aria-pressed={r.priority === p}
+                            title={PRIORITY_LABEL[p]}
+                            className={`w-8 h-7 rounded-full text-xs tabular-nums ${r.priority === p ? "bg-foreground text-background font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                          >
+                            P{p}
+                          </button>
+                        ))}
+                      </div>
+                      {r.priority == null && (
+                        <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                          volgens klant
+                        </span>
+                      )}
                       {!r.task_id && isOpen(r.status) && (
                         <button
                           type="button"
                           onClick={() => makeTask(r)}
-                          className="h-8 rounded-lg border border-border px-2.5 text-xs inline-flex items-center gap-1.5 hover:bg-muted"
+                          className="ml-auto h-8 rounded-full border border-border px-2.5 text-xs inline-flex items-center gap-1 hover:bg-muted"
                         >
                           <ListPlus className="w-3.5 h-3.5" />
-                          Maak taak
+                          Taak
                         </button>
                       )}
                     </div>
                     {expanded && (
-                      <div className="mx-3 mb-3 ml-12 rounded-xl bg-muted/40 p-3 text-sm space-y-2">
+                      <div className="mx-3 mb-3 ml-[2.6rem] rounded-xl bg-muted/40 p-3 text-sm space-y-2">
                         <p className="whitespace-pre-wrap">
                           {r.details || (
                             <span className="text-muted-foreground">Geen uitleg meegegeven.</span>
@@ -344,58 +373,63 @@ function RequestsPage() {
           )}
         </section>
 
-        <aside className="rounded-2xl border border-border bg-card p-4 lg:sticky lg:top-4">
-          <h2 className="font-semibold">Aanvraaglink per klant</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Stuur deze link één keer; de klant ziet alleen zijn eigen aanvragen. Een nieuwe pagina
-            staat er met minimaal €{PAGE_RATE} per pagina.
-          </p>
-          <ul className="mt-3 space-y-1">
-            {clients
-              .filter((c) => c.status !== "Write-off")
-              .map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => copy(c)}
-                    className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted text-left"
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ background: c.brand_color ?? "hsl(0 0% 50%)" }}
-                    />
-                    <span className="truncate flex-1">{c.name}</span>
-                    <Copy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  </button>
-                </li>
-              ))}
-          </ul>
+        <aside className="hidden lg:block lg:sticky lg:top-4">
+          <LinkList clients={clients} onCopy={copy} />
         </aside>
       </div>
     </div>
   );
 }
 
-function Count({
+function LinkList({ clients, onCopy }: { clients: Client[]; onCopy: (c: Client) => void }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3 lg:p-4">
+      <h2 className="font-semibold text-sm lg:text-base">Aanvraaglink per klant</h2>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        Tik om te kopiëren. De klant ziet alleen zijn eigen aanvragen; een nieuwe pagina staat er
+        met minimaal €{PAGE_RATE}.
+      </p>
+      <ul className="mt-2 grid grid-cols-2 lg:grid-cols-1 gap-x-1 gap-y-0.5">
+        {clients
+          .filter((c) => c.status !== "Write-off")
+          .map((c) => (
+            <li key={c.id} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => onCopy(c)}
+                className="w-full flex items-center gap-2 rounded-lg px-2 h-9 text-sm hover:bg-muted active:bg-muted text-left"
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: c.brand_color ?? "hsl(0 0% 50%)" }}
+                />
+                <span className="truncate flex-1">{c.name}</span>
+                <Copy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              </button>
+            </li>
+          ))}
+      </ul>
+    </div>
+  );
+}
+
+function Stat({
   n,
   label,
-  warn,
-  euro,
+  tone = "",
+  priv,
 }: {
-  n: number;
+  n: number | string;
   label: string;
-  warn?: boolean;
-  euro?: boolean;
+  tone?: string;
+  priv?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card px-3 py-2.5">
-      <div
-        className={`text-2xl font-bold tabular-nums ${warn ? "text-sky-400" : ""}`}
-        data-private={euro ? "" : undefined}
-      >
-        {euro ? `€${Math.round(n)}` : n}
+    <div className="rounded-xl border border-border bg-card px-2.5 py-1.5 leading-tight min-w-[56px]">
+      <div className={`font-bold tabular-nums ${tone}`} data-private={priv ? "" : undefined}>
+        {n}
       </div>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="text-[10px] text-muted-foreground">{label}</div>
     </div>
   );
 }

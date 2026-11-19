@@ -115,5 +115,16 @@ export function byPriority<T extends RequestRow>(rows: T[]): T[] {
 
 export const kindLabel = (k: string) => KINDS.find((x) => x.id === k)?.label ?? k;
 export const urgencyLabel = (u: string) => URGENCY.find((x) => x.id === u)?.label ?? u;
-export const requestLink = (token: string, origin = "https://solyn22.lovable.app") =>
-  `${origin}/aanvraag/${token}`;
+/** "Villa Amano" → "villa-amano"; "DynaMik (SRL Energy Life)" → "dynamik". Only for a readable link; the token is the key. */
+export const slugOf = (name: string) =>
+  name
+    .replace(/\s*\(.*\)\s*$/, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " en ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "klant";
+/** The client's own page on the company website. The token sits after the #, so it never reaches a server log. */
+export const requestLink = (token: string, name: string) =>
+  `https://solynglobal.be/client/${slugOf(name)}#${token}`;

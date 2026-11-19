@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { byPriority, checkRequest, estimate, PAGE_RATE, type RequestRow } from "./client-requests";
+import {
+  byPriority,
+  checkRequest,
+  estimate,
+  PAGE_RATE,
+  requestLink,
+  slugOf,
+  type RequestRow,
+} from "./client-requests";
 
 describe("client requests", () => {
   it("prices new pages at the €85 minimum per page", () => {
@@ -44,5 +52,12 @@ describe("client requests", () => {
       r("plain", { created_at: "2026-11-01" }),
     ]);
     expect(list.map((x) => x.id)).toEqual(["mine1", "urgent", "dated", "plain", "later", "done"]);
+  });
+  it("builds the client link on the company website", () => {
+    expect(slugOf("Villa Amano")).toBe("villa-amano");
+    expect(slugOf("DynaMik (SRL Energy Life)")).toBe("dynamik");
+    expect(slugOf("GiGi L Coiffure")).toBe("gigi-l-coiffure");
+    expect(slugOf("Café Ré & Zo")).toBe("cafe-re-en-zo");
+    expect(requestLink("ab12", "Riory BV")).toBe("https://solynglobal.be/client/riory-bv#ab12");
   });
 });

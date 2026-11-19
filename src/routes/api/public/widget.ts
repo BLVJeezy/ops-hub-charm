@@ -30,7 +30,9 @@ export const Route = createFileRoute("/api/public/widget")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const db = supabaseAdmin as any;
-        const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()).slice(0, 7);
+        const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" })
+          .format(new Date())
+          .slice(0, 7);
         const [snap, clients, paid] = await Promise.all([
           db.rpc("briefing_snapshot"),
           db.from("clients").select("*").eq("status", "Active"),
@@ -38,7 +40,10 @@ export const Route = createFileRoute("/api/public/widget")({
         ]);
         if (snap.error) return Response.json({ error: snap.error.message }, { status: 500 });
         const { widgetPayload } = await import("@/lib/widget");
-        const paidThisMonth = (paid.data ?? []).reduce((a: number, r: { total: number }) => a + Number(r.total || 0), 0);
+        const paidThisMonth = (paid.data ?? []).reduce(
+          (a: number, r: { total: number }) => a + Number(r.total || 0),
+          0,
+        );
         return Response.json(widgetPayload(snap.data, clients.data ?? [], paidThisMonth), {
           headers: { "cache-control": "no-store" },
         });

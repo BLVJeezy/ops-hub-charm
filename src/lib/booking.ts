@@ -1,8 +1,11 @@
 /** The public booking page: which hours a client can pick for a meeting. All clock times are Europe/Brussels. */
 export type Busy = { start: string; end: string };   // ISO instants
 export type BookingRules = { days: number[]; from: number; to: number; minutes: number; noticeHours: number; horizonDays: number };
-/** Monday to Saturday, never before 13:00 (mornings are for work blocks), until 18:00, one hour, at least a day ahead, four weeks out. */
-export const RULES: BookingRules = { days: [1, 2, 3, 4, 5, 6], from: 13, to: 18, minutes: 60, noticeHours: 24, horizonDays: 28 };
+/**
+ * Monday to Saturday, between 13:00 and 17:00 (mornings are for work blocks), one hour, at least a day ahead, four weeks out.
+ * Work blocks in that window do not block a booking: they are what fills the afternoon when nobody books.
+ */
+export const RULES: BookingRules = { days: [1, 2, 3, 4, 5, 6], from: 13, to: 17, minutes: 60, noticeHours: 24, horizonDays: 28 };
 const ZONE = "Europe/Brussels";
 
 const parts = (d: Date) => Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: ZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", weekday: "short" }).formatToParts(d).map((p) => [p.type, p.value]));

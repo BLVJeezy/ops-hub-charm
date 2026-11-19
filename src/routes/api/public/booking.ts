@@ -12,7 +12,8 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 async function busyTimes(db: any, now: Date): Promise<Busy[]> {
   const from = now.toISOString(), to = new Date(now.getTime() + (RULES.horizonDays + 2) * 864e5).toISOString();
   const [cal, booked] = await Promise.all([
-    db.from("calendar_busy").select("starts_at, ends_at").lt("starts_at", to).gt("ends_at", from).limit(2000),
+    // work blocks give way to a meeting, so they do not make an hour busy
+    db.from("calendar_busy").select("starts_at, ends_at").neq("kind", "block").lt("starts_at", to).gt("ends_at", from).limit(2000),
     db.from("bookings").select("starts_at, ends_at").eq("status", "confirmed").gt("ends_at", from).limit(500),
   ]);
   if (cal.error || booked.error) throw new Error((cal.error ?? booked.error).message);

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Mail, Phone } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, Mail, MapPin, Paperclip, Phone, Video } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { KIND_COLOR, dayOf, kindOf, perDay, timeOf, weekOf, type AgendaItem, type AgendaKind } from "@/lib/agenda";
@@ -26,7 +26,7 @@ function AgendaPage() {
   const load = useCallback(async () => {
     const [cal, book, cli] = await Promise.all([
       db.from("calendar_busy").select("id, starts_at, ends_at, title, kind, client_id, source, synced_at").neq("source", "no-roster").order("starts_at").limit(2000),
-      db.from("bookings").select("id, name, email, phone, company, note, starts_at, ends_at").eq("status", "confirmed").order("starts_at").limit(500),
+      db.from("bookings").select("id, name, email, phone, company, note, starts_at, ends_at, mode, location, attachments, topics").eq("status", "confirmed").order("starts_at").limit(500),
       db.from("clients").select("id, brand_color"),
     ]);
     const color: Record<string, string | null> = Object.fromEntries((cli.data ?? []).map((c: { id: string; brand_color: string | null }) => [c.id, c.brand_color]));
@@ -34,9 +34,9 @@ function AgendaPage() {
       const title = r.title || "Bezet", kind = ((r.kind && r.kind !== "other" ? r.kind : kindOf(title)) as AgendaKind);
       return { id: r.id, start: r.starts_at, end: r.ends_at, title, kind, clientId: r.client_id, color: (r.client_id && color[r.client_id]) || KIND_COLOR[kind] };
     });
-    const fromBook: AgendaItem[] = (book.data ?? []).map((b: { id: string; name: string; email: string; phone: string | null; company: string | null; note: string | null; starts_at: string; ends_at: string }) => ({
+    const fromBook: AgendaItem[] = (book.data ?? []).map((b: { id: string; name: string; email: string; phone: string | null; company: string | null; note: string | null; starts_at: string; ends_at: string; mode: "online" | "onsite" | null; location: string | null; attachments: { name: string; path: string }[] | null; topics: string[] | null }) => ({
       id: b.id, start: b.starts_at, end: b.ends_at, title: `${b.name}${b.company ? ` · ${b.company}` : ""}`, kind: "booking" as const, clientId: null, color: KIND_COLOR.booking,
-      contact: { email: b.email, phone: b.phone, company: b.company, note: b.note },
+      contact: { email: b.email, phone: b.phone, company: b.company, note: b.note, mode: b.mode === "onsite" ? "onsite" : "online", location: b.location, topics: Array.isArray(b.topics) ? b.topics : [], files: Array.isArray(b.attachments) ? b.attachments : [] },
     }));
     setSynced(((cal.data ?? []) as { synced_at: string }[]).map((r) => r.synced_at).sort().pop() ?? null);
     setItems([...fromCal, ...fromBook]);
@@ -51,6 +51,11 @@ function AgendaPage() {
   const copy = async () => {
     const url = BOOK_URL;
     try { await navigator.clipboard.writeText(url); toast.success("Boekingslink gekopieerd"); } catch { toast(url); }
+  };
+  // files are private: a link that works for a few minutes is made when asked
+  const openFile = async (path: string) => {
+    const { data, error } = await supabase.storage.from("booking-files").createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) toast.error("Bestand openen lukte niet"); else window.open(data.signedUrl, "_blank", "noopener");
   };
   const cancel = async (i: AgendaItem) => {
     if (!window.confirm(`Afspraak met ${i.title} annuleren? De klant krijgt hiervan geen automatische mail.`)) return;
@@ -94,14 +99,21 @@ function AgendaPage() {
                         <li key={i.id}>
                           <button type="button" disabled={!i.contact} onClick={() => setOpen(expanded ? null : i.id)} aria-expanded={i.contact ? expanded : undefined}
                             className="w-full text-left rounded-xl px-2.5 py-2 min-h-11 enabled:press" style={{ background: `${i.color}${quiet ? "14" : "26"}`, boxShadow: `inset 3px 0 0 ${i.color}` }}>
-                            <span className="block text-[11px] tabular-nums text-muted-foreground">{timeOf(i.start)} – {timeOf(i.end)}{i.kind === "booking" ? " · geboekt" : ""}</span>
+                            <span className="block text-[11px] tabular-nums text-muted-foreground">{timeOf(i.start)} – {timeOf(i.end)}{i.kind === "booking" ? ` · ${i.contact?.mode === "onsite" ? "ter plaatse" : "online"}` : ""}</span>
                             <span className="block text-sm font-medium leading-snug break-words">{i.title}</span>
                           </button>
                           {expanded && i.contact && (
                             <div className="rounded-xl border border-border mt-1 p-2.5 text-sm space-y-1.5">
+                              {i.contact.mode === "onsite"
+                                ? <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.contact.location ?? "")}`} target="_blank" rel="noreferrer" className="flex items-start gap-2"><MapPin className="w-4 h-4 shrink-0 mt-0.5" /><span>Ter plaatse: {i.contact.location}</span></a>
+                                : <p className="flex items-center gap-2"><Video className="w-4 h-4 shrink-0" />Online meeting</p>}
                               <a href={`mailto:${i.contact.email}`} className="flex items-center gap-2 break-all"><Mail className="w-4 h-4 shrink-0" />{i.contact.email}</a>
                               {i.contact.phone && <a href={`tel:${i.contact.phone}`} className="flex items-center gap-2"><Phone className="w-4 h-4 shrink-0" />{i.contact.phone}</a>}
+                              {i.contact.topics.length > 0 && <p className="flex flex-wrap gap-1">{i.contact.topics.map((t) => <span key={t} className="text-[11px] rounded-full border border-border px-2 py-0.5">{t}</span>)}</p>}
                               {i.contact.note && <p className="text-muted-foreground whitespace-pre-wrap">{i.contact.note}</p>}
+                              {i.contact.files.map((f) => (
+                                <button key={f.path} type="button" onClick={() => openFile(f.path)} className="press flex items-center gap-2 text-left underline-offset-2 hover:underline min-h-9 break-all"><Paperclip className="w-4 h-4 shrink-0" />{f.name}</button>
+                              ))}
                               <button type="button" onClick={() => cancel(i)} className="press text-xs text-red-400 underline-offset-2 hover:underline min-h-9">Afspraak annuleren</button>
                             </div>
                           )}

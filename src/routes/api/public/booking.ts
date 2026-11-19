@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RULES, checkBooking, freeSlots, whenLabel, type Busy } from "@/lib/booking";
+import { clientMail, ownerMail } from "@/lib/booking-mail";
+import { RULES, checkBooking, checkFiles, freeSlots, safeName, whenLabel, type Busy } from "@/lib/booking";
 
 /**
  * The public booking page talks to this. GET lists the free hours; POST books one.
@@ -12,7 +13,6 @@ const cors = (request: Request): Record<string, string> => {
   return SITES.includes(origin) ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400", vary: "Origin" } : {};
 };
 const json = (body: unknown, status: number, extra: Record<string, string>) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store", ...extra } });
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function busyTimes(db: any, now: Date): Promise<Busy[]> {
@@ -53,12 +53,21 @@ export const Route = createFileRoute("/api/public/booking")({
       },
       POST: async ({ request }) => {
         const reply = (b: unknown, status = 200) => json(b, status, cors(request));
-        let raw: Record<string, unknown>;
-        try { raw = (await request.json()) as Record<string, unknown>; } catch { return reply({ error: "Ongeldige aanvraag." }, 400); }
+        // the page sends a form with the fields and any files; plain JSON (no files) works too
+        let raw: Record<string, unknown>, files: File[] = [];
+        try {
+          if ((request.headers.get("content-type") ?? "").includes("multipart/form-data")) {
+            const form = await request.formData();
+            raw = Object.fromEntries([...form.entries()].filter(([, v]) => typeof v === "string"));
+            files = form.getAll("files").filter((v): v is File => typeof v !== "string" && v.size > 0);
+          } else raw = (await request.json()) as Record<string, unknown>;
+        } catch { return reply({ error: "Ongeldige aanvraag." }, 400); }
         if (raw.website) return reply({ ok: true });   // a field people never see: only robots fill it in
         const checked = checkBooking(raw);
         if (!checked.ok) return reply({ error: checked.error }, 400);
         const b = checked.value;
+        const fileError = checkFiles(files.map((f) => ({ name: f.name, size: f.size, type: f.type })));
+        if (fileError) return reply({ error: fileError }, 400);
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,18 +77,24 @@ export const Route = createFileRoute("/api/public/booking")({
           const { count } = await db.from("bookings").select("id", { count: "exact", head: true }).eq("email", b.email).eq("status", "confirmed").gt("starts_at", now.toISOString());
           if ((count ?? 0) >= 3) return reply({ error: "Je hebt al drie afspraken openstaan. Mail ons om er nog een te plannen." }, 429);
           const end = new Date(Date.parse(start) + RULES.minutes * 6e4).toISOString();
-          const { error } = await db.from("bookings").insert({ name: b.name, email: b.email, phone: b.phone || null, company: b.company || null, note: b.note || null, starts_at: start, ends_at: end });
+          const { data: row, error } = await db.from("bookings").insert({ name: b.name, email: b.email, phone: b.phone || null, company: b.company || null, note: b.note || null, starts_at: start, ends_at: end, mode: b.mode, location: b.location || null, topics: b.topics }).select("id").single();
           if (error) return reply({ error: error.code === "23505" ? "Dat uur is net bezet. Kies een ander moment." : "Boeken lukte niet. Probeer het opnieuw." }, error.code === "23505" ? 409 : 500);
 
+          // the booking stands even when a file fails to store: the owner is told how many arrived
+          const stored: { name: string; path: string; size: number; type: string }[] = [];
+          for (const [i, f] of files.entries()) {
+            const path = `${row.id}/${i + 1}-${safeName(f.name)}`;
+            const up = await supabaseAdmin.storage.from("booking-files").upload(path, f, { contentType: f.type, upsert: false });
+            if (up.error) console.error("[booking] file not stored", up.error.message); else stored.push({ name: f.name.slice(0, 120), path, size: f.size, type: f.type });
+          }
+          if (stored.length) await db.from("bookings").update({ attachments: stored }).eq("id", row.id);
           const when = whenLabel(start), owner = process.env.ALERT_EMAIL_TO || "jason@solynglobal.be";
-          const box = (inner: string) => `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1B222C">${inner}</div>`;
+          const hub = process.env.HUB_PUBLIC_URL ? `${process.env.HUB_PUBLIC_URL.replace(/\/$/, "")}/agenda` : "https://solyn22.lovable.app/agenda";
+          const details = { ...b, when, files: { sent: files.length, stored: stored.length } };
+          const toClient = clientMail(details, owner), toOwner = ownerMail(details, hub);
           await Promise.all([
-            mail(b.email, `Je afspraak met Solyn Global: ${when}`,
-              box(`<h2 style="margin:0 0 12px">Je afspraak staat vast</h2><p>Dag ${esc(b.name)},</p><p>We spreken elkaar op <strong>${esc(when)}</strong>, voor een uur. Je krijgt nog een uitnodiging voor je agenda.</p><p>Past het toch niet? Antwoord op deze mail, dan zoeken we een ander moment.</p><p>Jason Balongo<br>Solyn Global</p>`),
-              `Dag ${b.name},\n\nJe afspraak met Solyn Global staat vast: ${when}, voor een uur.\nPast het toch niet? Antwoord op deze mail.\n\nJason Balongo\nSolyn Global`, owner),
-            mail(owner, `Nieuwe afspraak: ${b.name}, ${when}`,
-              box(`<h2 style="margin:0 0 12px">Nieuwe afspraak geboekt</h2><p><strong>${esc(when)}</strong> (1 uur)</p><p>${esc(b.name)}${b.company ? `, ${esc(b.company)}` : ""}<br>${esc(b.email)}${b.phone ? `<br>${esc(b.phone)}` : ""}</p>${b.note ? `<p style="padding:10px 12px;border-radius:8px;background:#f5f5f3">${esc(b.note)}</p>` : ""}<p style="color:#6b6b6b;font-size:13px">De afspraak komt binnen het uur in je Google Agenda.</p>`),
-              `Nieuwe afspraak: ${when}\n${b.name}${b.company ? `, ${b.company}` : ""}\n${b.email}${b.phone ? `\n${b.phone}` : ""}${b.note ? `\n\n${b.note}` : ""}`, b.email),
+            mail(b.email, toClient.subject, toClient.html, toClient.text, owner),
+            mail(owner, toOwner.subject, toOwner.html, toOwner.text, b.email),
           ]);
           return reply({ ok: true, when });
         } catch (e) {

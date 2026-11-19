@@ -36,14 +36,32 @@ export function freeSlots(now: Date, busy: Busy[], rules: BookingRules = RULES):
   }
   return out;
 }
-export type BookingInput = { name: string; email: string; phone: string; company: string; note: string; start: string };
+export type BookingInput = { name: string; email: string; phone: string; company: string; note: string; start: string; mode: "online" | "onsite"; location: string; topics: string[] };
+/** What a meeting can be about; a visitor ticks any of them. */
+export const TOPICS = ["SEO", "Webdesign", "Applicatie", "Social media"] as const;
+/** Files a client may add to a booking: photos and PDFs, a few of them, not too big. */
+export const FILE_RULES = { max: 5, maxBytes: 8 * 1024 * 1024, totalBytes: 20 * 1024 * 1024, types: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"] };
+export const FILE_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf";
+export function checkFiles(files: { name: string; size: number; type: string }[]): string | null {
+  if (files.length > FILE_RULES.max) return `Voeg hoogstens ${FILE_RULES.max} bestanden toe.`;
+  const wrong = files.find((f) => !FILE_RULES.types.includes(f.type));
+  if (wrong) return `${wrong.name}: alleen foto's (JPG, PNG, WebP, HEIC) en pdf's kunnen.`;
+  const big = files.find((f) => f.size > FILE_RULES.maxBytes);
+  if (big) return `${big.name} is te groot. Een bestand mag hoogstens 8 MB zijn.`;
+  if (files.reduce((s2, f) => s2 + f.size, 0) > FILE_RULES.totalBytes) return "Samen zijn de bestanden te groot (hoogstens 20 MB).";
+  return null;
+}
+/** A file name that is safe as a storage path. */
+export const safeName = (name: string) => name.normalize("NFKD").replace(/[^\w.\- ]+/g, "").replace(/\s+/g, "-").slice(-80) || "bestand";
 /** Cleans what a visitor typed; returns a message when something needed is missing. */
 export function checkBooking(raw: Record<string, unknown>): { ok: true; value: BookingInput } | { ok: false; error: string } {
   const s = (k: string, max: number) => String(raw[k] ?? "").trim().slice(0, max);
-  const value = { name: s("name", 120), email: s("email", 200).toLowerCase(), phone: s("phone", 40), company: s("company", 120), note: s("note", 1000), start: s("start", 40) };
+  const mode: BookingInput["mode"] = s("mode", 10) === "onsite" ? "onsite" : "online";
+  const value = { name: s("name", 120), email: s("email", 200).toLowerCase(), phone: s("phone", 40), company: s("company", 120), note: s("note", 1000), start: s("start", 40), mode, location: mode === "onsite" ? s("location", 200) : "", topics: TOPICS.filter((t) => String(raw.topics ?? "").split(",").map((x) => x.trim()).includes(t)) as string[] };
   if (value.name.length < 2) return { ok: false, error: "Vul je naam in." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.email)) return { ok: false, error: "Vul een geldig e-mailadres in." };
   if (Number.isNaN(Date.parse(value.start))) return { ok: false, error: "Kies een tijdstip." };
+  if (mode === "onsite" && value.location.length < 5) return { ok: false, error: "Vul het adres in waar we afspreken." };
   return { ok: true, value };
 }
 /** "vrijdag 20 november om 15:00" */

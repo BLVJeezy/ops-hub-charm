@@ -1,6 +1,6 @@
 /** The Agenda page: meetings, bookings, work blocks and Pathé shifts in one week view, in each client's colour. */
 export type AgendaKind = "booking" | "meeting" | "block" | "pathe" | "other";
-export type AgendaItem = { id: string; start: string; end: string; title: string; kind: AgendaKind; clientId: string | null; color: string; contact?: { email: string; phone: string | null; company: string | null; note: string | null } };
+export type AgendaItem = { id: string; start: string; end: string; title: string; kind: AgendaKind; clientId: string | null; color: string; contact?: { email: string; phone: string | null; company: string | null; note: string | null; mode: "online" | "onsite"; location: string | null; topics: string[]; files: { name: string; path: string }[] } };
 const ZONE = "Europe/Brussels";
 
 /** What a calendar item is, from its title. */

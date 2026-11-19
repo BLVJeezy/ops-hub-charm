@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brusselsTime, checkBooking, freeSlots, whenLabel } from "./booking";
+import { brusselsTime, checkBooking, checkFiles, freeSlots, safeName, whenLabel } from "./booking";
 
 describe("booking slots", () => {
   it("knows Brussels clock time in winter and summer", () => {
@@ -25,5 +25,25 @@ describe("booking slots", () => {
   });
   it("writes the moment out in Dutch", () => {
     expect(whenLabel("2026-11-20T14:00:00.000Z")).toBe("vrijdag 20 november om 15:00");
+  });
+  it("asks for an address only when meeting on location", () => {
+    const base = { name: "Ann", email: "ann@y.be", start: "2026-11-21T12:00:00Z" };
+    expect(checkBooking({ ...base, mode: "onsite" })).toMatchObject({ ok: false, error: "Vul het adres in waar we afspreken." });
+    expect(checkBooking({ ...base, mode: "onsite", location: "Markt 1, Tongeren" })).toMatchObject({ ok: true, value: { mode: "onsite", location: "Markt 1, Tongeren" } });
+    expect(checkBooking({ ...base, location: "Markt 1" })).toMatchObject({ ok: true, value: { mode: "online", location: "" } });
+  });
+  it("keeps only the topics that exist", () => {
+    const r = checkBooking({ name: "Ann", email: "ann@y.be", start: "2026-11-21T12:00:00Z", topics: "SEO,Hacken, Social media" });
+    expect(r).toMatchObject({ ok: true, value: { topics: ["SEO", "Social media"] } });
+  });
+  it("accepts a few photos and PDFs, nothing else and nothing huge", () => {
+    const f = (name: string, type: string, mb: number) => ({ name, type, size: mb * 1024 * 1024 });
+    expect(checkFiles([f("a.jpg", "image/jpeg", 3), f("plan.pdf", "application/pdf", 2)])).toBeNull();
+    expect(checkFiles([f("a.exe", "application/x-msdownload", 1)])).toContain("alleen foto's");
+    expect(checkFiles([f("a.jpg", "image/jpeg", 9)])).toContain("te groot");
+    expect(checkFiles(Array.from({ length: 6 }, (_, i) => f(`${i}.png`, "image/png", 1)))).toContain("hoogstens 5");
+    expect(checkFiles([f("a.jpg", "image/jpeg", 7), f("b.jpg", "image/jpeg", 7), f("c.jpg", "image/jpeg", 7)])).toContain("Samen");
+    expect(safeName("Foto van gevel (1).JPG")).toBe("Foto-van-gevel-1.JPG");
+    expect(safeName("../../etc/passwd")).toBe("....etcpasswd");
   });
 });

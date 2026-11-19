@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { whenLabel } from "@/lib/booking";
+import { FILE_ACCEPT, FILE_RULES, TOPICS, checkFiles, whenLabel } from "@/lib/booking";
 
 export const Route = createFileRoute("/afspraak")({
   ssr: false,
@@ -19,7 +19,10 @@ function BookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [day, setDay] = useState<string | null>(null);
   const [slot, setSlot] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", note: "", website: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", note: "", website: "", location: "" });
+  const [mode, setMode] = useState<"online" | "onsite">("online");
+  const [files, setFiles] = useState<File[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<string | null>(null);
 
@@ -43,7 +46,10 @@ function BookingPage() {
     if (!slot || sending) return;
     setSending(true); setError(null);
     try {
-      const r = await fetch("/api/public/booking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, start: slot }) });
+      const body = new FormData();
+      Object.entries({ ...form, mode, start: slot, topics: topics.join(",") }).forEach(([k, v]) => body.append(k, v));
+      files.forEach((f) => body.append("files", f));
+      const r = await fetch("/api/public/booking", { method: "POST", body });
       const j = await r.json().catch(() => ({}));
       if (r.ok) setDone(slot);
       else { setError(j.error || "Boeken lukte niet. Probeer het opnieuw."); if (r.status === 409) { setSlot(null); void load(); } }
@@ -52,6 +58,12 @@ function BookingPage() {
     } finally {
       setSending(false);
     }
+  };
+  const addFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = [...files, ...Array.from(e.target.files ?? [])];
+    e.target.value = "";
+    const problem = checkFiles(next);
+    if (problem) setError(problem); else { setFiles(next); setError(null); }
   };
   const field = "w-full h-12 rounded-xl border border-black/15 bg-white px-3.5 text-base outline-none focus:border-black/60";
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -67,13 +79,13 @@ function BookingPage() {
         {done ? (
           <section className="mt-12" aria-live="polite">
             <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Je afspraak staat vast.</h1>
-            <p className="mt-4 text-lg">We spreken elkaar op <strong>{whenLabel(done)}</strong>, voor een uur.</p>
+            <p className="mt-4 text-lg">We spreken elkaar op <strong>{whenLabel(done)}</strong>, voor een uur{mode === "onsite" ? `, bij jou: ${form.location}` : ", online"}.</p>
             <p className="mt-2 text-black/60">Je krijgt een bevestiging per mail op {form.email}. Past het toch niet, antwoord dan op die mail.</p>
           </section>
         ) : (
           <>
             <h1 className="mt-10 text-3xl md:text-4xl font-semibold tracking-tight">Plan een gesprek met Jason</h1>
-            <p className="mt-3 text-black/60 text-lg">Een uur, online of ter plaatse. Kies een moment dat past; je ziet alleen de uren die nog vrij zijn.</p>
+            <p className="mt-3 text-black/60 text-lg">Een uur, online of bij jou ter plaatse. Kies een moment dat past; je ziet alleen de uren die nog vrij zijn.</p>
 
             {slots === null ? <p className="mt-10 text-black/50">Vrije momenten laden…</p> : days.length === 0 ? (
               <p className="mt-10 rounded-2xl bg-black/[0.04] p-5">{error ?? "Er zijn de komende weken geen vrije momenten. Mail naar jason@solynglobal.be, dan zoeken we samen een moment."}</p>
@@ -116,11 +128,46 @@ function BookingPage() {
                   <p className="text-sm rounded-xl px-3.5 py-3" style={{ background: slot ? "rgba(176,138,46,0.12)" : "rgba(0,0,0,0.04)" }}>
                     {slot ? <>Gekozen: <strong>{whenLabel(slot)}</strong></> : "Kies eerst een dag en een uur."}
                   </p>
+                  <div role="group" aria-label="Hoe spreken we af?" className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setMode("online")} aria-pressed={mode === "online"} className="h-12 rounded-xl border text-sm font-medium transition-colors" style={mode === "online" ? { background: INK, color: "#fff", borderColor: INK } : { borderColor: "rgba(0,0,0,0.15)" }}>Online meeting</button>
+                    <button type="button" onClick={() => setMode("onsite")} aria-pressed={mode === "onsite"} className="h-12 rounded-xl border text-sm font-medium transition-colors" style={mode === "onsite" ? { background: INK, color: "#fff", borderColor: INK } : { borderColor: "rgba(0,0,0,0.15)" }}>Ter plaatse</button>
+                  </div>
+                  {mode === "onsite" && (
+                    <label className="block"><span className="text-sm">Adres waar we afspreken</span><input required minLength={5} autoComplete="street-address" placeholder="Straat en nummer, gemeente" value={form.location} onChange={set("location")} className={field} /></label>
+                  )}
                   <label className="block"><span className="text-sm">Naam</span><input required minLength={2} autoComplete="name" value={form.name} onChange={set("name")} className={field} /></label>
                   <label className="block"><span className="text-sm">E-mail</span><input required type="email" autoComplete="email" inputMode="email" value={form.email} onChange={set("email")} className={field} /></label>
                   <label className="block"><span className="text-sm">Telefoon <span className="text-black/45">(optioneel)</span></span><input type="tel" autoComplete="tel" value={form.phone} onChange={set("phone")} className={field} /></label>
                   <label className="block"><span className="text-sm">Bedrijf <span className="text-black/45">(optioneel)</span></span><input autoComplete="organization" value={form.company} onChange={set("company")} className={field} /></label>
-                  <label className="block"><span className="text-sm">Waarover wil je het hebben? <span className="text-black/45">(optioneel)</span></span><textarea rows={3} value={form.note} onChange={set("note")} className={`${field} h-auto py-3`} /></label>
+                  <div>
+                    <span className="text-sm">Waarover wil je het hebben? <span className="text-black/45">(optioneel)</span></span>
+                    <div role="group" aria-label="Onderwerp" className="mt-1.5 flex flex-wrap gap-2">
+                      {TOPICS.map((t) => {
+                        const on = topics.includes(t);
+                        return <button key={t} type="button" onClick={() => setTopics(on ? topics.filter((x) => x !== t) : [...topics, t])} aria-pressed={on} className="h-10 px-3.5 rounded-full border text-sm font-medium transition-colors" style={on ? { background: INK, color: "#fff", borderColor: INK } : { borderColor: "rgba(0,0,0,0.15)" }}>{t}</button>;
+                      })}
+                    </div>
+                    <textarea rows={3} aria-label="Meer uitleg" placeholder="Meer uitleg, als je wil" value={form.note} onChange={set("note")} className={`${field} h-auto py-3 mt-2`} />
+                  </div>
+                  <div>
+                    <span className="text-sm">Foto's of pdf's <span className="text-black/45">(optioneel, hoogstens 5)</span></span>
+                    {files.length > 0 && (
+                      <ul className="mt-1.5 space-y-1">
+                        {files.map((f, i) => (
+                          <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm rounded-lg bg-black/[0.04] pl-3 pr-1 min-h-10">
+                            <span className="flex-1 truncate">{f.name}</span>
+                            <button type="button" onClick={() => setFiles(files.filter((_, j) => j !== i))} aria-label={`Verwijder ${f.name}`} className="w-9 h-9 grid place-items-center text-lg leading-none">×</button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {files.length < FILE_RULES.max && (
+                      <label className="mt-1.5 flex items-center justify-center h-12 rounded-xl border border-dashed border-black/15 text-sm font-medium cursor-pointer">
+                        Bestand toevoegen
+                        <input type="file" multiple accept={FILE_ACCEPT} onChange={addFiles} className="sr-only" />
+                      </label>
+                    )}
+                  </div>
                   <input tabIndex={-1} autoComplete="off" aria-hidden value={form.website} onChange={set("website")} className="absolute -left-[9999px] w-px h-px opacity-0" name="website" />
                   {error && <p role="alert" className="text-sm rounded-xl border border-red-300 bg-red-50 text-red-800 px-3.5 py-3">{error}</p>}
                   <button type="submit" disabled={!slot || sending} className="w-full h-13 min-h-[52px] rounded-xl text-base font-semibold text-white disabled:opacity-40" style={{ background: INK }}>

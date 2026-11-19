@@ -4,6 +4,7 @@ import { CalendarClock, Check, Copy, Inbox, Link2, ListPlus, Paperclip } from "l
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  answerBy,
   byPriority,
   isOpen,
   kindLabel,
@@ -223,7 +224,9 @@ function RequestsPage() {
               {list.map((r, i) => {
                 const c = byId.get(r.client_id),
                   expanded = openId === r.id,
-                  late = !!r.wished_date && isOpen(r.status) && r.wished_date < today;
+                  late = !!r.wished_date && isOpen(r.status) && r.wished_date < today,
+                  due = r.status === "nieuw" ? answerBy(r) : null,
+                  overdue = !!due && due < new Date().toISOString();
                 return (
                   <li
                     key={r.id}
@@ -254,6 +257,15 @@ function RequestsPage() {
                         </span>
                         <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
                           <span className="text-foreground/80">{c?.name ?? "Klant"}</span>
+                          {due && (
+                            <span
+                              className={`rounded-full px-1.5 py-px ${overdue ? "bg-red-500/20 text-red-400" : "bg-muted text-muted-foreground"}`}
+                            >
+                              {overdue
+                                ? "antwoord te laat"
+                                : `antwoord vóór ${new Date(due).toLocaleString("nl-BE", { weekday: "short", hour: "2-digit", minute: "2-digit" })}`}
+                            </span>
+                          )}
                           <span>
                             · {kindLabel(r.kind)}
                             {r.pages ? ` (${r.pages})` : ""}

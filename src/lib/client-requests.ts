@@ -12,7 +12,11 @@ export const KINDS = [
   { id: "seo", label: "Gevonden worden (SEO)", hint: "Google, zoekwoorden, Google-profiel" },
   { id: "social", label: "Social media", hint: "Posts, video's, planning" },
   { id: "probleem", label: "Er werkt iets niet", hint: "Een fout op de site of in de app" },
-  { id: "andere", label: "Iets anders", hint: "Een vraag of idee" },
+  {
+    id: "andere",
+    label: "Iets anders",
+    hint: "Een algemene vraag of idee: je krijgt antwoord binnen 48 à 72 uur.",
+  },
 ] as const;
 export type Kind = (typeof KINDS)[number]["id"];
 
@@ -132,3 +136,18 @@ export const slugOf = (name: string) =>
 /** The client's own page on the company website. The token sits after the #, so it never reaches a server log. */
 export const requestLink = (token: string, name: string) =>
   `https://solynglobal.be/client/${slugOf(name)}#${token}`;
+
+/** How soon the client hears back: urgent within 24 hours, a general question within 48 to 72 hours. Null when the urgency already says it. */
+export function answerWithin(
+  kind: Kind,
+  urgency: Urgency,
+): { hours: number; label: string } | null {
+  if (urgency === "dringend") return { hours: 24, label: "binnen 24 uur" };
+  if (kind === "andere") return { hours: 72, label: "binnen 48 à 72 uur" };
+  return null;
+}
+/** The latest moment to answer a new request, or null when no answer time applies. */
+export function answerBy(r: { kind: Kind; urgency: Urgency; created_at: string }): string | null {
+  const w = answerWithin(r.kind, r.urgency);
+  return w ? new Date(Date.parse(r.created_at) + w.hours * 3600_000).toISOString() : null;
+}

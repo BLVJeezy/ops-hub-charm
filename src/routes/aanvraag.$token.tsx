@@ -19,6 +19,7 @@ import {
   PAGE_RATE,
   STATUS_LABEL,
   URGENCY,
+  answerWithin,
   checkRequest,
   estimate,
   kindLabel,
@@ -94,6 +95,7 @@ function RequestPage() {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [promise, setPromise] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [tab, setTab] = useState<"aanvraag" | "afspraak">(() =>
     typeof window !== "undefined" && window.location.hash === "#afspraak" ? "afspraak" : "aanvraag",
@@ -168,6 +170,7 @@ function RequestPage() {
       const r = await fetch("/api/public/request", { method: "POST", body });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error);
+      setPromise(kind ? (answerWithin(kind, urgency)?.label ?? null) : null);
       setSent(true);
       setForm((f) => ({ ...f, title: "", details: "", pages: "1", wished_date: "" }));
       setKind(null);
@@ -262,8 +265,10 @@ function RequestPage() {
                     aria-live="polite"
                   >
                     <div className="flex-1">
-                      <strong>Aanvraag ontvangen.</strong> Je ziet hieronder wanneer we eraan
-                      beginnen.
+                      <strong>Aanvraag ontvangen.</strong>{" "}
+                      {promise
+                        ? `Je krijgt een antwoord ${promise}.`
+                        : "Je ziet hieronder wanneer we eraan beginnen."}
                     </div>
                     <button
                       type="button"
@@ -391,6 +396,11 @@ function RequestPage() {
                       >
                         {urgHint}
                       </p>
+                      {kind === "andere" && urgency !== "dringend" && (
+                        <p className="mt-1 text-xs font-medium">
+                          Algemene vraag: antwoord binnen 48 à 72 uur.
+                        </p>
+                      )}
                     </fieldset>
 
                     <div className="flex flex-wrap gap-2">

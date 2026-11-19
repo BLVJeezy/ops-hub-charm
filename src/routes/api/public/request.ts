@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { checkFiles, safeName } from "@/lib/booking";
 import {
+  answerWithin,
   checkRequest,
   estimate,
   isOpen,
@@ -229,6 +230,9 @@ export const Route = createFileRoute("/api/public/request")({
                   : ""),
             ],
             ["Hoe dringend", urgencyLabel(input.urgency!)],
+            ...(answerWithin(input.kind!, input.urgency!)
+              ? [["Antwoord", answerWithin(input.kind!, input.urgency!)!.label] as [string, string]]
+              : []),
             ...(input.wished_date
               ? [["Gewenst tegen", input.wished_date] as [string, string]]
               : []),

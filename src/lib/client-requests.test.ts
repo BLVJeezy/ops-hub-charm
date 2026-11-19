@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  answerBy,
+  answerWithin,
   byPriority,
   checkRequest,
   estimate,
@@ -60,5 +62,14 @@ describe("client requests", () => {
     expect(slugOf("GiGi L Coiffure")).toBe("gigi-l-coiffure");
     expect(slugOf("Café Ré & Zo")).toBe("cafe-re-en-zo");
     expect(requestLink("ab12", "Riory BV")).toBe("https://solynglobal.be/client/riory-bv#ab12");
+  });
+  it("promises an answer: urgent within 24h, general questions within 48–72h", () => {
+    expect(answerWithin("andere", "normaal")?.label).toBe("binnen 48 à 72 uur");
+    expect(answerWithin("wijziging", "dringend")?.hours).toBe(24);
+    expect(answerWithin("andere", "dringend")?.hours).toBe(24);
+    expect(answerWithin("wijziging", "normaal")).toBeNull();
+    expect(
+      answerBy({ kind: "andere", urgency: "laag", created_at: "2026-11-19T10:00:00.000Z" }),
+    ).toBe("2026-11-22T10:00:00.000Z");
   });
 });

@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import type { BrainNeuron } from "@/components/BrainCanvas";
 
 /** A medal on the ring: a client (its logo) or a page of the app (its icon). */
-export type PerkItem = BrainNeuron & { icon?: LucideIcon };
+export type PerkItem = BrainNeuron & { icon?: LucideIcon; /** key of the medal this one hangs under: a sub-company of that client */ parent?: string | null };
 
 /** Logo for a client: a file in /public/logos named after the client id ("core" for Solyn). */
 const logoUrl = (key: string) => `/logos/${key}.png`;
@@ -32,8 +32,11 @@ function Emblem({ id, label, color, size, dim, icon: Icon }: { id: string; label
   );
 }
 
-/** Solyn in the middle, every client evenly spread on one circle, each tied to the centre with a line. */
-export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: {
+/**
+ * Solyn in the middle, every client evenly spread on one circle, each tied to the centre with a line.
+ * A sub-company hangs outside the circle, tied to its parent, so the line runs sub-company → parent → Solyn.
+ */
+export function PerkRing({ neurons: all, coreLabel, coreValue, selected, onSelect }: {
   neurons: PerkItem[]; coreLabel: string; coreValue: string; selected: string | null; onSelect: (key: string | null) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -49,18 +52,30 @@ export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: 
   }, []);
 
   const { w, h } = size;
+  const keys = new Set(all.map((p) => p.key));
+  const subs = all.filter((p) => p.parent && keys.has(p.parent) && p.parent !== p.key);
+  const neurons = all.filter((p) => !subs.includes(p));
   const n = Math.max(1, neurons.length);
   // the label hangs under each medal, so the circle sits a little above the middle
   const cx = w / 2, cy = h / 2 - 18 + (w < 520 ? 30 : 0);   // on a phone the view switch sits above the ring
   const small = w < 520;
   // on a narrow screen the circle becomes an upright oval, so the medals can be big enough to tap
-  const Rx = Math.max(60, Math.min((w / 2 - (small ? 44 : 56)) / (small ? 1 : 1.18), (h / 2 - 34) / 1.18));
+  // sub-companies sit outside the circle, so it is drawn a little smaller when there are any
+  const room = subs.length ? 0.8 : 1;
+  const Rx = Math.max(60, Math.min((w / 2 - (small ? 44 : 56)) / (small ? 1 : 1.18), (h / 2 - 34) / 1.18)) * room;
   const Ry = small ? Math.max(Rx, Math.min(Rx * 1.55, h / 2 - 112)) : Rx;
   const R = Math.min(Rx, Ry);
   // medals as large as the circle allows without touching each other
   const round = Math.PI * (3 * (Rx + Ry) - Math.sqrt((3 * Rx + Ry) * (Rx + 3 * Ry)));   // length of the oval
   const perk = Math.round(Math.max(44, Math.min(small ? 76 : R * 0.36, (round / n) * 0.62, 132)));
   const core = Math.round(Math.max(72, Math.min(R * (small ? 0.74 : 0.62), 210)));
+  const sub = Math.round(perk * 0.62);
+  /** A sub-company: outside its parent, fanned out when a parent has several. */
+  const subAt = (p: PerkItem) => {
+    const pi = neurons.findIndex((x) => x.key === p.parent), q = at(pi), sibs = subs.filter((x) => x.parent === p.parent), k = sibs.indexOf(p);
+    const a = q.a + (k - (sibs.length - 1) / 2) * 0.7, d = perk / 2 + sub / 2 + (small ? 20 : 40);
+    return { x: q.x + Math.cos(a) * d, y: q.y + Math.sin(a) * d, a, px: q.x, py: q.y };
+  };
   const at = (i: number) => { const a = -Math.PI / 2 + (i / n) * Math.PI * 2; return { x: cx + Math.cos(a) * Rx, y: cy + Math.sin(a) * Ry, a: Math.atan2(Math.sin(a) * Ry, Math.cos(a) * Rx) }; };
 
   return (
@@ -78,6 +93,13 @@ export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: 
                   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={p.color} strokeOpacity={0.28} strokeWidth={on ? 3 : 1.5} strokeDasharray={p.dim ? "3 6" : undefined} />
                   {!p.dim && <line className="perk-flow" x1={x1} y1={y1} x2={x2} y2={y2} stroke={p.color} strokeWidth={on ? 3 : 2} strokeLinecap="round" strokeDasharray="10 46" style={{ filter: `drop-shadow(0 0 4px ${p.color})`, animationDelay: `${-i * 0.37}s` }} />}
                 </g>
+              );
+            })}
+            {subs.map((p) => {
+              const q = subAt(p), on = selected === p.key, off = selected && !on && selected !== p.parent;
+              return (
+                <line key={p.key} x1={q.px + Math.cos(q.a) * (perk / 2 + 2)} y1={q.py + Math.sin(q.a) * (perk / 2 + 2)} x2={q.x - Math.cos(q.a) * (sub / 2 + 2)} y2={q.y - Math.sin(q.a) * (sub / 2 + 2)}
+                  stroke={p.color} strokeOpacity={off ? 0.2 : 0.7} strokeWidth={on ? 3 : 2} strokeLinecap="round" />
               );
             })}
           </svg>
@@ -103,6 +125,23 @@ export function PerkRing({ neurons, coreLabel, coreValue, selected, onSelect }: 
                 <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center pointer-events-none" style={{ top: perk + 6 }}>
                   <span className={`block font-medium text-white/90 ${small ? "text-[10px] max-w-[76px] truncate" : "text-[13px]"}`}>{p.label}</span>
                   {(!small || on) && <span className="block text-[11px] money" style={{ color: p.color }}>{p.value}</span>}
+                </span>
+              </button>
+            );
+          })}
+
+          {subs.map((p) => {
+            const q = subAt(p), on = selected === p.key, off = selected && !on && selected !== p.parent;
+            const parent = neurons.find((x) => x.key === p.parent);
+            return (
+              <button key={p.key} type="button" aria-pressed={on} aria-label={`${p.label}, onderdeel van ${parent?.label ?? ""}, ${p.value}`}
+                onClick={(e) => { e.stopPropagation(); onSelect(on ? null : p.key); }}
+                className="perk absolute rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white"
+                style={{ left: q.x, top: q.y, opacity: off ? 0.4 : 1, transform: `translate(-50%,-50%) scale(${on ? 1.12 : 1})` }}>
+                <Emblem id={p.key} label={p.label} color={p.color} size={sub} dim={p.dim} icon={p.icon} />
+                {p.badge ? <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 rounded-full bg-white text-black text-[10px] font-semibold grid place-items-center">{p.badge}</span> : null}
+                <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center pointer-events-none" style={q.y < cy ? { bottom: sub + 4 } : { top: sub + 4 }}>
+                  <span className={`block font-medium text-white/85 ${small ? "text-[10px] max-w-[76px] truncate" : "text-[12px]"}`}>{p.label}</span>
                 </span>
               </button>
             );

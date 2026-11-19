@@ -115,7 +115,9 @@ function BrainPage() {
         badge: openTasks.filter((t) => t.client_id === c.id).length || undefined,
       };
     });
-    return { active, prospects, colorOf, nameOf, neurons, mrr: active.reduce((a, c) => a + clientMRR(c), 0) };
+    // a sub-company hangs under its parent on the Perks ring (the column is newer than the generated types)
+    const parentOf: Record<string, string | null> = Object.fromEntries(data.clients.map((c) => [c.id, (c as { parent_client_id?: string | null }).parent_client_id ?? null]));
+    return { active, prospects, colorOf, nameOf, neurons, parentOf, mrr: active.reduce((a, c) => a + clientMRR(c), 0) };
   }, [data]);
 
   if (!data || !m) return <div className="min-h-[60vh] grid place-items-center text-sm text-white/50" style={{ background: "#02030a" }}>Het brein wordt opgebouwd…</div>;
@@ -254,7 +256,7 @@ function BrainPage() {
                         onClickCapture={(e) => { if (swallowClick.current) { swallowClick.current = false; e.stopPropagation(); e.preventDefault(); } }}>
                         {ring === "pages"
                           ? <PerkRing neurons={pages} coreLabel="Solyn" coreValue="Hub OS" selected={null} onSelect={(k) => { if (k) void navigate({ to: k }); }} />
-                          : <PerkRing neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} />}
+                          : <PerkRing neurons={m.neurons.map((n) => ({ ...n, parent: m.parentOf[n.key] ?? null }))} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} />}
                       </div>
                     ) : <BrainCanvas mode={mode} neurons={m.neurons} coreLabel="Solyn" coreValue={`${formatCurrency(m.mrr)}/mnd`} selected={selected} onSelect={openClient} images={planetUrls} />}
                     {(ring === "pages" || mode === "perks") && <div className="lg:hidden pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-14 flex gap-1.5" aria-hidden>{(["clients", "pages"] as const).map((k) => <span key={k} className={`h-1.5 rounded-full transition-all ${ring === k ? "w-4 bg-white" : "w-1.5 bg-white/35"}`} />)}</div>}

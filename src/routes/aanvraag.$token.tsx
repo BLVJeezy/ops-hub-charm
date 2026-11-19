@@ -396,11 +396,6 @@ function RequestPage() {
                       >
                         {urgHint}
                       </p>
-                      {kind === "andere" && urgency !== "dringend" && (
-                        <p className="mt-1 text-xs font-medium">
-                          Algemene vraag: antwoord binnen 48 à 72 uur.
-                        </p>
-                      )}
                     </fieldset>
 
                     <div className="flex flex-wrap gap-2">

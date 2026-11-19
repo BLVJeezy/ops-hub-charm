@@ -26,6 +26,7 @@ import { SolynLogo } from "./SolynLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
 import { Assistant, toggleAssistant } from "@/components/Assistant";
+import { NotificationBell } from "@/components/Notifications";
 
 const NAV_ITEMS = [
   { to: "/brain", label: "Brain", icon: BrainCircuit },
@@ -155,16 +156,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="w-full pl-9 pr-3 h-9 rounded-md bg-card border border-input text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </form>
+        <div className="ml-auto mr-2">
+          <NotificationBell className="w-9 h-9 border border-border hover:bg-muted" />
+        </div>
         {role === "admin" && (
           <button
             type="button"
             onClick={toggleAssistant}
-            className="press ml-auto mr-2 h-9 px-3 rounded-full border border-[#C9A14A]/50 bg-[#C9A14A]/10 text-[#C9A14A] text-sm inline-flex items-center gap-2"
+            className="press mr-2 h-9 px-3 rounded-full border border-[#C9A14A]/50 bg-[#C9A14A]/10 text-[#C9A14A] text-sm inline-flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" /> Assistent
           </button>
         )}
-        <PrivacyButton className={role === "admin" ? "" : "ml-auto"} />
+        <PrivacyButton />
       </header>
 
       {/* Content */}
@@ -327,6 +331,7 @@ function MobileNav({ assistant }: { assistant: boolean }) {
             <Sparkles className="w-5 h-5" />
           </button>
         )}
+        <NotificationBell up className="w-11 h-11" />
         <PrivacyButton className="w-11 h-11" />
         <button
           aria-label="Menu"

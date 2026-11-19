@@ -16,11 +16,27 @@ import {
  * The client's request page (/aanvraag/<token>) talks to this.
  * The token is the only key: it shows that one client's name and their own requests, nothing else.
  */
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
-  });
+// the client page also lives on the company website (solynglobal.be/client/<name>), so that site may call this from the browser
+const SITES = ["https://solynglobal.be", "https://www.solynglobal.be"];
+const cors = (request: Request): Record<string, string> => {
+  const origin = request.headers.get("origin") ?? "";
+  return SITES.includes(origin)
+    ? {
+        "access-control-allow-origin": origin,
+        "access-control-allow-methods": "GET, POST, OPTIONS",
+        "access-control-allow-headers": "content-type",
+        "access-control-max-age": "86400",
+        vary: "Origin",
+      }
+    : {};
+};
+const jsonWith =
+  (extra: Record<string, string>) =>
+  (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json", "cache-control": "no-store", ...extra },
+    });
 const TOKEN = /^[a-f0-9]{36}$/;
 const esc = (s: string) =>
   s.replace(
@@ -51,10 +67,16 @@ async function clientFor(db: any, token: string | null) {
   if (!token || !TOKEN.test(token)) return null;
   const { data } = await db
     .from("clients")
-    .select("id, name")
+    .select("id, name, contact_name, contact_email, contact_phone")
     .eq("request_token", token)
     .maybeSingle();
-  return data as { id: string; name: string } | null;
+  return data as {
+    id: string;
+    name: string;
+    contact_name: string | null;
+    contact_email: string | null;
+    contact_phone: string | null;
+  } | null;
 }
 
 export const Route = createFileRoute("/api/public/request")({

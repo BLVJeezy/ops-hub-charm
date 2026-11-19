@@ -104,13 +104,13 @@ function RootComponent() {
   );
 }
 
-// Skip PIN gate for the public unsubscribe page.
+// Skip PIN gate for the public pages: unsubscribe and the booking page.
 function RootGate() {
   const [pathname, setPathname] = useState<string>("");
   useEffect(() => {
     if (typeof window !== "undefined") setPathname(window.location.pathname);
   }, []);
-  const isPublic = pathname === "/unsubscribe";
+  const isPublic = pathname === "/unsubscribe" || pathname === "/afspraak";
   if (isPublic) return <Outlet />;
   return <PinGate><Outlet /></PinGate>;
 }

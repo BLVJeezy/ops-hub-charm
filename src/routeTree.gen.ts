@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AfspraakRouteImport } from './routes/afspraak'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedAutomationsRouteImport } from './routes/_authenticated/automations'
@@ -29,6 +30,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticated/status_.$id'
+import { Route as ApiPublicBookingRouteImport } from './routes/api/public/booking'
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
 import { Route as ApiPublicWidgetRouteImport } from './routes/api/public/widget'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -52,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AfspraakRoute = AfspraakRouteImport.update({
+  id: '/afspraak',
+  path: '/afspraak',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -147,6 +154,11 @@ const AuthenticatedStatusIdRoute = AuthenticatedStatusIdRouteImport.update({
   path: '/status/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicBookingRoute = ApiPublicBookingRouteImport.update({
+  id: '/api/public/booking',
+  path: '/api/public/booking',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTRoute = ApiPublicTRouteImport.update({
   id: '/api/public/t',
   path: '/api/public/t',
@@ -236,6 +248,7 @@ const LovableEmailTransactionalSendRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/automations': typeof AuthenticatedAutomationsRoute
@@ -253,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
+  '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -272,6 +286,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/automations': typeof AuthenticatedAutomationsRoute
@@ -288,6 +303,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
+  '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -309,6 +325,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/automations': typeof AuthenticatedAutomationsRoute
@@ -326,6 +343,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
   '/_authenticated/status_/$id': typeof AuthenticatedStatusIdRoute
+  '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -347,6 +365,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/afspraak'
     | '/auth'
     | '/unsubscribe'
     | '/automations'
@@ -364,6 +383,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/clients/$id'
     | '/status/$id'
+    | '/api/public/booking'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -383,6 +403,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/afspraak'
     | '/auth'
     | '/unsubscribe'
     | '/automations'
@@ -399,6 +420,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/clients/$id'
     | '/status/$id'
+    | '/api/public/booking'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -419,6 +441,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/afspraak'
     | '/auth'
     | '/unsubscribe'
     | '/_authenticated/automations'
@@ -436,6 +459,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/_authenticated/clients/$id'
     | '/_authenticated/status_/$id'
+    | '/api/public/booking'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -457,9 +481,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AfspraakRoute: typeof AfspraakRoute
   AuthRoute: typeof AuthRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  ApiPublicBookingRoute: typeof ApiPublicBookingRoute
   ApiPublicTRoute: typeof ApiPublicTRoute
   ApiPublicWidgetRoute: typeof ApiPublicWidgetRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -491,6 +517,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/afspraak': {
+      id: '/afspraak'
+      path: '/afspraak'
+      fullPath: '/afspraak'
+      preLoaderRoute: typeof AfspraakRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -618,6 +651,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/status/$id'
       preLoaderRoute: typeof AuthenticatedStatusIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/booking': {
+      id: '/api/public/booking'
+      path: '/api/public/booking'
+      fullPath: '/api/public/booking'
+      preLoaderRoute: typeof ApiPublicBookingRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/t': {
       id: '/api/public/t'
@@ -778,9 +818,11 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AfspraakRoute: AfspraakRoute,
   AuthRoute: AuthRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  ApiPublicBookingRoute: ApiPublicBookingRoute,
   ApiPublicTRoute: ApiPublicTRoute,
   ApiPublicWidgetRoute: ApiPublicWidgetRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,

@@ -10,6 +10,13 @@ export const Route = createFileRoute("/afspraak")({
 
 const ZONE = "Europe/Brussels";
 const INK = "#1B222C", GOLD = "#B08A2E";
+const monthLabel = (m: string) => (m ? new Intl.DateTimeFormat("nl-BE", { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(`${m}-01T12:00:00Z`)) : "");
+/** The days of a month as calendar cells, Monday first; null for the empty cells before the 1st. */
+function monthCells(m: string): (string | null)[] {
+  if (!m) return [];
+  const [y, mo] = m.split("-").map(Number), first = new Date(Date.UTC(y, mo - 1, 1)), count = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  return [...Array((first.getUTCDay() + 6) % 7).fill(null), ...Array.from({ length: count }, (_, i) => `${m}-${String(i + 1).padStart(2, "0")}`)];
+}
 const dayKey = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: ZONE }).format(new Date(iso));
 const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("nl-BE", { timeZone: ZONE, ...o }).format(new Date(iso));
 
@@ -40,6 +47,10 @@ function BookingPage() {
   }, [slots]);
   useEffect(() => { if (days.length && (!day || !days.some(([d]) => d === day))) setDay(days[0][0]); }, [days, day]);
   const times = days.find(([d]) => d === day)?.[1] ?? [];
+  // the calendar shows one month at a time; only months that have a free day can be opened
+  const months = useMemo(() => [...new Set(days.map(([d]) => d.slice(0, 7)))], [days]);
+  const [monthPick, setMonth] = useState<string | null>(null);
+  const month = monthPick && months.includes(monthPick) ? monthPick : (day?.slice(0, 7) ?? months[0] ?? "");
 
   const book = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,19 +104,20 @@ function BookingPage() {
               <div className="mt-8 grid gap-8 md:grid-cols-[1fr_320px]">
                 <section aria-label="Kies een moment" className="min-w-0">
                   <h2 className="text-sm font-semibold">1. Kies een dag</h2>
-                  <div className="mt-3 flex gap-2 overflow-x-auto pb-2 -mx-5 px-5 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
-                    {days.map(([d, list]) => {
-                      const on = d === day;
-                      return (
-                        <button key={d} type="button" onClick={() => { setDay(d); setSlot(null); }} aria-pressed={on}
-                          className="shrink-0 w-[68px] rounded-2xl border py-2.5 text-center transition-colors"
-                          style={on ? { background: INK, color: "#fff", borderColor: INK } : { borderColor: "rgba(0,0,0,0.15)" }}>
-                          <span className="block text-xs opacity-70">{fmt(list[0], { weekday: "short" })}</span>
-                          <span className="block text-xl font-semibold leading-tight">{fmt(list[0], { day: "numeric" })}</span>
-                          <span className="block text-xs opacity-70">{fmt(list[0], { month: "short" })}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="mt-3 rounded-2xl border border-black/15 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <button type="button" onClick={() => setMonth(months[months.indexOf(month) - 1])} disabled={months.indexOf(month) <= 0} aria-label="Vorige maand" className="w-10 h-10 grid place-items-center rounded-full border border-black/15 disabled:opacity-30">‹</button>
+                      <div className="text-sm font-semibold capitalize" aria-live="polite">{monthLabel(month)}</div>
+                      <button type="button" onClick={() => setMonth(months[months.indexOf(month) + 1])} disabled={months.indexOf(month) >= months.length - 1} aria-label="Volgende maand" className="w-10 h-10 grid place-items-center rounded-full border border-black/15 disabled:opacity-30">›</button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 text-center">
+                      {["ma", "di", "wo", "do", "vr", "za", "zo"].map((w) => <div key={w} className="text-xs text-black/45 py-1">{w}</div>)}
+                      {monthCells(month).map((d, i) => {
+                        if (!d) return <div key={`e${i}`} />;
+                        const free = days.some(([k]) => k === d), on = d === day;
+                        return <button key={d} type="button" disabled={!free} onClick={() => { setDay(d); setSlot(null); setMonth(null); }} aria-pressed={on} aria-label={`${Number(d.slice(8))} ${monthLabel(month)}${free ? "" : ", niet beschikbaar"}`} className={`aspect-square rounded-full text-sm tabular-nums transition-colors ${free && !on ? "font-semibold hover:bg-black/[0.06]" : ""}`} style={on ? { background: INK, color: "#fff", fontWeight: 600 } : free ? undefined : { color: "rgba(0,0,0,0.25)" }}>{Number(d.slice(8))}</button>;
+                      })}
+                    </div>
                   </div>
                   <h2 className="mt-6 text-sm font-semibold">2. Kies een uur</h2>
                   <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">

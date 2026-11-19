@@ -18,7 +18,15 @@ export type Automation = {
 };
 /** What the automations read from. */
 export type Source =
-  "sites" | "invoices" | "recurring" | "costs" | "hubdata" | "code" | "maps" | "booking";
+  | "sites"
+  | "invoices"
+  | "recurring"
+  | "costs"
+  | "hubdata"
+  | "code"
+  | "maps"
+  | "booking"
+  | "requests";
 /** Where the automations put their result. */
 export type Target = "mailYou" | "mailClient" | "hub" | "film" | "backup" | "ledger" | "agenda";
 export const SOURCES: { id: Source; name: string; note: string }[] = [
@@ -30,6 +38,7 @@ export const SOURCES: { id: Source; name: string; note: string }[] = [
   { id: "code", name: "Code", note: "GitHub" },
   { id: "maps", name: "Google Maps", note: "Posities via LeadSnap" },
   { id: "booking", name: "Boekingspagina", note: "solynglobal.be/afspraak" },
+  { id: "requests", name: "Aanvraaglinks", note: "Eén link per klant" },
 ];
 export const TARGETS: { id: Target; name: string; note: string }[] = [
   { id: "mailYou", name: "Mail aan jou", note: "jason@solynglobal.be" },
@@ -156,6 +165,16 @@ export const LIVE: Automation[] = [
     runs: "Hub",
     from: ["booking"],
     to: ["mailClient", "mailYou", "agenda"],
+  },
+  {
+    id: "requests",
+    name: "Klantaanvragen",
+    what: "Een klant vraagt iets via zijn eigen link. Jij krijgt een mail en de aanvraag staat in Aanvragen, gesorteerd op prioriteit.",
+    when: "Telkens een klant iets aanvraagt",
+    rhythm: "always",
+    runs: "Hub",
+    from: ["requests"],
+    to: ["mailYou", "hub"],
   },
 
   {

@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AfspraakRouteImport } from './routes/afspraak'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as AuthenticatedAanvragenRouteImport } from './routes/_authenticated/aanvragen'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
 import { Route as AuthenticatedAutomationsRouteImport } from './routes/_authenticated/automations'
 import { Route as AuthenticatedBoekhoudingRouteImport } from './routes/_authenticated/boekhouding'
@@ -27,11 +28,13 @@ import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedStatusRouteImport } from './routes/_authenticated/status'
+import { Route as AanvraagTokenRouteImport } from './routes/aanvraag.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticated/status_.$id'
 import { Route as ApiPublicBookingRouteImport } from './routes/api/public/booking'
+import { Route as ApiPublicRequestRouteImport } from './routes/api/public/request'
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
 import { Route as ApiPublicWidgetRouteImport } from './routes/api/public/widget'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -71,6 +74,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAanvragenRoute = AuthenticatedAanvragenRouteImport.update({
+  id: '/aanvragen',
+  path: '/aanvragen',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
   id: '/agenda',
@@ -139,6 +147,11 @@ const AuthenticatedStatusRoute = AuthenticatedStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AanvraagTokenRoute = AanvraagTokenRouteImport.update({
+  id: '/aanvraag/$token',
+  path: '/aanvraag/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
@@ -163,6 +176,11 @@ const AuthenticatedStatusIdRoute = AuthenticatedStatusIdRouteImport.update({
 const ApiPublicBookingRoute = ApiPublicBookingRouteImport.update({
   id: '/api/public/booking',
   path: '/api/public/booking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicRequestRoute = ApiPublicRequestRouteImport.update({
+  id: '/api/public/request',
+  path: '/api/public/request',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTRoute = ApiPublicTRouteImport.update({
@@ -257,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/aanvragen': typeof AuthenticatedAanvragenRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/automations': typeof AuthenticatedAutomationsRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
@@ -270,10 +289,12 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
+  '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -296,6 +317,7 @@ export interface FileRoutesByTo {
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/aanvragen': typeof AuthenticatedAanvragenRoute
   '/agenda': typeof AuthenticatedAgendaRoute
   '/automations': typeof AuthenticatedAutomationsRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
@@ -308,10 +330,12 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
+  '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -336,6 +360,7 @@ export interface FileRoutesById {
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/_authenticated/aanvragen': typeof AuthenticatedAanvragenRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
   '/_authenticated/automations': typeof AuthenticatedAutomationsRoute
   '/_authenticated/boekhouding': typeof AuthenticatedBoekhoudingRoute
@@ -349,10 +374,12 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/status': typeof AuthenticatedStatusRoute
+  '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
   '/_authenticated/status_/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
+  '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -377,6 +404,7 @@ export interface FileRouteTypes {
     | '/afspraak'
     | '/auth'
     | '/unsubscribe'
+    | '/aanvragen'
     | '/agenda'
     | '/automations'
     | '/boekhouding'
@@ -390,10 +418,12 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/clients/$id'
     | '/status/$id'
     | '/api/public/booking'
+    | '/api/public/request'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -416,6 +446,7 @@ export interface FileRouteTypes {
     | '/afspraak'
     | '/auth'
     | '/unsubscribe'
+    | '/aanvragen'
     | '/agenda'
     | '/automations'
     | '/boekhouding'
@@ -428,10 +459,12 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/clients/$id'
     | '/status/$id'
     | '/api/public/booking'
+    | '/api/public/request'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -455,6 +488,7 @@ export interface FileRouteTypes {
     | '/afspraak'
     | '/auth'
     | '/unsubscribe'
+    | '/_authenticated/aanvragen'
     | '/_authenticated/agenda'
     | '/_authenticated/automations'
     | '/_authenticated/boekhouding'
@@ -468,10 +502,12 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
     | '/_authenticated/status'
+    | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/_authenticated/clients/$id'
     | '/_authenticated/status_/$id'
     | '/api/public/booking'
+    | '/api/public/request'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -496,8 +532,10 @@ export interface RootRouteChildren {
   AfspraakRoute: typeof AfspraakRoute
   AuthRoute: typeof AuthRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  AanvraagTokenRoute: typeof AanvraagTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ApiPublicBookingRoute: typeof ApiPublicBookingRoute
+  ApiPublicRequestRoute: typeof ApiPublicRequestRoute
   ApiPublicTRoute: typeof ApiPublicTRoute
   ApiPublicWidgetRoute: typeof ApiPublicWidgetRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -551,6 +589,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/aanvragen': {
+      id: '/_authenticated/aanvragen'
+      path: '/aanvragen'
+      fullPath: '/aanvragen'
+      preLoaderRoute: typeof AuthenticatedAanvragenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/agenda': {
       id: '/_authenticated/agenda'
@@ -643,6 +688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStatusRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/aanvraag/$token': {
+      id: '/aanvraag/$token'
+      path: '/aanvraag/$token'
+      fullPath: '/aanvraag/$token'
+      preLoaderRoute: typeof AanvraagTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/email/unsubscribe': {
       id: '/email/unsubscribe'
       path: '/email/unsubscribe'
@@ -676,6 +728,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/booking'
       fullPath: '/api/public/booking'
       preLoaderRoute: typeof ApiPublicBookingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/request': {
+      id: '/api/public/request'
+      path: '/api/public/request'
+      fullPath: '/api/public/request'
+      preLoaderRoute: typeof ApiPublicRequestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/t': {
@@ -800,6 +859,7 @@ const AuthenticatedClientsRouteWithChildren =
   AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAanvragenRoute: typeof AuthenticatedAanvragenRoute
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
   AuthenticatedAutomationsRoute: typeof AuthenticatedAutomationsRoute
   AuthenticatedBoekhoudingRoute: typeof AuthenticatedBoekhoudingRoute
@@ -817,6 +877,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAanvragenRoute: AuthenticatedAanvragenRoute,
   AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
   AuthenticatedAutomationsRoute: AuthenticatedAutomationsRoute,
   AuthenticatedBoekhoudingRoute: AuthenticatedBoekhoudingRoute,
@@ -842,8 +903,10 @@ const rootRouteChildren: RootRouteChildren = {
   AfspraakRoute: AfspraakRoute,
   AuthRoute: AuthRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  AanvraagTokenRoute: AanvraagTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ApiPublicBookingRoute: ApiPublicBookingRoute,
+  ApiPublicRequestRoute: ApiPublicRequestRoute,
   ApiPublicTRoute: ApiPublicTRoute,
   ApiPublicWidgetRoute: ApiPublicWidgetRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,

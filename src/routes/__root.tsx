@@ -1,7 +1,12 @@
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts,
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useRouter,
+  HeadContent,
+  Scripts,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
@@ -18,7 +23,10 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
         <div className="mt-6">
-          <Link to="/" className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          <Link
+            to="/"
+            className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
             Go home
           </Link>
         </div>
@@ -29,16 +37,25 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
-  useEffect(() => { reportLovableError(error, { boundary: "root" }); }, [error]);
+  useEffect(() => {
+    reportLovableError(error, { boundary: "root" });
+  }, [error]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : String(error)}
+        </p>
         <button
-          onClick={() => { router.invalidate(); reset(); }}
+          onClick={() => {
+            router.invalidate();
+            reset();
+          }}
           className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-        >Try again</button>
+        >
+          Try again
+        </button>
       </div>
     </div>
   );
@@ -50,16 +67,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Solyn Global — Ops Hub" },
-      { name: "description", content: "Internal CRM, invoicing, and pipeline hub for Solyn Global." },
+      {
+        name: "description",
+        content: "Internal CRM, invoicing, and pipeline hub for Solyn Global.",
+      },
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "Solyn Global — Ops Hub" },
-      { property: "og:description", content: "Internal CRM, invoicing, and pipeline hub for Solyn Global." },
+      {
+        property: "og:description",
+        content: "Internal CRM, invoicing, and pipeline hub for Solyn Global.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Solyn Global — Ops Hub" },
-      { name: "twitter:description", content: "Internal CRM, invoicing, and pipeline hub for Solyn Global." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5134b605-9129-497a-ac3d-c224bacbe7ed/id-preview-ef2e31ee--82da2251-738e-4633-9ced-6f4036c59715.lovable.app-1783380121866.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5134b605-9129-497a-ac3d-c224bacbe7ed/id-preview-ef2e31ee--82da2251-738e-4633-9ced-6f4036c59715.lovable.app-1783380121866.png" },
+      {
+        name: "twitter:description",
+        content: "Internal CRM, invoicing, and pipeline hub for Solyn Global.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5134b605-9129-497a-ac3d-c224bacbe7ed/id-preview-ef2e31ee--82da2251-738e-4633-9ced-6f4036c59715.lovable.app-1783380121866.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5134b605-9129-497a-ac3d-c224bacbe7ed/id-preview-ef2e31ee--82da2251-738e-4633-9ced-6f4036c59715.lovable.app-1783380121866.png",
+      },
       { name: "theme-color", content: "#1B222C" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
@@ -83,7 +117,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <head><HeadContent /></head>
+      <head>
+        <HeadContent />
+      </head>
       <body>
         {children}
         <Scripts />
@@ -110,7 +146,12 @@ function RootGate() {
   useEffect(() => {
     if (typeof window !== "undefined") setPathname(window.location.pathname);
   }, []);
-  const isPublic = pathname === "/unsubscribe" || pathname === "/afspraak";
+  const isPublic =
+    pathname === "/unsubscribe" || pathname === "/afspraak" || pathname.startsWith("/aanvraag/");
   if (isPublic) return <Outlet />;
-  return <PinGate><Outlet /></PinGate>;
+  return (
+    <PinGate>
+      <Outlet />
+    </PinGate>
+  );
 }

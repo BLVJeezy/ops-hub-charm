@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest";
+import { byPriority, checkRequest, estimate, PAGE_RATE, type RequestRow } from "./client-requests";
+
+describe("client requests", () => {
+  it("prices new pages at the €85 minimum per page", () => {
+    expect(PAGE_RATE).toBe(85);
+    expect(estimate("nieuwe-pagina", 1)).toBe(85);
+    expect(estimate("nieuwe-pagina", 3)).toBe(255);
+    expect(estimate("nieuwe-pagina", null)).toBe(85);
+    expect(estimate("wijziging", 3)).toBeNull();
+  });
+  it("checks what a client sends", () => {
+    const ok = {
+      title: "Nieuwe foto's op home",
+      kind: "wijziging" as const,
+      urgency: "normaal" as const,
+    };
+    expect(checkRequest(ok, "2026-11-19")).toBeNull();
+    expect(checkRequest({ ...ok, title: "x" }, "2026-11-19")).toMatch(/titel/);
+    expect(checkRequest({ ...ok, kind: "nieuwe-pagina", pages: 0 }, "2026-11-19")).toMatch(
+      /pagina/,
+    );
+    expect(checkRequest({ ...ok, wished_date: "2026-11-01" }, "2026-11-19")).toMatch(/verleden/);
+    expect(checkRequest({ ...ok, contact_email: "nope" }, "2026-11-19")).toMatch(/e-mail/);
+    // @ts-expect-error unknown kind
+    expect(checkRequest({ ...ok, kind: "hack" }, "2026-11-19")).toMatch(/Kies/);
+  });
+  it("sorts: open first, my priority over their urgency, then nearest date, then oldest", () => {
+    const r = (id: string, o: Partial<RequestRow>): RequestRow => ({
+      id,
+      status: "nieuw",
+      priority: null,
+      urgency: "normaal",
+      wished_date: null,
+      created_at: "2026-11-10",
+      ...o,
+    });
+    const list = byPriority([
+      r("done", { status: "klaar", priority: 1 }),
+      r("later", { priority: 4, urgency: "dringend" }),
+      r("urgent", { urgency: "dringend" }),
+      r("mine1", { priority: 1 }),
+      r("dated", { wished_date: "2026-11-25" }),
+      r("plain", { created_at: "2026-11-01" }),
+    ]);
+    expect(list.map((x) => x.id)).toEqual(["mine1", "urgent", "dated", "plain", "later", "done"]);
+  });
+});

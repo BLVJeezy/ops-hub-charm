@@ -21,6 +21,8 @@ import {
   Mail,
   MapPin,
   Repeat,
+  Inbox,
+  Link2,
   Send,
   ShieldCheck,
   Stethoscope,
@@ -50,6 +52,7 @@ const SRC_ICON: Record<Source, Icon> = {
   code: GitBranch,
   maps: MapPin,
   booking: CalendarPlus,
+  requests: Link2,
 };
 const TGT_ICON: Record<Target, Icon> = {
   mailYou: Mail,
@@ -74,6 +77,7 @@ const AUTO_ICON: Record<string, Icon> = {
   reports: FileVideo,
   sitecheck: Stethoscope,
   booking: CalendarCheck,
+  requests: Inbox,
 };
 /** a colour per automation, so you can follow one wire across the map */
 const HUES = [160, 200, 265, 30, 340, 120, 185, 45, 290, 215, 0, 95, 245];

@@ -36,6 +36,8 @@ export type SiteRow = {
   email_domain: string | null;
   vercel_project_id: string | null;
   is_critical: boolean;
+  /** "family": an app run for relatives, shown apart from paying clients */
+  circle?: "client" | "family";
   check_interval_minutes: number;
   enabled: boolean;
   notes: string | null;
@@ -64,6 +66,7 @@ const EMPTY: SiteRow = {
   email_domain: "",
   vercel_project_id: "",
   is_critical: false,
+  circle: "client",
   check_interval_minutes: 15,
   enabled: true,
   notes: "",
@@ -140,6 +143,7 @@ export function SiteModal({ open, onOpenChange, initial, clients, onSaved }: Pro
         email_domain: clean(form.email_domain)?.toLowerCase() ?? null,
         vercel_project_id: clean(form.vercel_project_id),
         is_critical: form.is_critical,
+        circle: form.circle ?? "client",
         check_interval_minutes: form.check_interval_minutes,
         enabled: form.enabled,
         notes: clean(form.notes),
@@ -321,6 +325,18 @@ export function SiteModal({ open, onOpenChange, initial, clients, onSaved }: Pro
               </div>
             </div>
             <Switch checked={form.is_critical} onCheckedChange={(v) => set("is_critical", v)} />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <div className="text-sm font-medium">Familie, geen klant</div>
+              <div className="text-xs text-muted-foreground">
+                Staat apart onder Familie op Status
+              </div>
+            </div>
+            <Switch
+              checked={form.circle === "family"}
+              onCheckedChange={(v) => set("circle", v ? "family" : "client")}
+            />
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div className="text-sm font-medium">Monitoring enabled</div>

@@ -18,6 +18,9 @@ import {
   Trash2,
   Webhook,
   XCircle,
+  Home,
+  History,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +30,7 @@ import { SiteModal, DB_PROVIDERS, type SiteRow } from "@/components/SiteModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { runChecksNow } from "@/lib/monitoring.functions";
+import { problems as listProblems, type Problem } from "@/lib/site-problems";
 
 export const Route = createFileRoute("/_authenticated/status")({
   component: StatusPage,
@@ -60,6 +64,7 @@ type Incident = {
   status: "open" | "resolved";
   opened_at: string;
   resolved_at: string | null;
+  resolution_note?: string | null;
 };
 
 type BackupRun = {
@@ -178,10 +183,6 @@ function StatusPage() {
   }, [sites]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const open = useMemo(() => incidents.filter((i) => i.status === "open"), [incidents]);
-  const history = useMemo(
-    () => incidents.filter((i) => i.status === "resolved").slice(0, 20),
-    [incidents],
-  );
   const counts = useMemo(
     () => ({
       up: sites.filter((s) => s.enabled && s.last_status === "up").length,
@@ -267,6 +268,11 @@ function StatusPage() {
         </Section>
       )}
 
+      {/* Earlier problems */}
+      <ProblemBar
+        items={listProblems(incidents, backups, siteName, (t) => BACKUP_TARGETS[t] ?? t)}
+      />
+
       {/* Sites */}
       <Section icon={<Activity className="w-4 h-4" />} title="Clients">
         {loading ? (
@@ -279,33 +285,41 @@ function StatusPage() {
           />
         ) : (
           <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5">
-            {sites.map((s) => (
-              <SiteCard
-                key={s.id}
-                s={s}
-                openCount={open.filter((i) => i.site_id === s.id).length}
-                onOpen={() => navigate({ to: "/status/$id", params: { id: s.id } })}
-              />
-            ))}
+            {sites
+              .filter((s) => s.circle !== "family")
+              .map((s) => (
+                <SiteCard
+                  key={s.id}
+                  s={s}
+                  openCount={open.filter((i) => i.site_id === s.id).length}
+                  onOpen={() => navigate({ to: "/status/$id", params: { id: s.id } })}
+                />
+              ))}
           </div>
         )}
       </Section>
+
+      {sites.some((s) => s.circle === "family") && (
+        <Section icon={<Home className="w-4 h-4" />} title="Familie">
+          <div className="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5">
+            {sites
+              .filter((s) => s.circle === "family")
+              .map((s) => (
+                <SiteCard
+                  key={s.id}
+                  s={s}
+                  openCount={open.filter((i) => i.site_id === s.id).length}
+                  onOpen={() => navigate({ to: "/status/$id", params: { id: s.id } })}
+                />
+              ))}
+          </div>
+        </Section>
+      )}
 
       {/* Off-site backups */}
       <Section icon={<HardDrive className="w-4 h-4" />} title="Off-site backups">
         <BackupList runs={backups} />
       </Section>
-
-      {/* History */}
-      {history.length > 0 && (
-        <Section icon={<CheckCircle2 className="w-4 h-4" />} title="Incident history">
-          <div className="space-y-2">
-            {history.map((i) => (
-              <IncidentRow key={i.id} i={i} site={siteName(i.site_id)} />
-            ))}
-          </div>
-        </Section>
-      )}
 
       <SiteDetail
         site={detail}
@@ -384,7 +398,9 @@ function HealthBanner({
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-4xl font-bold tabular-nums leading-none ${counts.critical || counts.issues ? "" : "ink-emerald"}`}>
+            <span
+              className={`text-4xl font-bold tabular-nums leading-none ${counts.critical || counts.issues ? "" : "ink-emerald"}`}
+            >
               {counts.up}
             </span>
             <span className="text-lg text-muted-foreground tabular-nums">/ {sites.length}</span>
@@ -487,7 +503,9 @@ function pillsFor(s: Site): Pill[] {
     { icon: Database, label: "DB", state: st(s.db_status) },
     { icon: Webhook, label: "API", state: st(s.api_status) },
     // Deploy status comes from Vercel; sites hosted elsewhere have nothing to report, so no pill.
-    ...(s.vercel_project_id || s.last_deploy_state ? [{ icon: Rocket, label: "Deploy", state: deploy } as Pill] : []),
+    ...(s.vercel_project_id || s.last_deploy_state
+      ? [{ icon: Rocket, label: "Deploy", state: deploy } as Pill]
+      : []),
     { icon: Mail, label: "Email", state: st(s.email_status) },
     { icon: HardDrive, label: "Backup", state: backup },
   ];
@@ -506,7 +524,9 @@ function SiteCard({ s, openCount, onOpen }: { s: Site; openCount: number; onOpen
         <div className="flex items-center gap-2.5 min-w-0">
           <Dot color={style.color} />
           <span className="font-semibold truncate">{s.name}</span>
-          <span className="hidden md:inline text-xs text-muted-foreground truncate">{hostOf(s.url)}</span>
+          <span className="hidden md:inline text-xs text-muted-foreground truncate">
+            {hostOf(s.url)}
+          </span>
           {openCount > 0 ? (
             <span className="text-[11px] shrink-0" style={{ color: "#DC2626" }}>
               {openCount} alert{openCount === 1 ? "" : "s"}
@@ -519,8 +539,17 @@ function SiteCard({ s, openCount, onOpen }: { s: Site; openCount: number; onOpen
             )
           )}
         </div>
-        <div className="text-right shrink-0 text-sm tabular-nums font-medium" style={{ color: s.enabled ? msColor : undefined }}>
-          {!s.enabled ? "Paused" : s.last_status === "down" ? style.label : ms != null ? `${ms} ms` : style.label}
+        <div
+          className="text-right shrink-0 text-sm tabular-nums font-medium"
+          style={{ color: s.enabled ? msColor : undefined }}
+        >
+          {!s.enabled
+            ? "Paused"
+            : s.last_status === "down"
+              ? style.label
+              : ms != null
+                ? `${ms} ms`
+                : style.label}
         </div>
       </div>
       <div className="flex items-center justify-between gap-3 mt-1.5">
@@ -537,9 +566,97 @@ function SiteCard({ s, openCount, onOpen }: { s: Site; openCount: number; onOpen
             </span>
           ))}
         </div>
-        <span className="text-[11px] text-muted-foreground truncate md:hidden">{hostOf(s.url)}</span>
+        <span className="text-[11px] text-muted-foreground truncate md:hidden">
+          {hostOf(s.url)}
+        </span>
       </div>
     </button>
+  );
+}
+
+function ProblemBar({ items }: { items: Problem[] }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const open = items.filter((p) => !p.solved).length,
+    solved = items.length - open;
+  const sel = items.find((p) => p.id === openId);
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString("nl-BE", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  return (
+    <div className="mt-5 mb-2 rounded-2xl border border-border bg-card">
+      <div className="flex items-center gap-2 px-3 pt-2.5 text-xs text-muted-foreground">
+        <History className="w-3.5 h-3.5" />
+        <span className="font-medium text-foreground">Problemen</span>
+        {items.length === 0 ? (
+          <span>· geen in de laatste 30 dagen</span>
+        ) : (
+          <span>
+            · {open} open · {solved} opgelost (30 dagen)
+          </span>
+        )}
+      </div>
+      {items.length > 0 ? (
+        <div className="flex gap-2 overflow-x-auto px-3 py-2.5 [scrollbar-width:thin]">
+          {items.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setOpenId((x) => (x === p.id ? null : p.id))}
+              aria-expanded={openId === p.id}
+              className={`shrink-0 max-w-[280px] flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-left transition-colors ${openId === p.id ? "border-foreground/40 bg-muted/60" : "border-border hover:bg-muted/40"}`}
+            >
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: p.solved ? "#1D9E75" : SEV_COLOR[p.severity] }}
+              />
+              <span className="min-w-0">
+                <span className="block text-xs font-medium truncate">
+                  {p.site}: {p.title}
+                </span>
+                <span className="block text-[11px] text-muted-foreground truncate">
+                  {p.solved
+                    ? `Opgelost · duurde ${p.lasted}`
+                    : p.source === "backup"
+                      ? "Nog open · sinds laatste back-up"
+                      : `Nog open · ${p.lasted}`}
+                </span>
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${openId === p.id ? "rotate-180" : ""}`}
+              />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="px-3 py-2.5 text-xs text-muted-foreground">
+          Zodra een check iets vindt, staat het hier met wat er gebeurde en of het opgelost is.
+        </div>
+      )}
+      {sel && (
+        <div className="mx-3 mb-3 rounded-xl bg-muted/40 px-3 py-2.5 text-sm">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="font-medium">
+              {sel.site}: {sel.title}
+            </span>
+            <span
+              className={`text-[11px] rounded-full px-2 py-0.5 ${sel.solved ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"}`}
+            >
+              {sel.solved ? "Opgelost" : "Nog open"}
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1">{sel.what || "Geen details opgeslagen."}</p>
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            {sel.source === "backup"
+              ? `Gemeld bij de back-up van ${when(sel.since)}`
+              : `Begon ${when(sel.since)}${sel.solvedAt ? ` · opgelost ${when(sel.solvedAt)}` : ""} · ${sel.lasted}`}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 

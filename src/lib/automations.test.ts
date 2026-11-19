@@ -8,15 +8,26 @@ describe("automations", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
   it("wires every automation to known sources and targets, and leaves none of them loose", () => {
-    const src = new Set(SOURCES.map((x) => x.id)), tgt = new Set(TARGETS.map((x) => x.id));
+    const src = new Set(SOURCES.map((x) => x.id)),
+      tgt = new Set(TARGETS.map((x) => x.id));
     for (const a of LIVE) {
       expect(a.from.length, a.id).toBeGreaterThan(0);
       expect(a.to.length, a.id).toBeGreaterThan(0);
       a.from.forEach((f) => expect(src.has(f), `${a.id} ← ${f}`).toBe(true));
       a.to.forEach((x) => expect(tgt.has(x), `${a.id} → ${x}`).toBe(true));
     }
-    SOURCES.forEach((x) => expect(LIVE.some((a) => a.from.includes(x.id)), x.id).toBe(true));
-    TARGETS.forEach((x) => expect(LIVE.some((a) => a.to.includes(x.id)), x.id).toBe(true));
+    SOURCES.forEach((x) =>
+      expect(
+        LIVE.some((a) => a.from.includes(x.id)),
+        x.id,
+      ).toBe(true),
+    );
+    TARGETS.forEach((x) =>
+      expect(
+        LIVE.some((a) => a.to.includes(x.id)),
+        x.id,
+      ).toBe(true),
+    );
   });
   it("says how long ago something ran", () => {
     expect(ago("2026-11-17T09:57:00Z", now)).toBe("3 min geleden");

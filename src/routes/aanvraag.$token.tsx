@@ -381,7 +381,16 @@ function RequestPage() {
                           </button>
                         ))}
                       </div>
-                      <p className="mt-1.5 text-xs text-black/50">{urgHint}</p>
+                      <p
+                        className={
+                          urgency === "dringend"
+                            ? "mt-2 rounded-xl bg-amber-100 text-amber-900 px-3 py-2 text-xs leading-snug"
+                            : "mt-1.5 text-xs text-black/50"
+                        }
+                        role={urgency === "dringend" ? "note" : undefined}
+                      >
+                        {urgHint}
+                      </p>
                     </fieldset>
 
                     <div className="flex flex-wrap gap-2">

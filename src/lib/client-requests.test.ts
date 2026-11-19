@@ -25,6 +25,7 @@ describe("client requests", () => {
     };
     expect(checkRequest(ok, "2026-11-19")).toBeNull();
     expect(checkRequest({ ...ok, title: "x" }, "2026-11-19")).toMatch(/titel/);
+    expect(checkRequest({ ...ok, urgency: "dringend" }, "2026-11-19")).toBeNull();
     expect(checkRequest({ ...ok, kind: "nieuwe-pagina", pages: 0 }, "2026-11-19")).toMatch(
       /pagina/,
     );

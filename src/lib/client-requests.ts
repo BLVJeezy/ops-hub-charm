@@ -20,7 +20,11 @@ export const URGENCY = [
   { id: "laag", label: "Geen haast", hint: "Wanneer het past" },
   { id: "normaal", label: "Normaal", hint: "Binnen 1 à 2 weken" },
   { id: "hoog", label: "Liefst snel", hint: "Deze week" },
-  { id: "dringend", label: "Dringend", hint: "Iets ligt stil of kost klanten" },
+  {
+    id: "dringend",
+    label: "Binnen 24u",
+    hint: "Spoed binnen 24 uur. Dit kan extra gefactureerd worden, omdat je aanvraag dan voorgaat op die van andere klanten.",
+  },
 ] as const;
 export type Urgency = (typeof URGENCY)[number]["id"];
 

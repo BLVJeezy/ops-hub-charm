@@ -5,7 +5,13 @@ import { RULES, checkBooking, freeSlots, whenLabel, type Busy } from "@/lib/book
  * The public booking page talks to this. GET lists the free hours; POST books one.
  * Visitors only ever see free start times: never what the owner is busy with, and no other client's data.
  */
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+// The booking page also lives on the company website, so that site may call this from the browser.
+const SITES = ["https://solynglobal.be", "https://www.solynglobal.be"];
+const cors = (request: Request): Record<string, string> => {
+  const origin = request.headers.get("origin") ?? "";
+  return SITES.includes(origin) ? { "access-control-allow-origin": origin, "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400", vary: "Origin" } : {};
+};
+const json = (body: unknown, status: number, extra: Record<string, string>) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store", ...extra } });
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,34 +39,37 @@ async function mail(to: string, subject: string, html: string, text: string, rep
 export const Route = createFileRoute("/api/public/booking")({
   server: {
     handlers: {
-      GET: async () => {
+      OPTIONS: async ({ request }) => new Response(null, { status: 204, headers: cors(request) }),
+      GET: async ({ request }) => {
+        const reply = (b: unknown, status = 200) => json(b, status, cors(request));
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const now = new Date();
-          return json({ slots: freeSlots(now, await busyTimes(supabaseAdmin, now)), minutes: RULES.minutes });
+          return reply({ slots: freeSlots(now, await busyTimes(supabaseAdmin, now)), minutes: RULES.minutes });
         } catch (e) {
           console.error("[booking] slots failed", e instanceof Error ? e.message : e);
-          return json({ error: "De agenda is even niet bereikbaar." }, 500);
+          return reply({ error: "De agenda is even niet bereikbaar." }, 500);
         }
       },
       POST: async ({ request }) => {
+        const reply = (b: unknown, status = 200) => json(b, status, cors(request));
         let raw: Record<string, unknown>;
-        try { raw = (await request.json()) as Record<string, unknown>; } catch { return json({ error: "Ongeldige aanvraag." }, 400); }
-        if (raw.website) return json({ ok: true });   // a field people never see: only robots fill it in
+        try { raw = (await request.json()) as Record<string, unknown>; } catch { return reply({ error: "Ongeldige aanvraag." }, 400); }
+        if (raw.website) return reply({ ok: true });   // a field people never see: only robots fill it in
         const checked = checkBooking(raw);
-        if (!checked.ok) return json({ error: checked.error }, 400);
+        if (!checked.ok) return reply({ error: checked.error }, 400);
         const b = checked.value;
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const db = supabaseAdmin as any, now = new Date();
           const start = new Date(b.start).toISOString();
-          if (!freeSlots(now, await busyTimes(db, now)).includes(start)) return json({ error: "Dat uur is net bezet. Kies een ander moment." }, 409);
+          if (!freeSlots(now, await busyTimes(db, now)).includes(start)) return reply({ error: "Dat uur is net bezet. Kies een ander moment." }, 409);
           const { count } = await db.from("bookings").select("id", { count: "exact", head: true }).eq("email", b.email).eq("status", "confirmed").gt("starts_at", now.toISOString());
-          if ((count ?? 0) >= 3) return json({ error: "Je hebt al drie afspraken openstaan. Mail ons om er nog een te plannen." }, 429);
+          if ((count ?? 0) >= 3) return reply({ error: "Je hebt al drie afspraken openstaan. Mail ons om er nog een te plannen." }, 429);
           const end = new Date(Date.parse(start) + RULES.minutes * 6e4).toISOString();
           const { error } = await db.from("bookings").insert({ name: b.name, email: b.email, phone: b.phone || null, company: b.company || null, note: b.note || null, starts_at: start, ends_at: end });
-          if (error) return json({ error: error.code === "23505" ? "Dat uur is net bezet. Kies een ander moment." : "Boeken lukte niet. Probeer het opnieuw." }, error.code === "23505" ? 409 : 500);
+          if (error) return reply({ error: error.code === "23505" ? "Dat uur is net bezet. Kies een ander moment." : "Boeken lukte niet. Probeer het opnieuw." }, error.code === "23505" ? 409 : 500);
 
           const when = whenLabel(start), owner = process.env.ALERT_EMAIL_TO || "jason@solynglobal.be";
           const box = (inner: string) => `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1B222C">${inner}</div>`;
@@ -72,10 +81,10 @@ export const Route = createFileRoute("/api/public/booking")({
               box(`<h2 style="margin:0 0 12px">Nieuwe afspraak geboekt</h2><p><strong>${esc(when)}</strong> (1 uur)</p><p>${esc(b.name)}${b.company ? `, ${esc(b.company)}` : ""}<br>${esc(b.email)}${b.phone ? `<br>${esc(b.phone)}` : ""}</p>${b.note ? `<p style="padding:10px 12px;border-radius:8px;background:#f5f5f3">${esc(b.note)}</p>` : ""}<p style="color:#6b6b6b;font-size:13px">De afspraak komt binnen het uur in je Google Agenda.</p>`),
               `Nieuwe afspraak: ${when}\n${b.name}${b.company ? `, ${b.company}` : ""}\n${b.email}${b.phone ? `\n${b.phone}` : ""}${b.note ? `\n\n${b.note}` : ""}`, b.email),
           ]);
-          return json({ ok: true, when });
+          return reply({ ok: true, when });
         } catch (e) {
           console.error("[booking] failed", e instanceof Error ? e.message : e);
-          return json({ error: "Boeken lukte niet. Probeer het opnieuw." }, 500);
+          return reply({ error: "Boeken lukte niet. Probeer het opnieuw." }, 500);
         }
       },
     },

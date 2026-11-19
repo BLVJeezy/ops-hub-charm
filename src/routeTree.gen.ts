@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AfspraakRouteImport } from './routes/afspraak'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
 import { Route as AuthenticatedAutomationsRouteImport } from './routes/_authenticated/automations'
 import { Route as AuthenticatedBoekhoudingRouteImport } from './routes/_authenticated/boekhouding'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
@@ -70,6 +71,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAutomationsRoute =
   AuthenticatedAutomationsRouteImport.update({
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/agenda': typeof AuthenticatedAgendaRoute
   '/automations': typeof AuthenticatedAutomationsRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
   '/brain': typeof AuthenticatedBrainRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/agenda': typeof AuthenticatedAgendaRoute
   '/automations': typeof AuthenticatedAutomationsRoute
   '/boekhouding': typeof AuthenticatedBoekhoudingRoute
   '/brain': typeof AuthenticatedBrainRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
   '/_authenticated/automations': typeof AuthenticatedAutomationsRoute
   '/_authenticated/boekhouding': typeof AuthenticatedBoekhoudingRoute
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/afspraak'
     | '/auth'
     | '/unsubscribe'
+    | '/agenda'
     | '/automations'
     | '/boekhouding'
     | '/brain'
@@ -406,6 +416,7 @@ export interface FileRouteTypes {
     | '/afspraak'
     | '/auth'
     | '/unsubscribe'
+    | '/agenda'
     | '/automations'
     | '/boekhouding'
     | '/brain'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/afspraak'
     | '/auth'
     | '/unsubscribe'
+    | '/_authenticated/agenda'
     | '/_authenticated/automations'
     | '/_authenticated/boekhouding'
     | '/_authenticated/brain'
@@ -539,6 +551,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/agenda': {
+      id: '/_authenticated/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AuthenticatedAgendaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/automations': {
       id: '/_authenticated/automations'
@@ -781,6 +800,7 @@ const AuthenticatedClientsRouteWithChildren =
   AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
   AuthenticatedAutomationsRoute: typeof AuthenticatedAutomationsRoute
   AuthenticatedBoekhoudingRoute: typeof AuthenticatedBoekhoudingRoute
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
@@ -797,6 +817,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
   AuthenticatedAutomationsRoute: AuthenticatedAutomationsRoute,
   AuthenticatedBoekhoudingRoute: AuthenticatedBoekhoudingRoute,
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,

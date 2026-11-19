@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, GitBranch, Users, Wallet,
-  FileText, Search as SearchIcon, LogOut, Activity, Film, Workflow, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff, Sparkles,
+  FileText, Search as SearchIcon, LogOut, Activity, Film, Workflow, TrendingUp, BookOpen, MoreHorizontal, X, BrainCircuit, Eye, EyeOff, Sparkles, CalendarDays,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/clients", label: "Clients", icon: Users },
+  { to: "/agenda", label: "Agenda", icon: CalendarDays },
   { to: "/invoices", label: "Invoices", icon: FileText },
   { to: "/finance", label: "Finance", icon: TrendingUp },
   { to: "/boekhouding", label: "Boekhouding", icon: BookOpen },

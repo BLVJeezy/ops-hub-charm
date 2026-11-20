@@ -73,17 +73,18 @@ export const SITES: Record<string, BeheerSite> = {
 const hex = (buf: ArrayBuffer) =>
   [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 
-/** Checks a site's access code (the plain name, lower case) against its stored sha256, in constant time. */
+/** Solyn's own master code: opens the beheer of every site (only its sha256 is stored here). */
+const MASTER = "5f110b05d440ba90a0abc8ebdba5290df0ad522345b8b8ff65cb65c016598a16";
+const same = (a: string, b: string) => {
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+};
+/** Checks a site's access code (the plain name, lower case) or the master code against their sha256, in constant time. */
 export async function okCode(site: string, code: unknown): Promise<boolean> {
   if (!SITES[site] || typeof code !== "string") return false;
-  const h = hex(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code.trim().toLowerCase())),
-  );
-  const want = SITES[site].hash;
-  let diff = h.length ^ want.length;
-  for (let i = 0; i < Math.min(h.length, want.length); i++)
-    diff |= h.charCodeAt(i) ^ want.charCodeAt(i);
-  return diff === 0;
+  const h = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code.trim().toLowerCase())));
+  return same(h, SITES[site].hash) || same(h, MASTER);
 }
 
 /** CORS headers only for the site's own domains. */

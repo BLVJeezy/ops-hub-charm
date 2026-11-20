@@ -28,6 +28,7 @@ import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedStatusRouteImport } from './routes/_authenticated/status'
+import { Route as AuthenticatedWijzigingenRouteImport } from './routes/_authenticated/wijzigingen'
 import { Route as AanvraagTokenRouteImport } from './routes/aanvraag.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
@@ -150,6 +151,12 @@ const AuthenticatedStatusRoute = AuthenticatedStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWijzigingenRoute =
+  AuthenticatedWijzigingenRouteImport.update({
+    id: '/wijzigingen',
+    path: '/wijzigingen',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AanvraagTokenRoute = AanvraagTokenRouteImport.update({
   id: '/aanvraag/$token',
   path: '/aanvraag/$token',
@@ -308,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -352,6 +360,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -399,6 +408,7 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/status': typeof AuthenticatedStatusRoute
+  '/_authenticated/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -446,6 +456,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/wijzigingen'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/clients/$id'
@@ -490,6 +501,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/wijzigingen'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/clients/$id'
@@ -536,6 +548,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
     | '/_authenticated/status'
+    | '/_authenticated/wijzigingen'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/_authenticated/clients/$id'
@@ -726,6 +739,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof AuthenticatedStatusRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/wijzigingen': {
+      id: '/_authenticated/wijzigingen'
+      path: '/wijzigingen'
+      fullPath: '/wijzigingen'
+      preLoaderRoute: typeof AuthenticatedWijzigingenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/aanvraag/$token': {
@@ -934,6 +954,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedStatusRoute: typeof AuthenticatedStatusRoute
+  AuthenticatedWijzigingenRoute: typeof AuthenticatedWijzigingenRoute
   AuthenticatedStatusIdRoute: typeof AuthenticatedStatusIdRoute
 }
 
@@ -952,6 +973,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedStatusRoute: AuthenticatedStatusRoute,
+  AuthenticatedWijzigingenRoute: AuthenticatedWijzigingenRoute,
   AuthenticatedStatusIdRoute: AuthenticatedStatusIdRoute,
 }
 

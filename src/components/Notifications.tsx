@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell, CalendarCheck, Inbox } from "lucide-react";
+import { AlertTriangle, Bell, CalendarCheck, Inbox } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,11 +10,11 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export type Note = {
   id: string;
-  kind: "booking" | "request";
+  kind: "booking" | "request" | "flag";
   title: string;
   sub: string;
   at: string;
-  to: "/agenda" | "/aanvragen";
+  to: "/agenda" | "/aanvragen" | "/wijzigingen";
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,9 +73,35 @@ const put = (n: Note) => {
   emit();
 };
 
+type FlagRow = { id: string; site: string; changes: number; flags: string[]; created_at: string };
+const SITE_NAME: Record<string, string> = {
+  riory: "Riory",
+  "villa-amano": "Villa Amano",
+  belgomed: "Belgomed",
+  "horsey-valley": "Horsey Valley",
+  dynamik: "DynaMik",
+  tcsc: "TCSC",
+};
+const FLAG_TEXT: Record<string, string> = {
+  seo: "SEO aangepast",
+  contact: "contactgegevens",
+  removed: "veel tekst weg",
+  "many-at-once": "veel tegelijk",
+  "many-today": "veel vandaag",
+};
+// only red flags from client website edits come here; ordinary edits wait quietly in Wijzigingen
+const fromFlag = (f: FlagRow): Note => ({
+  id: `f:${f.id}`,
+  kind: "flag",
+  to: "/wijzigingen",
+  at: f.created_at,
+  title: `Rode vlag: ${SITE_NAME[f.site] ?? f.site}`,
+  sub: `${f.changes} ${f.changes === 1 ? "aanpassing" : "aanpassingen"} · ${f.flags.map((x) => FLAG_TEXT[x] ?? x).join(", ")}`,
+});
+
 async function load() {
   const since = new Date(Date.now() - 14 * 864e5).toISOString();
-  const [b, r] = await Promise.all([
+  const [b, r, f] = await Promise.all([
     db
       .from("bookings")
       .select("id, name, company, starts_at, created_at, client_id, mode")
@@ -88,10 +114,18 @@ async function load() {
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(30),
+    db
+      .from("site_change_batches")
+      .select("id, site, changes, flags, created_at")
+      .gte("created_at", since)
+      .neq("flags", "{}")
+      .order("created_at", { ascending: false })
+      .limit(30),
   ]);
   notes = [
     ...((b.data ?? []) as BookingRow[]).map(fromBooking),
     ...((r.data ?? []) as RequestRow[]).map(fromRequest),
+    ...((f.data ?? []) as FlagRow[]).map(fromFlag),
   ]
     .sort((x, y) => y.at.localeCompare(x.at))
     .slice(0, 40);
@@ -127,6 +161,17 @@ function start() {
         const n = fromRequest({ ...row, clients: data });
         put(n);
         toast(n.title, { description: n.sub, icon: "📥" });
+      },
+    )
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "site_change_batches" },
+      (p) => {
+        const row = p.new as FlagRow;
+        if (!row.flags?.length) return;
+        const n = fromFlag(row);
+        put(n);
+        toast.warning(n.title, { description: n.sub });
       },
     )
     .subscribe();
@@ -220,7 +265,12 @@ export function NotificationBell({
           ) : (
             <ul className="max-h-[60vh] overflow-y-auto divide-y divide-border">
               {list.map((n) => {
-                const I = n.kind === "booking" ? CalendarCheck : Inbox,
+                const I =
+                    n.kind === "booking"
+                      ? CalendarCheck
+                      : n.kind === "flag"
+                        ? AlertTriangle
+                        : Inbox,
                   fresh = n.at > shownSeen;
                 return (
                   <li key={n.id}>
@@ -233,7 +283,7 @@ export function NotificationBell({
                       className="w-full flex items-start gap-3 px-3.5 py-2.5 text-left hover:bg-muted/60"
                     >
                       <span
-                        className={`mt-0.5 grid place-items-center w-8 h-8 rounded-xl shrink-0 ${n.kind === "booking" ? "bg-[#C9A14A]/15 text-[#C9A14A]" : "bg-sky-500/15 text-sky-400"}`}
+                        className={`mt-0.5 grid place-items-center w-8 h-8 rounded-xl shrink-0 ${n.kind === "booking" ? "bg-[#C9A14A]/15 text-[#C9A14A]" : n.kind === "flag" ? "bg-amber-500/15 text-amber-400" : "bg-sky-500/15 text-sky-400"}`}
                       >
                         <I className="w-4 h-4" />
                       </span>

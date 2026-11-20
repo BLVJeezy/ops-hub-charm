@@ -20,7 +20,6 @@ import {
   Sparkles,
   CalendarDays,
   Inbox,
-  MessageCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
@@ -36,7 +35,6 @@ const NAV_ITEMS = [
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/agenda", label: "Agenda", icon: CalendarDays },
   { to: "/aanvragen", label: "Aanvragen", icon: Inbox },
-  { to: "/support", label: "Support", icon: MessageCircle },
   { to: "/invoices", label: "Invoices", icon: FileText },
   { to: "/finance", label: "Finance", icon: TrendingUp },
   { to: "/boekhouding", label: "Boekhouding", icon: BookOpen },

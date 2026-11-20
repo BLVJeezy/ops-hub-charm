@@ -69,12 +69,25 @@ const json = (h: Record<string, string>, body: unknown, status = 200) =>
   });
 
 type Contact = Record<string, { t: "phone" | "email" | "text" | "url"; f: string; v: string }>;
-type Content = { text: Record<string, string>; img: Record<string, string>; contact?: Contact };
+type Style = { head?: string; body?: string; el?: Record<string, { f?: string; s?: number }> };
+type Content = { text: Record<string, string>; img: Record<string, string>; contact?: Contact; style?: Style };
 function validContent(c: unknown, site: string): string | null {
   if (!c || typeof c !== "object" || Array.isArray(c)) return "Geen geldige inhoud.";
   const o = c as Record<string, unknown>;
   for (const k of Object.keys(o))
-    if (k !== "text" && k !== "img" && k !== "contact") return "Onbekend onderdeel: " + k;
+    if (k !== "text" && k !== "img" && k !== "contact" && k !== "style") return "Onbekend onderdeel: " + k;
+  if (o.style !== undefined) {
+    const st = o.style as Record<string, unknown>;
+    const font = (v: unknown) => v === undefined || (typeof v === "string" && /^[A-Za-z0-9 ]{1,60}$/.test(v));
+    if (!st || typeof st !== "object" || Array.isArray(st) || !font(st.head) || !font(st.body)) return "Ongeldige lettertypes.";
+    const el = (st.el ?? {}) as Record<string, unknown>;
+    if (typeof el !== "object" || Array.isArray(el) || Object.keys(el).length > 400) return "Ongeldige lettertypes.";
+    for (const [k, v] of Object.entries(el)) {
+      const x = v as Record<string, unknown>;
+      if (k.length > 300 || !x || typeof x !== "object" || !font(x.f)) return "Ongeldige lettertypes.";
+      if (x.s !== undefined && (typeof x.s !== "number" || x.s < 50 || x.s > 300)) return "Ongeldige tekstgrootte.";
+    }
+  }
   if (o.contact !== undefined) {
     const c = o.contact as Record<string, unknown>;
     if (!c || typeof c !== "object" || Array.isArray(c) || Object.keys(c).length > 12)
@@ -207,6 +220,7 @@ export const Route = createFileRoute("/api/public/beheer")({
               text: c.text ?? {},
               img: c.img ?? {},
               contact: c.contact ?? {},
+              style: c.style ?? {},
             };
             const at = new Date().toISOString();
             const before = await liveBefore(db, site);
@@ -242,7 +256,7 @@ export const Route = createFileRoute("/api/public/beheer")({
             const at = new Date().toISOString();
             const v = await db.from("beheer_versions").insert({
               site,
-              content: { text: c.text ?? {}, img: c.img ?? {}, contact: c.contact ?? {} },
+              content: { text: c.text ?? {}, img: c.img ?? {}, contact: c.contact ?? {}, style: c.style ?? {} },
               kind: "saved",
               created_at: at,
             });

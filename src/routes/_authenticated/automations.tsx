@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CircleDashed, Hammer, Workflow } from "lucide-react";
-import { AutomationMap, type Proof } from "@/components/AutomationMap";
+import { AutomationMap, type HealthMap, type Proof } from "@/components/AutomationMap";
+import { useServerFn } from "@tanstack/react-start";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { checkAutomationsNow } from "@/lib/automation-health.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { fresh, LIVE, PLANNED } from "@/lib/automations";
 
@@ -18,6 +22,45 @@ const latest = (rows: Record<string, string | null>[] | null, key: string) =>
 
 function AutomationsPage() {
   const [proof, setProof] = useState<Proof>({});
+  const [health, setHealth] = useState<HealthMap>({});
+  const [checking, setChecking] = useState(false);
+  const runCheck = useServerFn(checkAutomationsNow);
+  const loadHealth = async () => {
+    const { data } = await db
+      .from("automation_health")
+      .select("automation_id, status, detail, checked_at");
+    setHealth(
+      Object.fromEntries(
+        (
+          (data ?? []) as {
+            automation_id: string;
+            status: "ok" | "stale" | "unknown";
+            detail: string | null;
+            checked_at: string;
+          }[]
+        ).map((r) => [r.automation_id, r]),
+      ),
+    );
+  };
+  useEffect(() => {
+    void loadHealth();
+  }, []);
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      const r = await runCheck();
+      await loadHealth();
+      if (r.stale.length)
+        toast.warning(
+          `${r.stale.length} automation${r.stale.length === 1 ? "" : "s"} te lang stil`,
+        );
+      else toast.success("Alles nagekeken: niets stil gevallen");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Controle mislukte");
+    } finally {
+      setChecking(false);
+    }
+  };
   useEffect(() => {
     (async () => {
       const [sites, brief, rec, inv] = await Promise.all([
@@ -57,7 +100,16 @@ function AutomationsPage() {
     })();
   }, []);
 
-  const stale = LIVE.filter((a) => a.proof && fresh(proof[a.proof]?.at, a.rhythm) === false);
+  const checked = Object.values(health)
+    .map((h) => h.checked_at)
+    .sort()
+    .pop();
+  const stale = LIVE.filter((a) =>
+    health[a.id]
+      ? health[a.id].status === "stale"
+      : a.proof && fresh(proof[a.proof]?.at, a.rhythm) === false,
+  );
+  const unknown = LIVE.filter((a) => health[a.id]?.status === "unknown").length;
 
   return (
     <div className="p-4 md:p-6 max-w-6xl 3xl:max-w-[1500px] mx-auto space-y-5 md:space-y-7">
@@ -82,10 +134,43 @@ function AutomationsPage() {
             Wijs een blok aan om zijn draden te zien, klik om het vast te zetten.
           </p>
         </div>
-        <AutomationMap proof={proof} />
+        <div
+          className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl border px-3 py-2 text-sm ${stale.length ? "border-amber-500/40 bg-amber-500/5" : "border-border bg-card"}`}
+        >
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${stale.length ? "bg-amber-500" : checked ? "bg-emerald-500 automap-pulse" : "bg-muted-foreground/50"}`}
+          />
+          <span className="min-w-0 flex-1">
+            {!checked
+              ? "Nog niet nagekeken. De controle draait elk uur."
+              : stale.length
+                ? `${stale.length} te lang stil: ${stale.map((a) => a.name).join(", ")}`
+                : "Alles draait"}
+            {checked && (
+              <span className="text-muted-foreground">
+                {" · "}nagekeken{" "}
+                {new Date(checked).toLocaleTimeString("nl-BE", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                , elk uur{unknown ? ` · ${unknown} buiten de Hub (niet te zien)` : ""}
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={checkNow}
+            disabled={checking}
+            className="h-8 rounded-full border border-border px-3 text-xs inline-flex items-center gap-1.5 hover:bg-muted disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${checking ? "animate-spin" : ""}`} />
+            {checking ? "Bezig…" : "Nu controleren"}
+          </button>
+        </div>
+        <AutomationMap proof={proof} health={health} />
         <p className="text-xs text-muted-foreground">
-          De groene stip pulseert als de laatste run op tijd was; oranje is langer stil dan
-          verwacht. Claude-taken melden hun resultaat met een pushmelding.
+          Groen: de controle zag dat het op tijd liep. Oranje: te lang stil of mislukt, en je krijgt
+          een mail. Grijs: loopt buiten de Hub (Claude-taken melden zich met een pushmelding).
         </p>
       </section>
 

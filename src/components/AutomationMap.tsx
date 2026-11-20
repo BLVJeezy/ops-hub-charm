@@ -86,21 +86,37 @@ const hue = (i: number) => HUES[i % HUES.length];
 export type Proof = Partial<
   Record<NonNullable<Automation["proof"]>, { at: string | null; note?: string }>
 >;
-const state = (a: Automation, proof: Proof) => {
+export type HealthMap = Record<
+  string,
+  { status: "ok" | "stale" | "unknown"; detail: string | null; checked_at: string }
+>;
+/** ok: true = ran on time, false = too long quiet or failed, null = cannot tell. The hourly check wins over the page's own guess. */
+const state = (a: Automation, proof: Proof, health?: HealthMap) => {
   const p = a.proof ? proof[a.proof] : undefined;
-  return { ok: a.proof ? fresh(p?.at, a.rhythm) : null, last: ago(p?.at), note: p?.note };
+  const h = health?.[a.id];
+  const ok = h
+    ? h.status === "ok"
+      ? true
+      : h.status === "stale"
+        ? false
+        : null
+    : a.proof
+      ? fresh(p?.at, a.rhythm)
+      : null;
+  return { ok, last: ago(p?.at), note: p?.note, check: h?.detail ?? null };
 };
+const dotClass = (ok: boolean | null) =>
+  ok === false
+    ? "bg-amber-500"
+    : ok === null
+      ? "bg-muted-foreground/50"
+      : "bg-emerald-500 automap-pulse";
 
 type Wire = { d: string; auto: string; hue: number };
 
-/** Desktop: sources → automations → outcomes, drawn as a node canvas with live wires. Mobile: one chain per automation. */
-export function AutomationMap({ proof }: { proof: Proof }) {
-  const box = useRef<HTMLDivElement>(null);
+/** Measures the node ports inside `box` and draws a bezier per source→automation and automation→outcome. */
+function useWires(box: React.RefObject<HTMLDivElement | null>, minBend: number) {
   const [wires, setWires] = useState<Wire[]>([]);
-  const [hover, setFocus] = useState<string | null>(null); // "a:id" | "s:id" | "t:id"
-  const [pinned, setPinned] = useState<string | null>(null);
-  const focus = pinned ?? hover;
-
   const measure = useCallback(() => {
     const root = box.current;
     if (!root || root.offsetParent === null) return;
@@ -112,7 +128,7 @@ export function AutomationMap({ proof }: { proof: Proof }) {
       return { x: (side === "r" ? r.right : r.left) - R.left, y: r.top + r.height / 2 - R.top };
     };
     const curve = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-      const k = Math.max(40, (b.x - a.x) * 0.5);
+      const k = Math.max(minBend, (b.x - a.x) * 0.5);
       return `M${a.x},${a.y} C${a.x + k},${a.y} ${b.x - k},${b.y} ${b.x},${b.y}`;
     };
     const out: Wire[] = [];
@@ -130,8 +146,7 @@ export function AutomationMap({ proof }: { proof: Proof }) {
       });
     });
     setWires(out);
-  }, []);
-
+  }, [box, minBend]);
   useLayoutEffect(() => {
     measure();
     const ro = new ResizeObserver(measure);
@@ -141,7 +156,19 @@ export function AutomationMap({ proof }: { proof: Proof }) {
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [measure]);
+  }, [measure, box]);
+  return wires;
+}
+
+/** Sources → automations → outcomes, drawn as a node canvas with live wires: roomy on desktop, icon-only sides on phones. */
+export function AutomationMap({ proof, health }: { proof: Proof; health?: HealthMap }) {
+  const box = useRef<HTMLDivElement>(null);
+  const phoneBox = useRef<HTMLDivElement>(null);
+  const wires = useWires(box, 40);
+  const phoneWires = useWires(phoneBox, 8);
+  const [hover, setFocus] = useState<string | null>(null); // "a:id" | "s:id" | "t:id"
+  const [pinned, setPinned] = useState<string | null>(null);
+  const focus = pinned ?? hover;
 
   const lit = (a: Automation) =>
     !focus ||
@@ -162,6 +189,8 @@ export function AutomationMap({ proof }: { proof: Proof }) {
         litAuto.has(a.id) && (focus.startsWith("a:") || focus.startsWith("s:")) && a.to.includes(t),
     );
   const toggle = (k: string) => setPinned((f) => (f === k ? null : k));
+  const wireOn = (w: Wire) =>
+    litAuto.has(w.auto) && (!focus || !focus.startsWith("a:") || focus === `a:${w.auto}`);
 
   return (
     <>
@@ -171,25 +200,7 @@ export function AutomationMap({ proof }: { proof: Proof }) {
         className="hidden md:grid relative grid-cols-[minmax(150px,1fr)_minmax(260px,1.5fr)_minmax(150px,1fr)] gap-x-20 lg:gap-x-28 rounded-3xl border border-border p-6 lg:p-8 overflow-hidden automap-grid"
         onMouseLeave={() => setFocus(null)}
       >
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
-          {wires.map((w, i) => {
-            const on =
-              litAuto.has(w.auto) && (!focus || !focus.startsWith("a:") || focus === `a:${w.auto}`);
-            return (
-              <g key={i} style={{ opacity: on ? 1 : 0.08, transition: "opacity 200ms" }}>
-                <path d={w.d} fill="none" stroke={`hsl(${w.hue} 70% 55% / 0.35)`} strokeWidth={2} />
-                <path
-                  d={w.d}
-                  fill="none"
-                  stroke={`hsl(${w.hue} 80% 62%)`}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  className="automap-flow"
-                />
-              </g>
-            );
-          })}
-        </svg>
+        <Wires wires={wires} on={wireOn} />
 
         <Column title="Bronnen">
           {SOURCES.map((s) => {
@@ -213,7 +224,7 @@ export function AutomationMap({ proof }: { proof: Proof }) {
         <Column title="Automations">
           {LIVE.map((a, i) => {
             const I = AUTO_ICON[a.id] ?? Workflow,
-              st = state(a, proof),
+              st = state(a, proof, health),
               h = hue(i);
             return (
               <button
@@ -238,9 +249,7 @@ export function AutomationMap({ proof }: { proof: Proof }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.ok === false ? "bg-amber-500" : "bg-emerald-500 automap-pulse"}`}
-                      />
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClass(st.ok)}`} />
                       <span className="font-medium text-sm leading-tight truncate">{a.name}</span>
                     </div>
                     <div className="text-[11px] text-muted-foreground truncate mt-0.5">
@@ -255,6 +264,14 @@ export function AutomationMap({ proof }: { proof: Proof }) {
                 {pinned === `a:${a.id}` && (
                   <p className="text-xs text-muted-foreground mt-2 leading-snug">
                     {a.what}
+                    {st.check ? (
+                      <>
+                        <br />
+                        <span className={st.ok === false ? "text-amber-500" : ""}>
+                          Controle: {st.check}
+                        </span>
+                      </>
+                    ) : null}
                     {a.yours ? (
                       <>
                         <br />
@@ -289,55 +306,88 @@ export function AutomationMap({ proof }: { proof: Proof }) {
         </Column>
       </div>
 
-      {/* mobile chains */}
-      <ul className="md:hidden space-y-2">
-        {LIVE.map((a, i) => {
-          const I = AUTO_ICON[a.id] ?? Workflow,
-            st = state(a, proof),
-            h = hue(i);
-          return (
-            <li key={a.id} className="rounded-2xl border border-border bg-card p-3 automap-grid">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {a.from.map((s) => {
-                  const S = SRC_ICON[s];
-                  return <Chip key={s} icon={S} label={SOURCES.find((x) => x.id === s)!.name} />;
-                })}
-              </div>
-              <Link h={h} />
-              <div className="flex items-center gap-2.5 rounded-xl border border-border bg-background/80 px-2.5 py-2">
-                <span
-                  className="grid place-items-center w-8 h-8 rounded-xl shrink-0"
-                  style={{ background: `hsl(${h} 70% 50% / 0.16)`, color: `hsl(${h} 80% 65%)` }}
+      {/* phone canvas: same map, sources and outcomes as icons */}
+      <div className="md:hidden space-y-2">
+        <div
+          ref={phoneBox}
+          className="relative grid grid-cols-[40px_minmax(0,1fr)_40px] gap-x-6 rounded-3xl border border-border p-2.5 overflow-hidden automap-grid"
+        >
+          <Wires wires={phoneWires} on={wireOn} thin />
+          <div className="flex flex-col justify-center gap-2">
+            {SOURCES.map((s) => (
+              <IconNode
+                key={s.id}
+                id={`s:${s.id}`}
+                icon={SRC_ICON[s.id]}
+                label={s.name}
+                port="r"
+                dim={!litSrc(s.id)}
+                active={pinned === `s:${s.id}`}
+                onTap={() => toggle(`s:${s.id}`)}
+              />
+            ))}
+          </div>
+          <div className="flex flex-col justify-center gap-1.5 min-w-0">
+            {LIVE.map((a, i) => {
+              const I = AUTO_ICON[a.id] ?? Workflow,
+                st = state(a, proof, health),
+                h = hue(i);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  data-node={`a:${a.id}`}
+                  onClick={() => toggle(`a:${a.id}`)}
+                  aria-pressed={pinned === `a:${a.id}`}
+                  className={`relative z-10 w-full min-w-0 text-left rounded-xl border bg-card/95 backdrop-blur px-2 py-1.5 transition-opacity duration-200 active:scale-[0.98] ${lit(a) ? "opacity-100" : "opacity-25"} ${pinned === `a:${a.id}` ? "border-foreground/50" : "border-border"}`}
                 >
-                  <I className="w-4 h-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
+                  <PortDot side="l" h={h} />
+                  <PortDot side="r" h={h} />
+                  <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.ok === false ? "bg-amber-500" : "bg-emerald-500 automap-pulse"}`}
-                    />
-                    <span className="font-medium text-sm truncate">{a.name}</span>
+                      className="grid place-items-center w-6 h-6 rounded-lg shrink-0"
+                      style={{ background: `hsl(${h} 70% 50% / 0.16)`, color: `hsl(${h} 80% 65%)` }}
+                    >
+                      <I className="w-3.5 h-3.5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClass(st.ok)}`} />
+                        <span className="text-[12px] font-medium leading-tight truncate">
+                          {a.name}
+                        </span>
+                      </span>
+                      <span className="block text-[10px] text-muted-foreground truncate">
+                        {a.when}
+                      </span>
+                    </span>
                   </div>
-                  <div className="text-[11px] text-muted-foreground truncate">
-                    {a.when}
-                    {st.last ? ` · ${st.last}` : st.note ? ` · ${st.note}` : ""}
-                  </div>
-                </div>
-                <span className="text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground shrink-0">
-                  {a.runs}
-                </span>
-              </div>
-              <Link h={h} />
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {a.to.map((t) => {
-                  const T = TGT_ICON[t];
-                  return <Chip key={t} icon={T} label={TARGETS.find((x) => x.id === t)!.name} />;
-                })}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-col justify-center gap-2">
+            {TARGETS.map((t) => (
+              <IconNode
+                key={t.id}
+                id={`t:${t.id}`}
+                icon={TGT_ICON[t.id]}
+                label={t.name}
+                port="l"
+                dim={!litTgt(t.id)}
+                active={pinned === `t:${t.id}`}
+                onTap={() => toggle(`t:${t.id}`)}
+              />
+            ))}
+          </div>
+        </div>
+        <PhoneDetail
+          pinned={pinned}
+          proof={proof}
+          health={health}
+          onClose={() => setPinned(null)}
+        />
+      </div>
     </>
   );
 }
@@ -408,11 +458,171 @@ function Chip({ icon: I, label }: { icon: Icon; label: string }) {
     </span>
   );
 }
-function Link({ h }: { h: number }) {
+
+function Wires({ wires, on, thin }: { wires: Wire[]; on: (w: Wire) => boolean; thin?: boolean }) {
   return (
-    <div
-      className="ml-6 h-3.5 w-0.5 rounded-full automap-vflow"
-      style={{ ["--c" as string]: `hsl(${h} 80% 62%)` }}
-    />
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
+      {wires.map((w, i) => (
+        <g key={i} style={{ opacity: on(w) ? 1 : 0.07, transition: "opacity 200ms" }}>
+          <path
+            d={w.d}
+            fill="none"
+            stroke={`hsl(${w.hue} 70% 55% / 0.35)`}
+            strokeWidth={thin ? 1.5 : 2}
+          />
+          <path
+            d={w.d}
+            fill="none"
+            stroke={`hsl(${w.hue} 80% 62%)`}
+            strokeWidth={thin ? 1.5 : 2}
+            strokeLinecap="round"
+            className="automap-flow"
+          />
+        </g>
+      ))}
+    </svg>
+  );
+}
+function IconNode({
+  id,
+  icon: I,
+  label,
+  port,
+  dim,
+  active,
+  onTap,
+}: {
+  id: string;
+  icon: Icon;
+  label: string;
+  port: "l" | "r";
+  dim: boolean;
+  active: boolean;
+  onTap: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-node={id}
+      onClick={onTap}
+      aria-label={label}
+      aria-pressed={active}
+      title={label}
+      className={`relative z-10 grid place-items-center w-10 h-10 rounded-xl border bg-card/95 backdrop-blur transition-opacity duration-200 active:scale-95 ${active ? "border-foreground/50" : "border-border"} ${dim ? "opacity-25" : "opacity-100"}`}
+    >
+      <PortDot side={port} />
+      <I className="w-4 h-4" />
+    </button>
+  );
+}
+/** Under the phone canvas: what the tapped block is and how it is wired, in words. */
+function PhoneDetail({
+  pinned,
+  proof,
+  health,
+  onClose,
+}: {
+  pinned: string | null;
+  proof: Proof;
+  health?: HealthMap;
+  onClose: () => void;
+}) {
+  if (!pinned)
+    return (
+      <p className="text-xs text-muted-foreground px-1">
+        Tik op een blok of een icoon om te zien wat het doet en waaraan het vastzit.
+      </p>
+    );
+  const [kind, id] = [pinned.slice(0, 1), pinned.slice(2)];
+  const name = (list: { id: string; name: string }[], x: string) =>
+    list.find((y) => y.id === x)?.name ?? x;
+  if (kind === "a") {
+    const i = LIVE.findIndex((a) => a.id === id),
+      a = LIVE[i];
+    if (!a) return null;
+    const I = AUTO_ICON[a.id] ?? Workflow,
+      st = state(a, proof, health),
+      h = hue(i);
+    return (
+      <div className="rounded-2xl border border-border bg-card p-3" aria-live="polite">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="grid place-items-center w-8 h-8 rounded-xl shrink-0"
+            style={{ background: `hsl(${h} 70% 50% / 0.16)`, color: `hsl(${h} 80% 65%)` }}
+          >
+            <I className="w-4 h-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-sm">{a.name}</div>
+            <div className="text-[11px] text-muted-foreground">
+              {a.when}
+              {st.last ? ` · ${st.last}` : st.note ? ` · ${st.note}` : ""} · {a.runs}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs text-muted-foreground px-2 h-8"
+          >
+            Sluit
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2 leading-snug">{a.what}</p>
+        {st.check && (
+          <p
+            className={`text-xs mt-1.5 leading-snug ${st.ok === false ? "text-amber-500" : "text-muted-foreground"}`}
+          >
+            Laatste controle: {st.check}
+          </p>
+        )}
+        {a.yours && (
+          <p className="text-xs mt-1.5 leading-snug">
+            <span className="font-medium">Jij: </span>
+            {a.yours}
+          </p>
+        )}
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {a.from.map((x) => (
+            <Chip key={x} icon={SRC_ICON[x]} label={name(SOURCES, x)} />
+          ))}
+          <span className="text-muted-foreground text-xs">→</span>
+          {a.to.map((x) => (
+            <Chip key={x} icon={TGT_ICON[x]} label={name(TARGETS, x)} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  const src = kind === "s",
+    node = (src ? SOURCES : TARGETS).find((x) => x.id === id);
+  if (!node) return null;
+  const I = src ? SRC_ICON[id as Source] : TGT_ICON[id as Target];
+  const autos = LIVE.filter((a) =>
+    src ? a.from.includes(id as Source) : a.to.includes(id as Target),
+  );
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3" aria-live="polite">
+      <div className="flex items-center gap-2.5">
+        <span className="grid place-items-center w-8 h-8 rounded-xl bg-muted shrink-0">
+          <I className="w-4 h-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-sm">{node.name}</div>
+          <div className="text-[11px] text-muted-foreground">{node.note}</div>
+        </div>
+        <button type="button" onClick={onClose} className="text-xs text-muted-foreground px-2 h-8">
+          Sluit
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">
+        {src ? "Wordt gebruikt door" : "Krijgt iets van"} {autos.length} automation
+        {autos.length === 1 ? "" : "s"}:
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {autos.map((a) => (
+          <Chip key={a.id} icon={AUTO_ICON[a.id] ?? Workflow} label={a.name} />
+        ))}
+      </div>
+    </div>
   );
 }

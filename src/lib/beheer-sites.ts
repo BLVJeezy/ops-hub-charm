@@ -13,7 +13,7 @@ export type BeheerSite = {
 export const SITES: Record<string, BeheerSite> = {
   riory: {
     name: "Riory",
-    hash: "783babcd9c9e98bc2f44d328c8620639fccdfe065f3d48940f2190f01bcc8b2d",
+    hash: "a0f8e6217a2f5190b0924f8913d80db600f109ba2a862399dadcb51a64299e50",
     origins: [/^https:\/\/(www\.)?riory\.be$/, /^https:\/\/riory(-[a-z0-9-]+)?\.vercel\.app$/],
     clientId: "da40aea1-1cee-4347-8464-9dd738edcd10",
     home: "https://www.riory.be",
@@ -21,7 +21,7 @@ export const SITES: Record<string, BeheerSite> = {
   },
   "villa-amano": {
     name: "Villa Amano",
-    hash: "0d11a45eb6b9b9ff75e27eef4bfb63283436b6cb2d7066b60ecc483d5ca86d43",
+    hash: "fd3b423a1564b4790289fa639ee11abfd31ae6d8bb7488fd9098d56e39b6be50",
     origins: [
       /^https:\/\/(www\.)?villa-amano\.com$/,
       /^https:\/\/hotel-bilzen(-[a-z0-9-]+)?\.vercel\.app$/,
@@ -32,7 +32,7 @@ export const SITES: Record<string, BeheerSite> = {
   },
   belgomed: {
     name: "Belgomed",
-    hash: "119ea0f6c6e6b0c0aebcd456c9955be3a795f366a6dadc14f9b9fe45f7d4c20e",
+    hash: "490fc070fc5642d10cf5630e8db1bbebe8025c88a218e7bf289f9cca9e1a87cf",
     origins: [
       /^https:\/\/(www\.)?belgomed\.(com|be)$/,
       /^https:\/\/belgomed(-v2)?(-[a-z0-9-]+)?\.(vercel|lovable)\.app$/,
@@ -43,8 +43,8 @@ export const SITES: Record<string, BeheerSite> = {
   },
   nuance: {
     name: "Nuance",
-    // zelfde klant als Villa Amano: zelfde toegangscode (amano)
-    hash: "0d11a45eb6b9b9ff75e27eef4bfb63283436b6cb2d7066b60ecc483d5ca86d43",
+    // zelfde klant als Villa Amano: zelfde toegangscode
+    hash: "fd3b423a1564b4790289fa639ee11abfd31ae6d8bb7488fd9098d56e39b6be50",
     origins: [/^https:\/\/(www\.)?nuance-therapie\.be$/, /^https:\/\/nuance-therapy(-[a-z0-9-]+)?\.vercel\.app$/],
     clientId: "1b0c6a00-21d0-4206-8315-bbe8027a1e54",
     home: "https://nuance-therapy.vercel.app",

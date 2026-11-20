@@ -85,7 +85,12 @@ Solyn Global`;
 }
 
 /** To the owner: a new booking request came in, with everything the client filled in. */
-export function ownerMail(b: BookingMail, hubUrl: string | null): Mail {
+/** `calendarUrl`: a link that opens Google Calendar with this appointment filled in. */
+export function ownerMail(
+  b: BookingMail,
+  hubUrl: string | null,
+  calendarUrl?: string | null,
+): Mail {
   const filesLine = b.files.sent
     ? `${b.files.stored} van ${b.files.sent} ${b.files.sent === 1 ? "bestand" : "bestanden"} ontvangen`
     : "";
@@ -105,7 +110,7 @@ export function ownerMail(b: BookingMail, hubUrl: string | null): Mail {
       ["Bestanden", esc(filesLine)],
     ])}
     ${b.note ? `<p style="margin:0 0 6px;font-size:13px;color:#6b6b6b">Waarover de klant het wil hebben</p><p style="margin:0 0 14px;padding:11px 14px;border-radius:10px;background:${SOFT};white-space:pre-wrap">${esc(b.note)}</p>` : ""}
-    ${hubUrl ? `<p style="margin:0"><a href="${hubUrl}" style="display:inline-block;background:${INK};color:#ffffff;text-decoration:none;font-weight:bold;padding:11px 18px;border-radius:10px">Open de Agenda in de Hub</a></p>` : ""}
+    <p style="margin:0">${calendarUrl ? `<a href="${esc(calendarUrl)}" style="display:inline-block;background:${GOLD};color:#ffffff;text-decoration:none;font-weight:bold;padding:11px 18px;border-radius:10px;margin:0 8px 8px 0">Zet in Google Agenda</a>` : ""}${hubUrl ? `<a href="${hubUrl}" style="display:inline-block;background:${INK};color:#ffffff;text-decoration:none;font-weight:bold;padding:11px 18px;border-radius:10px;margin:0 0 8px">Open de Agenda in de Hub</a>` : ""}</p>
     <p style="margin:14px 0 0;font-size:13px;color:#6b6b6b">Antwoord op deze mail om de klant rechtstreeks te schrijven.${b.mode === "online" ? " Denk eraan de link voor het online gesprek te sturen." : ""}</p>`,
   );
   const text = `Nieuwe boekingsaanvraag via solynglobal.be/afspraak
@@ -113,7 +118,7 @@ export function ownerMail(b: BookingMail, hubUrl: string | null): Mail {
 Wanneer: ${b.when}
 Hoe: ${how(b)}${b.topics.length ? `\nOnderwerp: ${b.topics.join(", ")}` : ""}
 Naam: ${b.name}${b.company ? `\nBedrijf: ${b.company}` : ""}
-E-mail: ${b.email}${b.phone ? `\nTelefoon: ${b.phone}` : ""}${filesLine ? `\nBestanden: ${filesLine}` : ""}${b.note ? `\n\n${b.note}` : ""}${hubUrl ? `\n\nAgenda: ${hubUrl}` : ""}`;
+E-mail: ${b.email}${b.phone ? `\nTelefoon: ${b.phone}` : ""}${filesLine ? `\nBestanden: ${filesLine}` : ""}${b.note ? `\n\n${b.note}` : ""}${calendarUrl ? `\n\nZet in Google Agenda: ${calendarUrl}` : ""}${hubUrl ? `\n\nAgenda: ${hubUrl}` : ""}`;
   return { subject, html, text };
 }
 

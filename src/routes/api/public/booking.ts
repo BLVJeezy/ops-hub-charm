@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { clientMail, ownerMail } from "@/lib/booking-mail";
+import { bookingEvent, googleCalendarUrl } from "@/lib/google-calendar-link";
 import {
   RULES,
   checkBooking,
@@ -196,7 +197,27 @@ export const Route = createFileRoute("/api/public/booking")({
             : "https://solyn22.lovable.app/agenda";
           const details = { ...b, when, files: { sent: files.length, stored: stored.length } };
           const toClient = clientMail(details, owner),
-            toOwner = ownerMail(details, hub);
+            toOwner = ownerMail(
+              details,
+              hub,
+              googleCalendarUrl(
+                bookingEvent(
+                  {
+                    name: b.name,
+                    company: b.company,
+                    email: b.email,
+                    phone: b.phone,
+                    start,
+                    end,
+                    mode: b.mode === "onsite" ? "onsite" : "online",
+                    location: b.location,
+                    topics: b.topics,
+                    note: b.note,
+                  },
+                  hub,
+                ),
+              ),
+            );
           await Promise.all([
             mail(b.email, toClient.subject, toClient.html, toClient.text, owner),
             mail(owner, toOwner.subject, toOwner.html, toOwner.text, b.email),

@@ -65,6 +65,7 @@ export const changeBooking = createServerFn({ method: "POST" })
         starts_at: data.start,
         ends_at: data.end,
         moved_from: b.moved_from ?? b.starts_at,
+        gcal_sent_at: null,
         status: "confirmed",
       };
     } else if (data.action === "cancel") change = { status: "cancelled" };

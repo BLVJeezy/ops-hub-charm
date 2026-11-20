@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Ban,
   CalendarDays,
+  CalendarPlus,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -43,6 +44,7 @@ import {
   type Outcome,
 } from "@/lib/agenda";
 import { changeBooking } from "@/lib/agenda.functions";
+import { bookingEvent, googleCalendarUrl } from "@/lib/google-calendar-link";
 
 export const Route = createFileRoute("/_authenticated/agenda")({ component: AgendaPage });
 
@@ -57,7 +59,11 @@ const FILTERS: [AgendaKind | "all", string][] = [
   ["pathe", "Pathé"],
 ];
 // soft hyphen so "Geannuleerd" can break in a narrow day column
-const BUTTON_LABEL: Record<Outcome, string> = { done: "Gedaan", missed: "Niet gedaan", cancelled: "Geannu\u00ADleerd" };
+const BUTTON_LABEL: Record<Outcome, string> = {
+  done: "Gedaan",
+  missed: "Niet gedaan",
+  cancelled: "Geannu\u00ADleerd",
+};
 const LENGTHS = [30, 45, 60, 90, 120, 180, 240];
 const dayLabel = (d: string) =>
   new Intl.DateTimeFormat("nl-BE", {
@@ -96,7 +102,7 @@ function AgendaPage() {
       db
         .from("bookings")
         .select(
-          "id, client_id, name, email, phone, company, note, starts_at, ends_at, mode, location, attachments, topics, status, outcome, moved_from",
+          "id, client_id, name, email, phone, company, note, starts_at, ends_at, mode, location, attachments, topics, status, outcome, moved_from, gcal_sent_at",
         )
         .in("status", ["confirmed", "cancelled"])
         .order("starts_at")
@@ -154,6 +160,7 @@ function AgendaPage() {
         status: string;
         outcome: "done" | "missed" | null;
         moved_from: string | null;
+        gcal_sent_at: string | null;
       }) => ({
         id: b.id,
         src: "booking" as const,
@@ -165,6 +172,7 @@ function AgendaPage() {
         color: (b.client_id && color[b.client_id]) || KIND_COLOR.booking,
         outcome: b.status === "cancelled" ? "cancelled" : b.outcome,
         movedFrom: b.moved_from,
+        gcalSentAt: b.gcal_sent_at,
         contact: {
           email: b.email,
           phone: b.phone,
@@ -298,6 +306,31 @@ function AgendaPage() {
     }
   };
 
+  /** Opens Google Calendar with the appointment filled in, and remembers that I did. */
+  const sendToGoogle = (i: AgendaItem) => {
+    if (!i.contact) return;
+    const url = googleCalendarUrl(
+      bookingEvent(
+        {
+          name: i.title.split(" · ")[0],
+          company: i.contact.company,
+          email: i.contact.email,
+          phone: i.contact.phone,
+          start: i.start,
+          end: i.end,
+          mode: i.contact.mode,
+          location: i.contact.location,
+          topics: i.contact.topics,
+          note: i.contact.note,
+        },
+        `${window.location.origin}/agenda`,
+      ),
+    );
+    window.open(url, "_blank", "noopener");
+    const at = new Date().toISOString();
+    local(i.id, { gcalSentAt: at });
+    void db.from("bookings").update({ gcal_sent_at: at }).eq("id", i.id);
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(BOOK_URL);
@@ -483,6 +516,7 @@ function AgendaPage() {
                               onMark={(o) => mark(i, o)}
                               onMove={(day, time, len) => move(i, day, time, len)}
                               onFile={openFile}
+                              onGcal={() => sendToGoogle(i)}
                             />
                           )}
                         </li>
@@ -537,11 +571,13 @@ function ItemPanel({
   onMark,
   onMove,
   onFile,
+  onGcal,
 }: {
   item: AgendaItem;
   onMark: (o: Outcome) => void;
   onMove: (day: string, time: string, minutes: number) => void;
   onFile: (p: string) => void;
+  onGcal?: () => void;
 }) {
   const [day, setDay] = useState(dayOf(i.start));
   const [time, setTime] = useState(timeOf(i.start));
@@ -618,6 +654,23 @@ function ItemPanel({
         )}
       </div>
 
+      {i.src === "booking" && i.outcome !== "cancelled" && onGcal && (
+        <div>
+          <button
+            type="button"
+            onClick={onGcal}
+            className={`press h-9 w-full rounded-full px-3 text-xs font-semibold whitespace-nowrap inline-flex items-center justify-center gap-2 ${i.gcalSentAt ? "border border-border" : "bg-white text-black"}`}
+          >
+            <CalendarPlus className="w-4 h-4" />
+            {i.gcalSentAt ? "Opnieuw naar Google Agenda" : "Naar Google Agenda"}
+          </button>
+          <p className="text-[11px] text-muted-foreground mt-1 text-center">
+            {i.gcalSentAt
+              ? `Gestuurd op ${dayLabel(dayOf(i.gcalSentAt))} om ${timeOf(i.gcalSentAt)}. Opent Google Agenda, ingevuld; tik daar op Opslaan.`
+              : "Opent Google Agenda met alles ingevuld; tik daar op Opslaan."}
+          </p>
+        </div>
+      )}
       {i.contact && (
         <div className="space-y-1.5 border-t border-border pt-2">
           {i.contact.mode === "onsite" ? (

@@ -33,6 +33,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticated/status_.$id'
+import { Route as ApiPublicBeheerRouteImport } from './routes/api/public/beheer'
 import { Route as ApiPublicBookingRouteImport } from './routes/api/public/booking'
 import { Route as ApiPublicRequestRouteImport } from './routes/api/public/request'
 import { Route as ApiPublicRequestTimerRouteImport } from './routes/api/public/request-timer'
@@ -175,6 +176,11 @@ const AuthenticatedStatusIdRoute = AuthenticatedStatusIdRouteImport.update({
   path: '/status/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicBeheerRoute = ApiPublicBeheerRouteImport.update({
+  id: '/api/public/beheer',
+  path: '/api/public/beheer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBookingRoute = ApiPublicBookingRouteImport.update({
   id: '/api/public/booking',
   path: '/api/public/booking',
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
+  '/api/public/beheer': typeof ApiPublicBeheerRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
@@ -349,6 +356,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
+  '/api/public/beheer': typeof ApiPublicBeheerRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
@@ -395,6 +403,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
   '/_authenticated/status_/$id': typeof AuthenticatedStatusIdRoute
+  '/api/public/beheer': typeof ApiPublicBeheerRoute
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
@@ -441,6 +450,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/clients/$id'
     | '/status/$id'
+    | '/api/public/beheer'
     | '/api/public/booking'
     | '/api/public/request'
     | '/api/public/request-timer'
@@ -484,6 +494,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/clients/$id'
     | '/status/$id'
+    | '/api/public/beheer'
     | '/api/public/booking'
     | '/api/public/request'
     | '/api/public/request-timer'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/_authenticated/clients/$id'
     | '/_authenticated/status_/$id'
+    | '/api/public/beheer'
     | '/api/public/booking'
     | '/api/public/request'
     | '/api/public/request-timer'
@@ -559,6 +571,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   AanvraagTokenRoute: typeof AanvraagTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  ApiPublicBeheerRoute: typeof ApiPublicBeheerRoute
   ApiPublicBookingRoute: typeof ApiPublicBookingRoute
   ApiPublicRequestRoute: typeof ApiPublicRequestRoute
   ApiPublicRequestTimerRoute: typeof ApiPublicRequestTimerRoute
@@ -749,6 +762,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/status/$id'
       preLoaderRoute: typeof AuthenticatedStatusIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/beheer': {
+      id: '/api/public/beheer'
+      path: '/api/public/beheer'
+      fullPath: '/api/public/beheer'
+      preLoaderRoute: typeof ApiPublicBeheerRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/booking': {
       id: '/api/public/booking'
@@ -946,6 +966,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   AanvraagTokenRoute: AanvraagTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  ApiPublicBeheerRoute: ApiPublicBeheerRoute,
   ApiPublicBookingRoute: ApiPublicBookingRoute,
   ApiPublicRequestRoute: ApiPublicRequestRoute,
   ApiPublicRequestTimerRoute: ApiPublicRequestTimerRoute,

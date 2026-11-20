@@ -58,3 +58,14 @@ describe("change mails", () => {
     expect(m.html).toContain("solynglobal.be/afspraak");
   });
 });
+
+describe("owner mail calendar button", () => {
+  it("adds a Zet in Google Agenda button when given a link", () => {
+    const b = { name: "Ann", email: "a@x.be", phone: "", company: "", note: "", when: "maandag", mode: "online" as const, location: "", topics: [], files: { sent: 0, stored: 0 } };
+    const m = ownerMail(b, "https://hub/agenda", "https://calendar.google.com/calendar/render?action=TEMPLATE&text=x");
+    expect(m.html).toContain("Zet in Google Agenda");
+    expect(m.html).toContain("action=TEMPLATE&amp;text=x");
+    expect(m.text).toContain("Zet in Google Agenda: https://calendar.google.com");
+    expect(ownerMail(b, null).html).not.toContain("Zet in Google Agenda");
+  });
+});

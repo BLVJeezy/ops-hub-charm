@@ -12,6 +12,8 @@ export type AgendaItem = {
   src?: "cal" | "booking";
   outcome?: "done" | "missed" | "cancelled" | null;
   movedFrom?: string | null;
+  /** booking only: when I last sent it to Google Calendar with the button */
+  gcalSentAt?: string | null;
   contact?: {
     email: string;
     phone: string | null;

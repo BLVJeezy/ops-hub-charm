@@ -20,6 +20,7 @@ import {
   Sparkles,
   CalendarDays,
   Inbox,
+  PencilRuler,
   History,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/agenda", label: "Agenda", icon: CalendarDays },
   { to: "/aanvragen", label: "Aanvragen", icon: Inbox },
+  { to: "/klantbeheer", label: "Klantbeheer", icon: PencilRuler },
   { to: "/wijzigingen", label: "Wijzigingen", icon: History },
   { to: "/invoices", label: "Invoices", icon: FileText },
   { to: "/finance", label: "Finance", icon: TrendingUp },

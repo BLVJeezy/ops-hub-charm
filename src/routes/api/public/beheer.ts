@@ -68,7 +68,7 @@ const json = (h: Record<string, string>, body: unknown, status = 200) =>
     },
   });
 
-type Contact = Record<string, { t: "phone" | "email" | "text"; f: string; v: string }>;
+type Contact = Record<string, { t: "phone" | "email" | "text" | "url"; f: string; v: string }>;
 type Content = { text: Record<string, string>; img: Record<string, string>; contact?: Contact };
 function validContent(c: unknown, site: string): string | null {
   if (!c || typeof c !== "object" || Array.isArray(c)) return "Geen geldige inhoud.";
@@ -82,7 +82,8 @@ function validContent(c: unknown, site: string): string | null {
     for (const [k, v] of Object.entries(c)) {
       const x = v as Record<string, unknown>;
       if (k.length > 40 || !x || typeof x !== "object") return "Ongeldige contactgegevens.";
-      if (!["phone", "email", "text"].includes(String(x.t))) return "Ongeldige contactgegevens.";
+      if (!["phone", "email", "text", "url"].includes(String(x.t))) return "Ongeldige contactgegevens.";
+      if (x.t === "url" && typeof x.v === "string" && !/^https:\/\/[^\s"'<>]+$/i.test(x.v)) return "Een link moet met https:// beginnen.";
       if (
         typeof x.f !== "string" ||
         typeof x.v !== "string" ||

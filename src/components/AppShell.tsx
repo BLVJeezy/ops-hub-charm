@@ -23,6 +23,8 @@ import {
   PencilRuler,
   History,
   MailCheck,
+  Sun,
+  Clapperboard,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
@@ -32,60 +34,152 @@ import { Assistant, toggleAssistant } from "@/components/Assistant";
 import { NotificationBell } from "@/components/Notifications";
 import { VideoFeedbackBadge } from "@/components/VideoFeedbackBadge";
 
-const NAV_ITEMS = [
-  { to: "/brain", label: "Brain", icon: BrainCircuit },
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/pipeline", label: "Pipeline", icon: GitBranch },
-  { to: "/clients", label: "Clients", icon: Users },
-  { to: "/agenda", label: "Agenda", icon: CalendarDays },
-  { to: "/aanvragen", label: "Aanvragen", icon: Inbox },
-  { to: "/videos", label: "Video's", icon: Film },
-  { to: "/klantbeheer", label: "Klantbeheer", icon: PencilRuler },
-  { to: "/wijzigingen", label: "Wijzigingen", icon: History },
-  { to: "/mails", label: "Mails", icon: MailCheck },
-  { to: "/invoices", label: "Invoices", icon: FileText },
-  { to: "/finance", label: "Finance", icon: TrendingUp },
-  { to: "/boekhouding", label: "Boekhouding", icon: BookOpen },
-  { to: "/expenses", label: "Expenses", icon: Wallet },
-  { to: "/status", label: "Status", icon: Activity },
-  { to: "/briefing", label: "Briefing", icon: Film },
-  { to: "/automations", label: "Automations", icon: Workflow },
-] as const;
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+type NavGroup = { key: string; label: string; icon: typeof LayoutDashboard; items: NavItem[] };
 
-function useIsActive(path: string, exact = false) {
+/** Four groups instead of one long list. Every page keeps its own URL; inside a group you switch with tabs. */
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: "vandaag",
+    label: "Vandaag",
+    icon: Sun,
+    items: [
+      { to: "/brain", label: "Brain", icon: BrainCircuit },
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { to: "/agenda", label: "Agenda", icon: CalendarDays },
+      { to: "/briefing", label: "Briefing", icon: Film },
+    ],
+  },
+  {
+    key: "klanten",
+    label: "Klanten",
+    icon: Users,
+    items: [
+      { to: "/clients", label: "Clients", icon: Users },
+      { to: "/pipeline", label: "Pipeline", icon: GitBranch },
+      { to: "/aanvragen", label: "Aanvragen", icon: Inbox },
+      { to: "/mails", label: "Mails", icon: MailCheck },
+      { to: "/videos", label: "Video's", icon: Clapperboard },
+    ],
+  },
+  {
+    key: "beheer",
+    label: "Beheer",
+    icon: PencilRuler,
+    items: [
+      { to: "/klantbeheer", label: "Klantbeheer", icon: PencilRuler },
+      { to: "/wijzigingen", label: "Wijzigingen", icon: History },
+      { to: "/status", label: "Status", icon: Activity },
+      { to: "/automations", label: "Automations", icon: Workflow },
+    ],
+  },
+  {
+    key: "geld",
+    label: "Geld",
+    icon: Wallet,
+    items: [
+      { to: "/invoices", label: "Facturen", icon: FileText },
+      { to: "/finance", label: "Finance", icon: TrendingUp },
+      { to: "/boekhouding", label: "Boekhouding", icon: BookOpen },
+      { to: "/expenses", label: "Uitgaven", icon: Wallet },
+    ],
+  },
+];
+const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
+
+const matches = (current: string, it: NavItem) =>
+  it.exact ? current === it.to : current === it.to || current.startsWith(it.to + "/");
+const groupOf = (current: string) =>
+  NAV_GROUPS.find((g) => g.items.some((it) => matches(current, it)));
+const itemOf = (current: string) => NAV_ITEMS.find((it) => matches(current, it));
+
+/** The tab you were last on in each group, so a group opens where you left it. */
+const LAST_KEY = "hub-nav-last";
+function readLast(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(LAST_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+function groupTarget(g: NavGroup) {
+  const last = typeof window === "undefined" ? undefined : readLast()[g.key];
+  return last && g.items.some((it) => it.to === last) ? last : g.items[0].to;
+}
+function useRememberTab() {
   const current = useRouterState({ select: (s) => s.location.pathname });
-  if (exact) return current === path;
-  return current === path || current.startsWith(path + "/");
+  useEffect(() => {
+    const g = groupOf(current),
+      it = itemOf(current);
+    if (!g || !it) return;
+    try {
+      localStorage.setItem(LAST_KEY, JSON.stringify({ ...readLast(), [g.key]: it.to }));
+    } catch {
+      /* storage unavailable: groups just open on their first tab */
+    }
+  }, [current]);
 }
 
-function NavLink({
-  to,
-  label,
-  icon: Icon,
-  exact,
-  onClick,
-}: {
-  to: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  exact?: boolean;
-  onClick?: () => void;
-}) {
-  const active = useIsActive(to, exact);
+function GroupLink({ group }: { group: NavGroup }) {
+  const current = useRouterState({ select: (s) => s.location.pathname });
+  const active = groupOf(current) === group;
+  const Icon = group.icon;
   return (
     <Link
-      to={to}
-      onClick={onClick}
-      className="flex items-center gap-3 px-3 py-2 rounded-md text-sm transition"
+      to={groupTarget(group)}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition"
       style={{
         backgroundColor: active ? "hsl(var(--sidebar-accent))" : "transparent",
         color: active ? "hsl(var(--primary))" : "hsl(var(--sidebar-foreground))",
       }}
     >
       <Icon className="w-4 h-4" />
-      <span>{label}</span>
-      {to === "/videos" && <VideoFeedbackBadge />}
+      <span className="flex-1">{group.label}</span>
+      {group.items.some((it) => it.to === "/videos") && <VideoFeedbackBadge />}
     </Link>
+  );
+}
+
+/** Tabs of the group you are in, above the page. */
+function GroupTabs() {
+  const current = useRouterState({ select: (s) => s.location.pathname });
+  const g = groupOf(current);
+  const bar = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // keep the active tab in view on narrow screens
+    bar.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [current]);
+  if (!g) return null;
+  return (
+    <div
+      ref={bar}
+      className="border-b overflow-x-auto [scrollbar-width:none]"
+      style={{ borderColor: "hsl(var(--border))" }}
+    >
+      <div className="flex gap-1 px-3 lg:px-6 min-w-max">
+        {g.items.map((it) => {
+          const active = matches(current, it),
+            Icon = it.icon;
+          return (
+            <Link
+              key={it.to}
+              to={it.to}
+              aria-current={active ? "page" : undefined}
+              className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 h-11 text-sm whitespace-nowrap transition-colors ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Icon className="hidden sm:block w-4 h-4" />
+              {it.label}
+              {it.to === "/videos" && <VideoFeedbackBadge />}
+              {active && (
+                <span className="absolute left-2 right-2 bottom-0 h-0.5 rounded-full bg-primary" />
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -93,6 +187,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  useRememberTab();
 
   const initial = (user?.email || "?").charAt(0).toUpperCase();
 
@@ -122,8 +217,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((it) => (
-            <NavLink key={it.to} {...it} />
+          {NAV_GROUPS.map((g) => (
+            <GroupLink key={g.key} group={g} />
           ))}
         </nav>
         <div className="p-3 border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
@@ -182,6 +277,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Content */}
       <main className="lg:ml-56 pt-[env(safe-area-inset-top)] lg:pt-16 pb-28 lg:pb-0 min-h-screen">
+        <GroupTabs />
         {children}
       </main>
 
@@ -200,8 +296,7 @@ function MobileNav({ assistant }: { assistant: boolean }) {
   const [search, setSearch] = useState(false);
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const here =
-    NAV_ITEMS.find((it) => current === it.to || current.startsWith(it.to + "/")) ?? NAV_ITEMS[0];
+  const here = itemOf(current) ?? NAV_ITEMS[0];
   const Here = here.icon;
   useEffect(() => {
     setMenu(false);
@@ -240,28 +335,39 @@ function MobileNav({ assistant }: { assistant: boolean }) {
           className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-3xl p-3 pop-in ${pill}`}
           style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
         >
-          <div className="grid grid-cols-3 gap-2">
-            {NAV_ITEMS.map((it) => {
-              const active = it === here,
-                Icon = it.icon;
-              return (
-                <Link
-                  key={it.to}
-                  to={it.to}
-                  className="press flex flex-col items-center gap-1.5 rounded-2xl py-3"
-                  style={{
-                    backgroundColor: active
-                      ? "hsl(var(--primary) / 0.15)"
-                      : "hsl(var(--muted) / 0.4)",
-                    color: active ? "hsl(var(--primary))" : "hsl(var(--foreground))",
-                  }}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[11px]">{it.label}</span>
-                  {it.to === "/videos" && <VideoFeedbackBadge />}
-                </Link>
-              );
-            })}
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {NAV_GROUPS.map((g) => (
+              <div key={g.key}>
+                <div className="px-1 pb-1.5 text-xs font-medium text-muted-foreground">
+                  {g.label}
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {g.items.map((it) => {
+                    const active = it === here,
+                      Icon = it.icon;
+                    return (
+                      <Link
+                        key={it.to}
+                        to={it.to}
+                        className="press relative flex flex-col items-center gap-1 rounded-2xl py-2.5"
+                        style={{
+                          backgroundColor: active
+                            ? "hsl(var(--primary) / 0.15)"
+                            : "hsl(var(--muted) / 0.4)",
+                          color: active ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                        }}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-[10.5px] leading-tight text-center px-0.5 [overflow-wrap:anywhere]">
+                          {it.label}
+                        </span>
+                        {it.to === "/videos" && <VideoFeedbackBadge />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
           <button
             onClick={async () => {

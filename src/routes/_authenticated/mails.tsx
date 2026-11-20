@@ -192,6 +192,9 @@ function MailsPage() {
                     {r.bounced_at
                       ? ` · ${r.status === "complained" ? "spam" : "teruggestuurd"} ${stamp(r.bounced_at)}`
                       : ""}
+                    {r.status === "sent" && Date.now() - Date.parse(r.sent_at) > 30 * 864e5
+                      ? " · te oud, Resend bewaart de status niet meer"
+                      : ""}
                   </span>
                   {r.error && <span className="block text-xs text-red-300 mt-0.5">{r.error}</span>}
                   {r.status === "bounced" && (

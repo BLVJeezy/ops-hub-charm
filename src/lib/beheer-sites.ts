@@ -25,7 +25,7 @@ export const SITES: Record<string, BeheerSite> = {
   },
   "villa-amano": {
     name: "Villa Amano",
-    hash: "fd3b423a1564b4790289fa639ee11abfd31ae6d8bb7488fd9098d56e39b6be50",
+    hash: "fc9accdda8b545376590eb750bbc8e63d2ff2b2fa72d89672b5be8d07877e2d3",
     origins: [
       /^https:\/\/(www\.)?villa-amano\.com$/,
       /^https:\/\/hotel-bilzen(-[a-z0-9-]+)?\.vercel\.app$/,
@@ -48,8 +48,8 @@ export const SITES: Record<string, BeheerSite> = {
   },
   nuance: {
     name: "Nuance",
-    // zelfde klant als Villa Amano: zelfde toegangscode
-    hash: "fd3b423a1564b4790289fa639ee11abfd31ae6d8bb7488fd9098d56e39b6be50",
+    // zelfde klant als Villa Amano (open, geen code nodig)
+    hash: "fc9accdda8b545376590eb750bbc8e63d2ff2b2fa72d89672b5be8d07877e2d3",
     origins: [/^https:\/\/(www\.)?nuance-therapie\.be$/, /^https:\/\/nuance-therapy(-[a-z0-9-]+)?\.vercel\.app$/],
     clientId: "1b0c6a00-21d0-4206-8315-bbe8027a1e54",
     home: "https://nuance-therapy.vercel.app",

@@ -55,7 +55,14 @@ const esc = (s: string) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 
-async function mail(to: string, subject: string, html: string, text: string, replyTo?: string) {
+async function mail(
+  to: string,
+  subject: string,
+  html: string,
+  text: string,
+  replyTo?: string,
+  attachments?: { filename: string; content: string }[],
+) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
   const res = await fetch("https://api.resend.com/emails", {
@@ -68,6 +75,7 @@ async function mail(to: string, subject: string, html: string, text: string, rep
       html,
       text,
       ...(replyTo ? { reply_to: replyTo } : {}),
+      ...(attachments?.length ? { attachments } : {}),
     }),
   });
   return res.ok;
@@ -250,6 +258,19 @@ export const Route = createFileRoute("/api/public/request")({
                 .eq("id", row.id);
           }
 
+          // screenshots and marked-up parts of the page travel with the mail (beheerpagina only; max 15 MB)
+          const attachments: { filename: string; content: string }[] = [];
+          if (raw.source === "beheer") {
+            let total = 0;
+            for (const f of files) {
+              if (!f.type.startsWith("image/") || total + f.size > 15 * 1024 * 1024) continue;
+              const bytes = new Uint8Array(await f.arrayBuffer());
+              let bin = "";
+              for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+              attachments.push({ filename: f.name.slice(0, 120) || "screenshot.jpg", content: btoa(bin) });
+              total += f.size;
+            }
+          }
           const owner = process.env.ALERT_EMAIL_TO || "jason@solynglobal.be";
           const hub = `${(process.env.HUB_PUBLIC_URL || "https://solyn22.lovable.app").replace(/\/$/, "")}/aanvragen`;
           const lines: [string, string][] = [
@@ -293,6 +314,7 @@ export const Route = createFileRoute("/api/public/request")({
             html,
             text,
             input.contact_email,
+            attachments,
           );
           return json({ ok: true, estimate: price });
         } catch (e) {

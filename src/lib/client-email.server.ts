@@ -96,14 +96,28 @@ export async function syncEmailStatus(db: any, limit = 60) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { checked: 0, changed: 0 };
   const since = new Date(Date.now() - 7 * 864e5).toISOString();
-  const { data } = await db
-    .from("client_emails")
-    .select("id, resend_id, status, sent_at, kind, ref_id")
-    .not("resend_id", "is", null)
-    .in("status", ["sent", "delayed", "delivered"])
-    .or(`sent_at.gte.${since},checked_at.is.null`)
-    .order("checked_at", { ascending: true, nullsFirst: true })
-    .limit(limit);
+  const cols = "id, resend_id, status, sent_at, kind, ref_id";
+  // Recent mails keep being followed; older ones are checked at least once.
+  const [recent, never] = await Promise.all([
+    db
+      .from("client_emails")
+      .select(cols)
+      .not("resend_id", "is", null)
+      .in("status", ["sent", "delayed", "delivered"])
+      .gte("sent_at", since)
+      .order("checked_at", { ascending: true, nullsFirst: true })
+      .limit(limit),
+    db
+      .from("client_emails")
+      .select(cols)
+      .not("resend_id", "is", null)
+      .is("checked_at", null)
+      .limit(limit),
+  ]);
+  const seen = new Set<string>();
+  const data = [...(recent.data ?? []), ...(never.data ?? [])]
+    .filter((r) => !seen.has(r.id) && seen.add(r.id))
+    .slice(0, limit);
   let changed = 0;
   for (const row of (data ?? []) as {
     id: string;

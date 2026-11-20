@@ -31,7 +31,7 @@ import { SolynLogo } from "./SolynLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
 import { Assistant, toggleAssistant } from "@/components/Assistant";
-import { NotificationBell } from "@/components/Notifications";
+import { NotificationBell, useNotes } from "@/components/Notifications";
 import { VideoFeedbackBadge } from "@/components/VideoFeedbackBadge";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
@@ -293,37 +293,70 @@ function MobileNav({ assistant }: { assistant: boolean }) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const hidden = usePrivacy();
-  const [more, setMore] = useState(false);
+  const { unseen } = useNotes();
+  const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const here = groupOf(current);
-  useEffect(() => setMore(false), [current]);
+  useEffect(() => setOpen(false), [current]);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (q.trim()) navigate({ to: "/search", search: { q: q.trim() } });
   };
-  const pill = "backdrop-blur-xl border shadow-2xl shadow-black/40";
-  const pillStyle = {
-    backgroundColor: "hsl(var(--sidebar-background) / 0.85)",
+  const glass = "backdrop-blur-xl border shadow-2xl shadow-black/40";
+  const glassStyle = {
+    backgroundColor: "hsl(var(--sidebar-background) / 0.88)",
     borderColor: "hsl(var(--sidebar-border))",
   };
-  const action =
-    "press flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 text-[11px] bg-muted/40";
+  const extra =
+    "press flex flex-col items-center justify-center gap-1 rounded-2xl h-16 text-[11px] bg-muted/40";
+  const HereIcon = here?.icon ?? LayoutDashboard;
   return (
     <div className="lg:hidden">
       <div className="edge-fade" aria-hidden />
-      {more && (
-        <div className="fade-in fixed inset-0 z-30 bg-black/50" onClick={() => setMore(false)} />
+      {open && (
+        <div className="fade-in fixed inset-0 z-30 bg-black/55" onClick={() => setOpen(false)} />
       )}
 
-      {/* ⋯ sheet: search and the few extras that are not pages */}
-      {more && (
+      {/* The sheet: four groups, then search and the extras */}
+      {open && (
         <div
-          className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-3xl p-3 pop-in ${pill}`}
-          style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
+          className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,380px)] rounded-3xl p-3 pop-in ${glass}`}
+          style={{ ...glassStyle, bottom: "calc(6rem + env(safe-area-inset-bottom))" }}
         >
+          <div className="grid grid-cols-2 gap-2">
+            {NAV_GROUPS.map((g) => {
+              const active = g === here,
+                Icon = g.icon;
+              return (
+                <Link
+                  key={g.key}
+                  to={groupTarget(g)}
+                  className="press relative rounded-2xl p-3.5 text-left"
+                  style={{
+                    backgroundColor: active
+                      ? "hsl(var(--primary) / 0.15)"
+                      : "hsl(var(--muted) / 0.4)",
+                    color: active ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                  }}
+                >
+                  <Icon className="w-6 h-6" />
+                  <div className="mt-2 text-[15px] font-semibold">{g.label}</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                    {g.items.map((it) => it.label).join(", ")}
+                  </div>
+                  {g.items.some((it) => it.to === "/videos") && (
+                    <span className="absolute top-2.5 right-2.5">
+                      <VideoFeedbackBadge />
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
           <form
             onSubmit={submit}
-            className="flex items-center gap-2 h-12 pl-4 pr-1.5 rounded-full bg-muted/40"
+            className="mt-2 flex items-center gap-2 h-12 pl-4 pr-1.5 rounded-full bg-muted/40"
           >
             <SearchIcon className="w-4 h-4 text-muted-foreground shrink-0" />
             <input
@@ -342,15 +375,20 @@ function MobileNav({ assistant }: { assistant: boolean }) {
               </button>
             )}
           </form>
-          <div className={`mt-2 grid gap-2 ${assistant ? "grid-cols-3" : "grid-cols-2"}`}>
+
+          <div className={`mt-2 grid gap-2 ${assistant ? "grid-cols-4" : "grid-cols-3"}`}>
+            <div className={extra}>
+              <NotificationBell up className="w-9 h-9" />
+              <span className="-mt-1.5">Meldingen</span>
+            </div>
             {assistant && (
               <button
                 type="button"
                 onClick={() => {
-                  setMore(false);
+                  setOpen(false);
                   toggleAssistant();
                 }}
-                className={`${action} text-[#C9A14A]`}
+                className={`${extra} text-[#C9A14A]`}
               >
                 <Sparkles className="w-5 h-5" /> Assistent
               </button>
@@ -359,10 +397,10 @@ function MobileNav({ assistant }: { assistant: boolean }) {
               type="button"
               onClick={togglePrivacy}
               aria-pressed={hidden}
-              className={`${action} ${hidden ? "text-[#C9A14A]" : ""}`}
+              className={`${extra} ${hidden ? "text-[#C9A14A]" : ""}`}
             >
               {hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              {hidden ? "Cijfers tonen" : "Cijfers verbergen"}
+              {hidden ? "Cijfers aan" : "Cijfers uit"}
             </button>
             <button
               type="button"
@@ -370,7 +408,7 @@ function MobileNav({ assistant }: { assistant: boolean }) {
                 await signOut();
                 navigate({ to: "/auth" });
               }}
-              className={`${action} text-muted-foreground`}
+              className={`${extra} text-muted-foreground`}
             >
               <LogOut className="w-5 h-5" /> Uitloggen
             </button>
@@ -378,53 +416,26 @@ function MobileNav({ assistant }: { assistant: boolean }) {
         </div>
       )}
 
-      {/* The bar: the four groups, the bell, and ⋯ */}
-      <nav
-        className={`fixed z-40 left-1/2 -translate-x-1/2 h-14 rounded-full flex items-center gap-0.5 px-1.5 ${pill}`}
-        style={{ ...pillStyle, bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      {/* One button, bottom centre */}
+      <button
+        type="button"
+        aria-label={open ? "Menu sluiten" : "Menu"}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className={`press fixed z-40 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full flex items-center justify-center ${glass}`}
+        style={{
+          ...glassStyle,
+          bottom: "calc(1rem + env(safe-area-inset-bottom))",
+          color: open ? "hsl(var(--foreground))" : "hsl(var(--primary))",
+        }}
       >
-        {NAV_GROUPS.map((g) => {
-          const active = g === here,
-            Icon = g.icon;
-          return (
-            <Link
-              key={g.key}
-              to={groupTarget(g)}
-              aria-label={g.label}
-              aria-current={active ? "page" : undefined}
-              className="press relative h-11 rounded-full flex items-center justify-center gap-1.5 text-sm font-medium whitespace-nowrap transition-all"
-              style={{
-                padding: active ? "0 14px" : "0",
-                width: active ? undefined : 44,
-                backgroundColor: active ? "hsl(var(--primary) / 0.15)" : "transparent",
-                color: active ? "hsl(var(--primary))" : "hsl(var(--foreground))",
-              }}
-            >
-              <Icon className="w-5 h-5" />
-              {active && g.label}
-              {g.items.some((it) => it.to === "/videos") && (
-                <span className="absolute -top-1 -right-1 scale-75 origin-top-right pointer-events-none [&_.video-pill]:ml-0">
-                  <VideoFeedbackBadge />
-                </span>
-              )}
-            </Link>
-          );
-        })}
-        <span className="w-px h-6 mx-0.5 bg-border" aria-hidden />
-        <NotificationBell up className="w-11 h-11" />
-        <button
-          aria-label="Meer"
-          aria-expanded={more}
-          onClick={() => setMore(!more)}
-          className="w-11 h-11 rounded-full flex items-center justify-center"
-          style={{
-            backgroundColor: more ? "hsl(var(--primary) / 0.15)" : "transparent",
-            color: more ? "hsl(var(--primary))" : "hsl(var(--foreground))",
-          }}
-        >
-          {more ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
-        </button>
-      </nav>
+        {open ? <X className="w-6 h-6" /> : <HereIcon className="w-6 h-6" />}
+        {!open && unseen > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-[#C9A14A] text-black text-[11px] font-bold grid place-items-center">
+            {unseen > 9 ? "9+" : unseen}
+          </span>
+        )}
+      </button>
     </div>
   );
 }

@@ -13,3 +13,4 @@
 - Use service-role-only atomic video feedback/upload RPCs with project row locks; this prevents double revision consumption and preserves the monthly tracker on approval.
 - Keep video storage private and issue scoped signed upload reservations and one-hour download URLs; use TUS above 6 MiB for large phone uploads.
 - Store video notification failures with feedback and show them in the staff drawer; a mail failure must not roll back a saved decision.
+- Keep simplified public video screens and their upload presentation separate from staff controls; both reuse the existing server functions without changing review rules.

@@ -253,3 +253,22 @@ html.privacy :is(.money, .tabular-nums, .recharts-cartesian-axis-tick-value, .re
 .video-client-dot { display: inline-block; flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--muted-foreground)); }
 .video-work-card { border-radius: 8px; }
 @media(prefers-reduced-motion:reduce) { .video-review-pulse,.video-confirm { animation: none; } }
+
+/* Simplified public client screens; staff video views retain their existing theme. */
+.video-client { --background: 221 47% 14%; --card: 221 40% 18%; --muted: 221 35% 22%; --muted-foreground: 220 18% 76%; --border: 221 28% 32%; --input: 221 28% 32%; font-size: 18px; line-height: 1.6; }
+.client-video-page { padding: max(24px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom)); }
+.video-client .client-video-button { min-height: 64px; height: auto; padding: 16px 20px; font-size: 18px; border-radius: 8px; white-space: normal; }
+.video-client .client-video-review-card { border-radius: 8px; }
+.client-video-all-done { background: hsl(var(--video-teal)); color: hsl(var(--foreground)); }
+.client-video-row { text-decoration: none; }
+.client-video-confirm-screen,.client-video-feedback-screen { min-height: calc(100dvh - 80px); }
+.client-video-upload-screen { position: fixed; z-index: 50; inset: 0; display: flex; align-items: center; padding-bottom: env(safe-area-inset-bottom); }
+.client-video-success-icon { display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; background: hsl(var(--video-teal)); color: hsl(var(--foreground)); animation: video-confirm 400ms ease-out both; }
+.client-video-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.client-video-confetti i { position: absolute; top: 10%; width: 8px; height: 15px; background: hsl(var(--video-gold)); animation: client-confetti 1.6s ease-out both; }
+.client-video-confetti i:nth-child(3n) { background: hsl(var(--video-teal)); }
+.client-video-confetti i:nth-child(3n + 1) { background: hsl(var(--foreground)); }
+.client-video-confetti i:nth-child(1) { left: 5%; } .client-video-confetti i:nth-child(2) { left: 13%; } .client-video-confetti i:nth-child(3) { left: 21%; } .client-video-confetti i:nth-child(4) { left: 29%; } .client-video-confetti i:nth-child(5) { left: 37%; } .client-video-confetti i:nth-child(6) { left: 45%; } .client-video-confetti i:nth-child(7) { left: 53%; } .client-video-confetti i:nth-child(8) { left: 61%; } .client-video-confetti i:nth-child(9) { left: 69%; } .client-video-confetti i:nth-child(10) { left: 77%; } .client-video-confetti i:nth-child(11) { left: 85%; } .client-video-confetti i:nth-child(12) { left: 93%; }
+.client-video-confetti i:nth-child(even) { animation-delay: 180ms; }
+@keyframes client-confetti { from { opacity: 1; transform: translateY(0) rotate(0); } to { opacity: 0; transform: translateY(45vh) rotate(280deg); } }
+@media(prefers-reduced-motion:reduce) { .client-video-confetti { display: none; } .client-video-success-icon { animation: none; } }

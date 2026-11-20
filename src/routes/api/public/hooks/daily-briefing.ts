@@ -20,13 +20,15 @@ export const Route = createFileRoute("/api/public/hooks/daily-briefing")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const allowed = [process.env.MONITOR_CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(
-          (v): v is string => !!v && v.length >= 24,
-        );
+        const allowed = [
+          process.env.MONITOR_CRON_SECRET,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+        ].filter((v): v is string => !!v && v.length >= 24);
         if (!allowed.length) return new Response("not configured", { status: 503 });
         const auth = request.headers.get("authorization") ?? "";
         const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-        if (!allowed.some((k) => safeEqual(token, k))) return new Response("unauthorized", { status: 401 });
+        if (!allowed.some((k) => safeEqual(token, k)))
+          return new Response("unauthorized", { status: 401 });
 
         let body: { action?: string; hour?: number; force?: boolean } = {};
         try {
@@ -48,19 +50,34 @@ export const Route = createFileRoute("/api/public/hooks/daily-briefing")({
           const status = briefingStatus(snap);
           const { error: e2 } = await db
             .from("daily_briefings")
-            .upsert({ day: snap.day, status, snapshot: snap, created_at: new Date().toISOString() }, { onConflict: "day" });
+            .upsert(
+              { day: snap.day, status, snapshot: snap, created_at: new Date().toISOString() },
+              { onConflict: "day" },
+            );
           if (e2) return Response.json({ ok: false, error: e2.message }, { status: 500 });
           return Response.json({ ok: true, day: snap.day, status });
         }
 
         if (body.action === "mail") {
           const key = process.env.RESEND_API_KEY;
-          if (!key) return Response.json({ ok: false, error: "RESEND_API_KEY missing" }, { status: 503 });
-          const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
-          const { data: row } = await db.from("daily_briefings").select("*").eq("day", day).maybeSingle();
-          if (!row) return Response.json({ ok: false, error: "no snapshot for today" }, { status: 404 });
-          if (row.emailed_at && !body.force) return Response.json({ ok: true, skipped: "already emailed" });
-          const base = (process.env.HUB_PUBLIC_URL || "https://solyn22.lovable.app").replace(/\/$/, "");
+          if (!key)
+            return Response.json({ ok: false, error: "RESEND_API_KEY missing" }, { status: 503 });
+          const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(
+            new Date(),
+          );
+          const { data: row } = await db
+            .from("daily_briefings")
+            .select("*")
+            .eq("day", day)
+            .maybeSingle();
+          if (!row)
+            return Response.json({ ok: false, error: "no snapshot for today" }, { status: 404 });
+          if (row.emailed_at && !body.force)
+            return Response.json({ ok: true, skipped: "already emailed" });
+          const base = (process.env.HUB_PUBLIC_URL || "https://solyn22.lovable.app").replace(
+            /\/$/,
+            "",
+          );
           const m = briefingMail(row.snapshot, `${base}/briefing?day=${day}`, !!row.video_path);
           const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -73,8 +90,12 @@ export const Route = createFileRoute("/api/public/hooks/daily-briefing")({
               text: m.text,
             }),
           });
-          if (!res.ok) return Response.json({ ok: false, error: `Resend ${res.status}` }, { status: 502 });
-          await db.from("daily_briefings").update({ emailed_at: new Date().toISOString() }).eq("day", day);
+          if (!res.ok)
+            return Response.json({ ok: false, error: `Resend ${res.status}` }, { status: 502 });
+          await db
+            .from("daily_briefings")
+            .update({ emailed_at: new Date().toISOString() })
+            .eq("day", day);
           return Response.json({ ok: true, emailed: day, status: m.status });
         }
         return Response.json({ ok: false, error: "unknown action" }, { status: 400 });

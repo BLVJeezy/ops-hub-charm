@@ -42,7 +42,7 @@ export const updateRequest = createServerFn({ method: "POST" })
     const { data: req, error } = await db
       .from("client_requests")
       .select(
-        "id, title, status, started_at, worked_seconds, run_started_at, estimate_minutes, contact_name, contact_email, clients:client_id(name, contact_name, contact_email, request_token)",
+        "id, title, status, started_at, worked_seconds, run_started_at, estimate_minutes, contact_name, contact_email, client_id, clients:client_id(name, contact_name, contact_email, request_token)",
       )
       .eq("id", data.id)
       .single();
@@ -93,19 +93,18 @@ export const updateRequest = createServerFn({ method: "POST" })
     };
     const m = data.stage === "start" ? startedMail(r) : doneMail(r, data.note);
     const owner = process.env.ALERT_EMAIL_TO || "jason@solynglobal.be";
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        from: process.env.BOOKING_EMAIL_FROM || "Solyn Global <status@solynglobal.be>",
-        to: [to],
-        reply_to: owner,
-        subject: m.subject,
-        html: m.html,
-        text: m.text,
-      }),
+    const { sendClientEmail } = await import("./client-email.server");
+    const sent = await sendClientEmail(db, {
+      to,
+      replyTo: owner,
+      subject: m.subject,
+      html: m.html,
+      text: m.text,
+      kind: data.stage === "start" ? "aanvraag-gestart" : "aanvraag-klaar",
+      clientId: req.client_id ?? null,
+      refId: req.id,
     });
-    if (!res.ok) return answer(false, { reason: "versturen mislukte" });
+    if (!sent.ok) return answer(false, { reason: "versturen mislukte" });
     await db
       .from("client_requests")
       .update(data.stage === "start" ? { start_mailed_at: now } : { done_mailed_at: now })

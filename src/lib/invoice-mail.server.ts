@@ -134,6 +134,16 @@ export async function deliverInvoice(
 
   const messageId = (body as { id?: string })?.id ?? null;
   const now = new Date().toISOString();
+  // the client-mail log: lets the Hub show whether it arrived
+  const { recordClientEmail } = await import("./client-email.server");
+  await recordClientEmail(supabase, {
+    resendId: messageId,
+    to: toEmail,
+    subject,
+    kind: isReminder ? "herinnering" : "factuur",
+    clientId: inv.client ? String(inv.client) : null,
+    refId: String(inv.id),
+  });
   const patch: Record<string, unknown> = { resend_message_id: messageId, email_status: "sent" };
   if (isReminder) {
     patch.last_reminder_at = now;

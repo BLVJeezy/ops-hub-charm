@@ -61,7 +61,13 @@ async function busyTimes(db: any, now: Date): Promise<Busy[]> {
     (r: { starts_at: string; ends_at: string }) => ({ start: r.starts_at, end: r.ends_at }),
   );
 }
-async function mail(to: string, subject: string, html: string, text: string, replyTo?: string) {
+async function mail(
+  to: string,
+  subject: string,
+  html: string,
+  text: string,
+  replyTo?: string,
+): Promise<string | false> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
   const res = await fetch("https://api.resend.com/emails", {
@@ -76,7 +82,9 @@ async function mail(to: string, subject: string, html: string, text: string, rep
       ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });
-  return res.ok;
+  if (!res.ok) return false;
+  const body = (await res.json().catch(() => ({}))) as { id?: string };
+  return body.id ?? "";
 }
 
 export const Route = createFileRoute("/api/public/booking")({
@@ -218,10 +226,23 @@ export const Route = createFileRoute("/api/public/booking")({
                 ),
               ),
             );
-          await Promise.all([
+          const [clientMailId] = await Promise.all([
             mail(b.email, toClient.subject, toClient.html, toClient.text, owner),
             mail(owner, toOwner.subject, toOwner.html, toOwner.text, b.email),
           ]);
+          // the client-mail log: lets the Hub show whether the confirmation arrived
+          {
+            const { recordClientEmail } = await import("@/lib/client-email.server");
+            await recordClientEmail(db, {
+              resendId: clientMailId || null,
+              to: b.email,
+              subject: toClient.subject,
+              kind: "boeking",
+              clientId: client?.id ?? null,
+              refId: row.id,
+              failed: clientMailId === false,
+            });
+          }
           return reply({ ok: true, when });
         } catch (e) {
           console.error("[booking] failed", e instanceof Error ? e.message : e);

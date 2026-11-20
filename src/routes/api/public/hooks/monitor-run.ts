@@ -20,13 +20,15 @@ export const Route = createFileRoute("/api/public/hooks/monitor-run")({
       POST: async ({ request }) => {
         // Accept the dedicated secret (if set) or the service role key, which the
         // pg_cron job reads from Vault (same as the invoice jobs).
-        const allowed = [process.env.MONITOR_CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(
-          (v): v is string => !!v && v.length >= 24,
-        );
+        const allowed = [
+          process.env.MONITOR_CRON_SECRET,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+        ].filter((v): v is string => !!v && v.length >= 24);
         if (!allowed.length) return new Response("not configured", { status: 503 });
         const auth = request.headers.get("authorization") ?? "";
         const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-        if (!allowed.some((k) => safeEqual(token, k))) return new Response("unauthorized", { status: 401 });
+        if (!allowed.some((k) => safeEqual(token, k)))
+          return new Response("unauthorized", { status: 401 });
 
         const { runMonitoring } = await import("@/lib/monitoring/run.server");
         try {

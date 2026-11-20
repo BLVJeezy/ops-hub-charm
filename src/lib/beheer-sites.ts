@@ -22,7 +22,10 @@ export const SITES: Record<string, BeheerSite> = {
   "villa-amano": {
     name: "Villa Amano",
     hash: "0d11a45eb6b9b9ff75e27eef4bfb63283436b6cb2d7066b60ecc483d5ca86d43",
-    origins: [/^https:\/\/(www\.)?villa-amano\.com$/, /^https:\/\/hotel-bilzen(-[a-z0-9-]+)?\.vercel\.app$/],
+    origins: [
+      /^https:\/\/(www\.)?villa-amano\.com$/,
+      /^https:\/\/hotel-bilzen(-[a-z0-9-]+)?\.vercel\.app$/,
+    ],
     clientId: "a06b8ec3-ff78-4a14-9c5b-52c570c31d0a",
     home: "https://www.villa-amano.com",
     beheer: "https://www.villa-amano.com/beheer.html",
@@ -30,7 +33,10 @@ export const SITES: Record<string, BeheerSite> = {
   belgomed: {
     name: "Belgomed",
     hash: "119ea0f6c6e6b0c0aebcd456c9955be3a795f366a6dadc14f9b9fe45f7d4c20e",
-    origins: [/^https:\/\/(www\.)?belgomed\.(com|be)$/, /^https:\/\/belgomed(-v2)?(-[a-z0-9-]+)?\.(vercel|lovable)\.app$/],
+    origins: [
+      /^https:\/\/(www\.)?belgomed\.(com|be)$/,
+      /^https:\/\/belgomed(-v2)?(-[a-z0-9-]+)?\.(vercel|lovable)\.app$/,
+    ],
     clientId: "7cf293ec-d975-4761-8f50-e69148be3ff6",
     home: "https://belgomed.com",
     beheer: "https://belgomed.com/beheer.html",
@@ -38,7 +44,10 @@ export const SITES: Record<string, BeheerSite> = {
   "horsey-valley": {
     name: "Horsey Valley",
     hash: "d109c5e102e4f2c97ba523c9ce2e0e38ec98287b3a55d676e47da1990737ac1e",
-    origins: [/^https:\/\/(www\.)?horseyvalley\.be$/, /^https:\/\/(horsevally\.lovable|horse-valley-retreat(-[a-z0-9-]+)?\.vercel)\.app$/],
+    origins: [
+      /^https:\/\/(www\.)?horseyvalley\.be$/,
+      /^https:\/\/(horsevally\.lovable|horse-valley-retreat(-[a-z0-9-]+)?\.vercel)\.app$/,
+    ],
     clientId: null,
     home: "https://horseyvalley.be",
     beheer: "https://horseyvalley.be/beheer.html",
@@ -67,10 +76,13 @@ const hex = (buf: ArrayBuffer) =>
 /** Checks a site's access code (the plain name, lower case) against its stored sha256, in constant time. */
 export async function okCode(site: string, code: unknown): Promise<boolean> {
   if (!SITES[site] || typeof code !== "string") return false;
-  const h = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code.trim().toLowerCase())));
+  const h = hex(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code.trim().toLowerCase())),
+  );
   const want = SITES[site].hash;
   let diff = h.length ^ want.length;
-  for (let i = 0; i < Math.min(h.length, want.length); i++) diff |= h.charCodeAt(i) ^ want.charCodeAt(i);
+  for (let i = 0; i < Math.min(h.length, want.length); i++)
+    diff |= h.charCodeAt(i) ^ want.charCodeAt(i);
   return diff === 0;
 }
 
@@ -90,6 +102,7 @@ export function siteCors(request: Request, site: string | null): Record<string, 
 /** Which site sent a request, by its Origin header. */
 export function siteForOrigin(origin: string | null): string | null {
   if (!origin) return null;
-  for (const [slug, s] of Object.entries(SITES)) if (s.origins.some((re) => re.test(origin))) return slug;
+  for (const [slug, s] of Object.entries(SITES))
+    if (s.origins.some((re) => re.test(origin))) return slug;
   return null;
 }

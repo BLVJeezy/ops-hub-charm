@@ -45,7 +45,7 @@ export const changeBooking = createServerFn({ method: "POST" })
     const db = supabaseAdmin as any;
     const { data: b, error } = await db
       .from("bookings")
-      .select("id, name, email, starts_at, ends_at, mode, location, status, moved_from")
+      .select("id, client_id, name, email, starts_at, ends_at, mode, location, status, moved_from")
       .eq("id", data.id)
       .single();
     if (error || !b) throw new Error("Afspraak niet gevonden");
@@ -98,20 +98,20 @@ export const changeBooking = createServerFn({ method: "POST" })
             to: whenLabel(data.start!),
           })
         : changeMail(who, { kind: "cancelled", when: whenLabel(b.starts_at) });
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: process.env.BOOKING_EMAIL_FROM || "Solyn Global <status@solynglobal.be>",
-        to: [b.email],
-        reply_to: process.env.ALERT_EMAIL_TO || "jason@solynglobal.be",
-        subject: m.subject,
-        html: m.html,
-        text: m.text,
-      }),
+    const { sendClientEmail } = await import("./client-email.server");
+    const sent = await sendClientEmail(db, {
+      to: b.email,
+      subject: m.subject,
+      html: m.html,
+      text: m.text,
+      kind: data.action === "move" ? "afspraak-verplaatst" : "afspraak-geannuleerd",
+      clientId: b.client_id ?? null,
+      refId: b.id,
     });
-    return { ok: true, change, mailed: res.ok, reason: res.ok ? undefined : "versturen mislukte" };
+    return {
+      ok: true,
+      change,
+      mailed: sent.ok,
+      reason: sent.ok ? undefined : "versturen mislukte",
+    };
   });

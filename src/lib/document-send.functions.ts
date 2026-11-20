@@ -83,6 +83,17 @@ export const sendClientDocument = createServerFn({ method: "POST" })
       const t = await res.text();
       throw new Error(`Resend error: ${t}`);
     }
+    const sentBody = (await res.json().catch(() => ({}))) as { id?: string };
+    const { recordClientEmail } = await import("./client-email.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await recordClientEmail(supabaseAdmin, {
+      resendId: sentBody.id ?? null,
+      to: toEmail,
+      subject: `${displayTitle.replace(/[\r\n]+/g, " ")} — Solyn Global`,
+      kind: "document",
+      clientId: doc.client ? String(doc.client) : null,
+      refId: String(doc.id),
+    });
 
     await supabase
       .from("client_documents")

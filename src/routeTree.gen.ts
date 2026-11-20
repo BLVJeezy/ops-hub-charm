@@ -26,6 +26,7 @@ import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticated/finance'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedKlantbeheerRouteImport } from './routes/_authenticated/klantbeheer'
+import { Route as AuthenticatedMailsRouteImport } from './routes/_authenticated/mails'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedStatusRouteImport } from './routes/_authenticated/status'
@@ -49,6 +50,7 @@ import { Route as ApiPublicHooksAssetImportRouteImport } from './routes/api/publ
 import { Route as ApiPublicHooksAutomationHealthRouteImport } from './routes/api/public/hooks/automation-health'
 import { Route as ApiPublicHooksBriefingVideoRouteImport } from './routes/api/public/hooks/briefing-video'
 import { Route as ApiPublicHooksDailyBriefingRouteImport } from './routes/api/public/hooks/daily-briefing'
+import { Route as ApiPublicHooksEmailStatusRouteImport } from './routes/api/public/hooks/email-status'
 import { Route as ApiPublicHooksInvoiceRemindersRouteImport } from './routes/api/public/hooks/invoice-reminders'
 import { Route as ApiPublicHooksInvoiceScheduleRouteImport } from './routes/api/public/hooks/invoice-schedule'
 import { Route as ApiPublicHooksMonitorRunRouteImport } from './routes/api/public/hooks/monitor-run'
@@ -146,6 +148,11 @@ const AuthenticatedKlantbeheerRoute =
     path: '/klantbeheer',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMailsRoute = AuthenticatedMailsRouteImport.update({
+  id: '/mails',
+  path: '/mails',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPipelineRoute = AuthenticatedPipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
@@ -267,6 +274,12 @@ const ApiPublicHooksDailyBriefingRoute =
     path: '/api/public/hooks/daily-briefing',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksEmailStatusRoute =
+  ApiPublicHooksEmailStatusRouteImport.update({
+    id: '/api/public/hooks/email-status',
+    path: '/api/public/hooks/email-status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksInvoiceRemindersRoute =
   ApiPublicHooksInvoiceRemindersRouteImport.update({
     id: '/api/public/hooks/invoice-reminders',
@@ -338,6 +351,7 @@ export interface FileRoutesByFullPath {
   '/finance': typeof AuthenticatedFinanceRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/klantbeheer': typeof AuthenticatedKlantbeheerRoute
+  '/mails': typeof AuthenticatedMailsRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
@@ -361,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/automation-health': typeof ApiPublicHooksAutomationHealthRoute
   '/api/public/hooks/briefing-video': typeof ApiPublicHooksBriefingVideoRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
+  '/api/public/hooks/email-status': typeof ApiPublicHooksEmailStatusRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
@@ -387,6 +402,7 @@ export interface FileRoutesByTo {
   '/finance': typeof AuthenticatedFinanceRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/klantbeheer': typeof AuthenticatedKlantbeheerRoute
+  '/mails': typeof AuthenticatedMailsRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
@@ -410,6 +426,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/automation-health': typeof ApiPublicHooksAutomationHealthRoute
   '/api/public/hooks/briefing-video': typeof ApiPublicHooksBriefingVideoRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
+  '/api/public/hooks/email-status': typeof ApiPublicHooksEmailStatusRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
@@ -439,6 +456,7 @@ export interface FileRoutesById {
   '/_authenticated/finance': typeof AuthenticatedFinanceRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
   '/_authenticated/klantbeheer': typeof AuthenticatedKlantbeheerRoute
+  '/_authenticated/mails': typeof AuthenticatedMailsRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/status': typeof AuthenticatedStatusRoute
@@ -462,6 +480,7 @@ export interface FileRoutesById {
   '/api/public/hooks/automation-health': typeof ApiPublicHooksAutomationHealthRoute
   '/api/public/hooks/briefing-video': typeof ApiPublicHooksBriefingVideoRoute
   '/api/public/hooks/daily-briefing': typeof ApiPublicHooksDailyBriefingRoute
+  '/api/public/hooks/email-status': typeof ApiPublicHooksEmailStatusRoute
   '/api/public/hooks/invoice-reminders': typeof ApiPublicHooksInvoiceRemindersRoute
   '/api/public/hooks/invoice-schedule': typeof ApiPublicHooksInvoiceScheduleRoute
   '/api/public/hooks/monitor-run': typeof ApiPublicHooksMonitorRunRoute
@@ -491,6 +510,7 @@ export interface FileRouteTypes {
     | '/finance'
     | '/invoices'
     | '/klantbeheer'
+    | '/mails'
     | '/pipeline'
     | '/search'
     | '/status'
@@ -514,6 +534,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/automation-health'
     | '/api/public/hooks/briefing-video'
     | '/api/public/hooks/daily-briefing'
+    | '/api/public/hooks/email-status'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
@@ -540,6 +561,7 @@ export interface FileRouteTypes {
     | '/finance'
     | '/invoices'
     | '/klantbeheer'
+    | '/mails'
     | '/pipeline'
     | '/search'
     | '/status'
@@ -563,6 +585,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/automation-health'
     | '/api/public/hooks/briefing-video'
     | '/api/public/hooks/daily-briefing'
+    | '/api/public/hooks/email-status'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
@@ -591,6 +614,7 @@ export interface FileRouteTypes {
     | '/_authenticated/finance'
     | '/_authenticated/invoices'
     | '/_authenticated/klantbeheer'
+    | '/_authenticated/mails'
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
     | '/_authenticated/status'
@@ -614,6 +638,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/automation-health'
     | '/api/public/hooks/briefing-video'
     | '/api/public/hooks/daily-briefing'
+    | '/api/public/hooks/email-status'
     | '/api/public/hooks/invoice-reminders'
     | '/api/public/hooks/invoice-schedule'
     | '/api/public/hooks/monitor-run'
@@ -646,6 +671,7 @@ export interface RootRouteChildren {
   ApiPublicHooksAutomationHealthRoute: typeof ApiPublicHooksAutomationHealthRoute
   ApiPublicHooksBriefingVideoRoute: typeof ApiPublicHooksBriefingVideoRoute
   ApiPublicHooksDailyBriefingRoute: typeof ApiPublicHooksDailyBriefingRoute
+  ApiPublicHooksEmailStatusRoute: typeof ApiPublicHooksEmailStatusRoute
   ApiPublicHooksInvoiceRemindersRoute: typeof ApiPublicHooksInvoiceRemindersRoute
   ApiPublicHooksInvoiceScheduleRoute: typeof ApiPublicHooksInvoiceScheduleRoute
   ApiPublicHooksMonitorRunRoute: typeof ApiPublicHooksMonitorRunRoute
@@ -776,6 +802,13 @@ declare module '@tanstack/react-router' {
       path: '/klantbeheer'
       fullPath: '/klantbeheer'
       preLoaderRoute: typeof AuthenticatedKlantbeheerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mails': {
+      id: '/_authenticated/mails'
+      path: '/mails'
+      fullPath: '/mails'
+      preLoaderRoute: typeof AuthenticatedMailsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/pipeline': {
@@ -939,6 +972,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDailyBriefingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/email-status': {
+      id: '/api/public/hooks/email-status'
+      path: '/api/public/hooks/email-status'
+      fullPath: '/api/public/hooks/email-status'
+      preLoaderRoute: typeof ApiPublicHooksEmailStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/invoice-reminders': {
       id: '/api/public/hooks/invoice-reminders'
       path: '/api/public/hooks/invoice-reminders'
@@ -1031,6 +1071,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFinanceRoute: typeof AuthenticatedFinanceRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
   AuthenticatedKlantbeheerRoute: typeof AuthenticatedKlantbeheerRoute
+  AuthenticatedMailsRoute: typeof AuthenticatedMailsRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedStatusRoute: typeof AuthenticatedStatusRoute
@@ -1052,6 +1093,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFinanceRoute: AuthenticatedFinanceRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
   AuthenticatedKlantbeheerRoute: AuthenticatedKlantbeheerRoute,
+  AuthenticatedMailsRoute: AuthenticatedMailsRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedStatusRoute: AuthenticatedStatusRoute,
@@ -1084,6 +1126,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksAutomationHealthRoute: ApiPublicHooksAutomationHealthRoute,
   ApiPublicHooksBriefingVideoRoute: ApiPublicHooksBriefingVideoRoute,
   ApiPublicHooksDailyBriefingRoute: ApiPublicHooksDailyBriefingRoute,
+  ApiPublicHooksEmailStatusRoute: ApiPublicHooksEmailStatusRoute,
   ApiPublicHooksInvoiceRemindersRoute: ApiPublicHooksInvoiceRemindersRoute,
   ApiPublicHooksInvoiceScheduleRoute: ApiPublicHooksInvoiceScheduleRoute,
   ApiPublicHooksMonitorRunRoute: ApiPublicHooksMonitorRunRoute,

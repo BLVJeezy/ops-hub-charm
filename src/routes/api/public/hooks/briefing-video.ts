@@ -36,12 +36,15 @@ export const Route = createFileRoute("/api/public/hooks/briefing-video")({
           return new Response("unauthorized", { status: 401 });
         }
         const day = new URL(request.url).searchParams.get("day") ?? "";
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return Response.json({ error: "bad day" }, { status: 400 });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day))
+          return Response.json({ error: "bad day" }, { status: 400 });
 
         const body = new Uint8Array(await request.arrayBuffer());
-        if (body.length < 1000 || body.length > MAX_BYTES) return Response.json({ error: "bad size" }, { status: 400 });
+        if (body.length < 1000 || body.length > MAX_BYTES)
+          return Response.json({ error: "bad size" }, { status: 400 });
         // mp4 files carry "ftyp" at byte 4
-        if (String.fromCharCode(...body.subarray(4, 8)) !== "ftyp") return Response.json({ error: "not an mp4" }, { status: 400 });
+        if (String.fromCharCode(...body.subarray(4, 8)) !== "ftyp")
+          return Response.json({ error: "not an mp4" }, { status: 400 });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,33 +52,65 @@ export const Route = createFileRoute("/api/public/hooks/briefing-video")({
         const kind = new URL(request.url).searchParams.get("kind");
         if (kind === "client") {
           const client = new URL(request.url).searchParams.get("client") ?? "";
-          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(client)) return Response.json({ error: "bad client" }, { status: 400 });
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(client))
+            return Response.json({ error: "bad client" }, { status: 400 });
           const known = await db.from("clients").select("id").eq("id", client).maybeSingle();
           if (!known.data) return Response.json({ error: "unknown client" }, { status: 404 });
-          const film = await db.storage.from("briefings").upload(`reports/${client}/${day}.mp4`, body, { contentType: "video/mp4", upsert: true });
+          const film = await db.storage
+            .from("briefings")
+            .upload(`reports/${client}/${day}.mp4`, body, {
+              contentType: "video/mp4",
+              upsert: true,
+            });
           if (film.error) return Response.json({ error: film.error.message }, { status: 500 });
           return Response.json({ ok: true, kind: "client", client, day, bytes: body.length });
         }
         if (kind === "progress") {
-          const film = await db.storage.from("briefings").upload(`progress/${day}.mp4`, body, { contentType: "video/mp4", upsert: true });
+          const film = await db.storage
+            .from("briefings")
+            .upload(`progress/${day}.mp4`, body, { contentType: "video/mp4", upsert: true });
           if (film.error) return Response.json({ error: film.error.message }, { status: 500 });
           let chapters = "[]";
           try {
             const raw = atob(request.headers.get("x-chapters") ?? "");
             const list = JSON.parse(raw);
-            if (Array.isArray(list) && raw.length < 4000) chapters = JSON.stringify(list.slice(0, 20).map((c) => ({ t: Number(c.t) || 0, label: String(c.label ?? "").slice(0, 40) })));
-          } catch { /* no chapters sent */ }
+            if (Array.isArray(list) && raw.length < 4000)
+              chapters = JSON.stringify(
+                list
+                  .slice(0, 20)
+                  .map((c) => ({ t: Number(c.t) || 0, label: String(c.label ?? "").slice(0, 40) })),
+              );
+          } catch {
+            /* no chapters sent */
+          }
           // the bucket only takes video/mp4, so the small chapters file goes in under that type; it is read back as text
-          const side = await db.storage.from("briefings").upload(`progress/${day}.chapters`, new TextEncoder().encode(chapters), { contentType: "video/mp4", upsert: true });
-          if (side.error) return Response.json({ ok: true, kind: "progress", day, bytes: body.length, chapters: side.error.message });
+          const side = await db.storage
+            .from("briefings")
+            .upload(`progress/${day}.chapters`, new TextEncoder().encode(chapters), {
+              contentType: "video/mp4",
+              upsert: true,
+            });
+          if (side.error)
+            return Response.json({
+              ok: true,
+              kind: "progress",
+              day,
+              bytes: body.length,
+              chapters: side.error.message,
+            });
           return Response.json({ ok: true, kind: "progress", day, bytes: body.length });
         }
         const path = `${day}/noon-scan.mp4`;
-        const up = await db.storage.from("briefings").upload(path, body, { contentType: "video/mp4", upsert: true });
+        const up = await db.storage
+          .from("briefings")
+          .upload(path, body, { contentType: "video/mp4", upsert: true });
         if (up.error) return Response.json({ error: up.error.message }, { status: 500 });
 
         // Point the day at the stored film (the row may not exist yet if the render ran early: then the player finds it by day).
-        await db.from("daily_briefings").update({ video_path: `storage:briefings/${path}` }).eq("day", day);
+        await db
+          .from("daily_briefings")
+          .update({ video_path: `storage:briefings/${path}` })
+          .eq("day", day);
         return Response.json({ ok: true, day, bytes: body.length });
       },
     },

@@ -18,13 +18,15 @@ export const Route = createFileRoute("/api/public/hooks/site-records")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const allowed = [process.env.MONITOR_CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter(
-          (v): v is string => !!v && v.length >= 24,
-        );
+        const allowed = [
+          process.env.MONITOR_CRON_SECRET,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+        ].filter((v): v is string => !!v && v.length >= 24);
         if (!allowed.length) return new Response("not configured", { status: 503 });
         const auth = request.headers.get("authorization") ?? "";
         const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-        if (!allowed.some((k) => safeEqual(token, k))) return new Response("unauthorized", { status: 401 });
+        if (!allowed.some((k) => safeEqual(token, k)))
+          return new Response("unauthorized", { status: 401 });
 
         let siteId: string | undefined;
         try {
@@ -38,7 +40,10 @@ export const Route = createFileRoute("/api/public/hooks/site-records")({
           const results = await syncSiteRecords(siteId);
           return Response.json({ ok: results.every((r) => r.ok), results });
         } catch (e) {
-          return Response.json({ ok: false, error: e instanceof Error ? e.message : "failed" }, { status: 500 });
+          return Response.json(
+            { ok: false, error: e instanceof Error ? e.message : "failed" },
+            { status: 500 },
+          );
         }
       },
     },

@@ -11,6 +11,8 @@ export type BeheerSite = {
   beheer: string;
   /** Eigenaar ingelogd in dit operations center (Bearer-token) mag het beheer openen zonder code. */
   ops?: string;
+  /** Geen toegangscode: iedereen met de link mag het beheer openen (op vraag van Solyn). */
+  open?: boolean;
 };
 export const SITES: Record<string, BeheerSite> = {
   riory: {
@@ -53,6 +55,7 @@ export const SITES: Record<string, BeheerSite> = {
     home: "https://nuance-therapy.vercel.app",
     beheer: "https://nuance-therapy.vercel.app/beheer.html",
     ops: "https://hotel-bilzen.vercel.app/api/ops",
+    open: true,
   },
   "horsey-valley": {
     name: "Horsey Valley",
@@ -108,6 +111,7 @@ async function okOps(site: string, token: string): Promise<boolean> {
   }
 }
 export async function okCode(site: string, code: unknown): Promise<boolean> {
+  if (SITES[site]?.open) return true;
   if (!SITES[site] || typeof code !== "string") return false;
   if (code.startsWith("ops:")) return okOps(site, code.slice(4).trim());
   const h = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code.trim().toLowerCase())));

@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { videoHead } from "@/lib/video-review";
 
 export const Route = createFileRoute("/")({
+  head: () => videoHead("Solyn Global · Ops Hub", "Solyn Global’s interne werkruimte voor klanten, facturen en videoproductie."),
   component: RootRedirect,
 });
 

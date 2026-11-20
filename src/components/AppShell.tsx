@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
 import { Assistant, toggleAssistant } from "@/components/Assistant";
 import { NotificationBell } from "@/components/Notifications";
+import { VideoFeedbackBadge } from "@/components/VideoFeedbackBadge";
 
 const NAV_ITEMS = [
   { to: "/brain", label: "Brain", icon: BrainCircuit },
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/agenda", label: "Agenda", icon: CalendarDays },
   { to: "/aanvragen", label: "Aanvragen", icon: Inbox },
+  { to: "/videos", label: "Video's", icon: Film },
   { to: "/klantbeheer", label: "Klantbeheer", icon: PencilRuler },
   { to: "/wijzigingen", label: "Wijzigingen", icon: History },
   { to: "/invoices", label: "Invoices", icon: FileText },
@@ -80,6 +82,7 @@ function NavLink({
     >
       <Icon className="w-4 h-4" />
       <span>{label}</span>
+      {to === "/videos" && <VideoFeedbackBadge />}
     </Link>
   );
 }
@@ -253,6 +256,7 @@ function MobileNav({ assistant }: { assistant: boolean }) {
                 >
                   <Icon className="w-5 h-5" />
                   <span className="text-[11px]">{it.label}</span>
+                  {it.to === "/videos" && <VideoFeedbackBadge />}
                 </Link>
               );
             })}

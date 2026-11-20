@@ -7,8 +7,9 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -84,16 +85,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "twitter:description",
         content: "Internal CRM, invoicing, and pipeline hub for Solyn Global.",
       },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5134b605-9129-497a-ac3d-c224bacbe7ed/id-preview-ef2e31ee--82da2251-738e-4633-9ced-6f4036c59715.lovable.app-1783380121866.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5134b605-9129-497a-ac3d-c224bacbe7ed/id-preview-ef2e31ee--82da2251-738e-4633-9ced-6f4036c59715.lovable.app-1783380121866.png",
-      },
       { name: "theme-color", content: "#1B222C" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
@@ -142,12 +133,9 @@ function RootComponent() {
 
 // Skip PIN gate for the public pages: unsubscribe and the booking page.
 function RootGate() {
-  const [pathname, setPathname] = useState<string>("");
-  useEffect(() => {
-    if (typeof window !== "undefined") setPathname(window.location.pathname);
-  }, []);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isPublic =
-    pathname === "/unsubscribe" || pathname === "/afspraak" || pathname.startsWith("/aanvraag/");
+    pathname === "/unsubscribe" || pathname === "/afspraak" || pathname.startsWith("/aanvraag/") || pathname.startsWith("/video/");
   if (isPublic) return <Outlet />;
   return (
     <PinGate>

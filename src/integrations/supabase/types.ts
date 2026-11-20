@@ -866,6 +866,7 @@ export type Database = {
           status: Database["public"]["Enums"]["client_status"]
           updated_at: string
           vat_number: string | null
+          video_token: string | null
           website_billing_frequency: Database["public"]["Enums"]["billing_frequency"]
           website_monthly_fee: number | null
           website_needed: boolean
@@ -909,6 +910,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["client_status"]
           updated_at?: string
           vat_number?: string | null
+          video_token?: string | null
           website_billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           website_monthly_fee?: number | null
           website_needed?: boolean
@@ -954,6 +956,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["client_status"]
           updated_at?: string
           vat_number?: string | null
+          video_token?: string | null
           website_billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           website_monthly_fee?: number | null
           website_needed?: boolean
@@ -2309,6 +2312,267 @@ export type Database = {
         }
         Relationships: []
       }
+      video_assets: {
+        Row: {
+          caption: string
+          created_at: string
+          id: string
+          kind: string
+          mime_type: string
+          sort_order: number
+          storage_path: string
+          thumb_path: string | null
+          uploaded_by: string
+          version: number | null
+          video_project_id: string
+        }
+        Insert: {
+          caption?: string
+          created_at?: string
+          id?: string
+          kind: string
+          mime_type: string
+          sort_order?: number
+          storage_path: string
+          thumb_path?: string | null
+          uploaded_by: string
+          version?: number | null
+          video_project_id: string
+        }
+        Update: {
+          caption?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          mime_type?: string
+          sort_order?: number
+          storage_path?: string
+          thumb_path?: string | null
+          uploaded_by?: string
+          version?: number | null
+          video_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_assets_video_project_id_fkey"
+            columns: ["video_project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_events: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          video_project_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          video_project_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          video_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_events_video_project_id_fkey"
+            columns: ["video_project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_feedback: {
+        Row: {
+          attachments: Json
+          comment: string
+          contact_name: string
+          created_at: string
+          decision: string
+          email_error: string | null
+          id: string
+          request_id: string | null
+          seen_at: string | null
+          task_id: string | null
+          timestamps: Json
+          version: number
+          video_project_id: string
+        }
+        Insert: {
+          attachments?: Json
+          comment?: string
+          contact_name?: string
+          created_at?: string
+          decision: string
+          email_error?: string | null
+          id?: string
+          request_id?: string | null
+          seen_at?: string | null
+          task_id?: string | null
+          timestamps?: Json
+          version: number
+          video_project_id: string
+        }
+        Update: {
+          attachments?: Json
+          comment?: string
+          contact_name?: string
+          created_at?: string
+          decision?: string
+          email_error?: string | null
+          id?: string
+          request_id?: string | null
+          seen_at?: string | null
+          task_id?: string | null
+          timestamps?: Json
+          version?: number
+          video_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_feedback_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "client_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_feedback_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "client_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_feedback_video_project_id_fkey"
+            columns: ["video_project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_projects: {
+        Row: {
+          approved_at: string | null
+          brief: string
+          client_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          month: string
+          notify_client: boolean
+          platform: string[]
+          revisions_included: number
+          revisions_used: number
+          slot: number
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          brief?: string
+          client_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          month: string
+          notify_client?: boolean
+          platform?: string[]
+          revisions_included?: number
+          revisions_used?: number
+          slot: number
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          brief?: string
+          client_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          month?: string
+          notify_client?: boolean
+          platform?: string[]
+          revisions_included?: number
+          revisions_used?: number
+          slot?: number
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_uploads: {
+        Row: {
+          caption: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          kind: string
+          mime_type: string
+          size: number
+          storage_path: string
+          uploaded_by: string
+          version: number | null
+          video_project_id: string
+        }
+        Insert: {
+          caption?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          mime_type: string
+          size: number
+          storage_path: string
+          uploaded_by: string
+          version?: number | null
+          video_project_id: string
+        }
+        Update: {
+          caption?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          mime_type?: string
+          size?: number
+          storage_path?: string
+          uploaded_by?: string
+          version?: number | null
+          video_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_uploads_video_project_id_fkey"
+            columns: ["video_project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2400,6 +2664,27 @@ export type Database = {
           _tracking_id: string
         }
         Returns: boolean
+      }
+      video_complete_upload: {
+        Args: { _by: string; _client: string; _upload: string }
+        Returns: string
+      }
+      video_decide: {
+        Args: {
+          _attachments: Json
+          _client: string
+          _comment: string
+          _decision: string
+          _name: string
+          _timestamps: Json
+          _version: number
+          _video: string
+        }
+        Returns: string
+      }
+      video_staff_status: {
+        Args: { _notify: boolean; _status: string; _video: string }
+        Returns: undefined
       }
     }
     Enums: {

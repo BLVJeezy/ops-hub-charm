@@ -29,9 +29,11 @@ import { Route as AuthenticatedKlantbeheerRouteImport } from './routes/_authenti
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedStatusRouteImport } from './routes/_authenticated/status'
+import { Route as AuthenticatedVideosRouteImport } from './routes/_authenticated/videos'
 import { Route as AuthenticatedWijzigingenRouteImport } from './routes/_authenticated/wijzigingen'
 import { Route as AanvraagTokenRouteImport } from './routes/aanvraag.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as VideoTokenRouteImport } from './routes/video.$token'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 import { Route as AuthenticatedStatusIdRouteImport } from './routes/_authenticated/status_.$id'
@@ -42,6 +44,7 @@ import { Route as ApiPublicRequestTimerRouteImport } from './routes/api/public/r
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
 import { Route as ApiPublicWidgetRouteImport } from './routes/api/public/widget'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as VideoTokenVideoIdRouteImport } from './routes/video.$token_.$videoId'
 import { Route as ApiPublicHooksAssetImportRouteImport } from './routes/api/public/hooks/asset-import'
 import { Route as ApiPublicHooksAutomationHealthRouteImport } from './routes/api/public/hooks/automation-health'
 import { Route as ApiPublicHooksBriefingVideoRouteImport } from './routes/api/public/hooks/briefing-video'
@@ -158,6 +161,11 @@ const AuthenticatedStatusRoute = AuthenticatedStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVideosRoute = AuthenticatedVideosRouteImport.update({
+  id: '/videos',
+  path: '/videos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedWijzigingenRoute =
   AuthenticatedWijzigingenRouteImport.update({
     id: '/wijzigingen',
@@ -172,6 +180,11 @@ const AanvraagTokenRoute = AanvraagTokenRouteImport.update({
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideoTokenRoute = VideoTokenRouteImport.update({
+  id: '/video/$token',
+  path: '/video/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedClientsIndexRoute =
@@ -223,6 +236,11 @@ const ApiPublicWidgetRoute = ApiPublicWidgetRouteImport.update({
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideoTokenVideoIdRoute = VideoTokenVideoIdRouteImport.update({
+  id: '/video/$token_/$videoId',
+  path: '/video/$token/$videoId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicHooksAssetImportRoute =
@@ -323,9 +341,11 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/videos': typeof AuthenticatedVideosRoute
   '/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/video/$token': typeof VideoTokenRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/beheer': typeof ApiPublicBeheerRoute
@@ -335,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/video/$token/$videoId': typeof VideoTokenVideoIdRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/asset-import': typeof ApiPublicHooksAssetImportRoute
   '/api/public/hooks/automation-health': typeof ApiPublicHooksAutomationHealthRoute
@@ -369,9 +390,11 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/videos': typeof AuthenticatedVideosRoute
   '/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/video/$token': typeof VideoTokenRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/status/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/beheer': typeof ApiPublicBeheerRoute
@@ -381,6 +404,7 @@ export interface FileRoutesByTo {
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/video/$token/$videoId': typeof VideoTokenVideoIdRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/asset-import': typeof ApiPublicHooksAssetImportRoute
   '/api/public/hooks/automation-health': typeof ApiPublicHooksAutomationHealthRoute
@@ -418,9 +442,11 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/status': typeof AuthenticatedStatusRoute
+  '/_authenticated/videos': typeof AuthenticatedVideosRoute
   '/_authenticated/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/video/$token': typeof VideoTokenRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
   '/_authenticated/status_/$id': typeof AuthenticatedStatusIdRoute
   '/api/public/beheer': typeof ApiPublicBeheerRoute
@@ -430,6 +456,7 @@ export interface FileRoutesById {
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/video/$token_/$videoId': typeof VideoTokenVideoIdRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/api/public/hooks/asset-import': typeof ApiPublicHooksAssetImportRoute
   '/api/public/hooks/automation-health': typeof ApiPublicHooksAutomationHealthRoute
@@ -467,9 +494,11 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/videos'
     | '/wijzigingen'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
+    | '/video/$token'
     | '/clients/$id'
     | '/status/$id'
     | '/api/public/beheer'
@@ -479,6 +508,7 @@ export interface FileRouteTypes {
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
+    | '/video/$token/$videoId'
     | '/clients/'
     | '/api/public/hooks/asset-import'
     | '/api/public/hooks/automation-health'
@@ -513,9 +543,11 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/videos'
     | '/wijzigingen'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
+    | '/video/$token'
     | '/clients/$id'
     | '/status/$id'
     | '/api/public/beheer'
@@ -525,6 +557,7 @@ export interface FileRouteTypes {
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
+    | '/video/$token/$videoId'
     | '/clients'
     | '/api/public/hooks/asset-import'
     | '/api/public/hooks/automation-health'
@@ -561,9 +594,11 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
     | '/_authenticated/status'
+    | '/_authenticated/videos'
     | '/_authenticated/wijzigingen'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
+    | '/video/$token'
     | '/_authenticated/clients/$id'
     | '/_authenticated/status_/$id'
     | '/api/public/beheer'
@@ -573,6 +608,7 @@ export interface FileRouteTypes {
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
+    | '/video/$token_/$videoId'
     | '/_authenticated/clients/'
     | '/api/public/hooks/asset-import'
     | '/api/public/hooks/automation-health'
@@ -597,6 +633,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   AanvraagTokenRoute: typeof AanvraagTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  VideoTokenRoute: typeof VideoTokenRoute
   ApiPublicBeheerRoute: typeof ApiPublicBeheerRoute
   ApiPublicBookingRoute: typeof ApiPublicBookingRoute
   ApiPublicRequestRoute: typeof ApiPublicRequestRoute
@@ -604,6 +641,7 @@ export interface RootRouteChildren {
   ApiPublicTRoute: typeof ApiPublicTRoute
   ApiPublicWidgetRoute: typeof ApiPublicWidgetRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  VideoTokenVideoIdRoute: typeof VideoTokenVideoIdRoute
   ApiPublicHooksAssetImportRoute: typeof ApiPublicHooksAssetImportRoute
   ApiPublicHooksAutomationHealthRoute: typeof ApiPublicHooksAutomationHealthRoute
   ApiPublicHooksBriefingVideoRoute: typeof ApiPublicHooksBriefingVideoRoute
@@ -761,6 +799,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStatusRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/videos': {
+      id: '/_authenticated/videos'
+      path: '/videos'
+      fullPath: '/videos'
+      preLoaderRoute: typeof AuthenticatedVideosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/wijzigingen': {
       id: '/_authenticated/wijzigingen'
       path: '/wijzigingen'
@@ -780,6 +825,13 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/video/$token': {
+      id: '/video/$token'
+      path: '/video/$token'
+      fullPath: '/video/$token'
+      preLoaderRoute: typeof VideoTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/clients/': {
@@ -850,6 +902,13 @@ declare module '@tanstack/react-router' {
       path: '/lovable/email/suppression'
       fullPath: '/lovable/email/suppression'
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/video/$token_/$videoId': {
+      id: '/video/$token_/$videoId'
+      path: '/video/$token/$videoId'
+      fullPath: '/video/$token/$videoId'
+      preLoaderRoute: typeof VideoTokenVideoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/asset-import': {
@@ -975,6 +1034,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedStatusRoute: typeof AuthenticatedStatusRoute
+  AuthenticatedVideosRoute: typeof AuthenticatedVideosRoute
   AuthenticatedWijzigingenRoute: typeof AuthenticatedWijzigingenRoute
   AuthenticatedStatusIdRoute: typeof AuthenticatedStatusIdRoute
 }
@@ -995,6 +1055,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedStatusRoute: AuthenticatedStatusRoute,
+  AuthenticatedVideosRoute: AuthenticatedVideosRoute,
   AuthenticatedWijzigingenRoute: AuthenticatedWijzigingenRoute,
   AuthenticatedStatusIdRoute: AuthenticatedStatusIdRoute,
 }
@@ -1010,6 +1071,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   AanvraagTokenRoute: AanvraagTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  VideoTokenRoute: VideoTokenRoute,
   ApiPublicBeheerRoute: ApiPublicBeheerRoute,
   ApiPublicBookingRoute: ApiPublicBookingRoute,
   ApiPublicRequestRoute: ApiPublicRequestRoute,
@@ -1017,6 +1079,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTRoute: ApiPublicTRoute,
   ApiPublicWidgetRoute: ApiPublicWidgetRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  VideoTokenVideoIdRoute: VideoTokenVideoIdRoute,
   ApiPublicHooksAssetImportRoute: ApiPublicHooksAssetImportRoute,
   ApiPublicHooksAutomationHealthRoute: ApiPublicHooksAutomationHealthRoute,
   ApiPublicHooksBriefingVideoRoute: ApiPublicHooksBriefingVideoRoute,

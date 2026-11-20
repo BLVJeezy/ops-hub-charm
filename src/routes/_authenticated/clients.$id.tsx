@@ -22,8 +22,11 @@ import { toast } from "sonner";
 import { sendClientDocument } from "@/lib/document-send.functions";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
 import { ClientReports } from "@/components/ClientReports";
+import { ClientVideoHub } from "@/components/ClientVideoHub";
+import { videoHead } from "@/lib/video-review";
 
 export const Route = createFileRoute("/_authenticated/clients/$id")({
+  head: () => videoHead("Klantdossier · Solyn Global", "Klantgegevens, facturen, acties en de privé videoportal."),
   component: ClientDetail,
 });
 
@@ -301,6 +304,7 @@ function ClientDetail() {
       </div>
 
       {/* Business details */}
+      <ClientVideoHub clientId={id} />
       <div className="rounded-xl border border-border bg-card p-4 mb-4 space-y-5">
         {hasWebsite && (
           <div>

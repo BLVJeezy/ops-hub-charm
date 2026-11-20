@@ -41,6 +41,15 @@ export const SITES: Record<string, BeheerSite> = {
     home: "https://belgomed.com",
     beheer: "https://belgomed.com/beheer.html",
   },
+  nuance: {
+    name: "Nuance",
+    // zelfde klant als Villa Amano: zelfde toegangscode (amano)
+    hash: "0d11a45eb6b9b9ff75e27eef4bfb63283436b6cb2d7066b60ecc483d5ca86d43",
+    origins: [/^https:\/\/(www\.)?nuance-therapie\.be$/, /^https:\/\/nuance-therapy(-[a-z0-9-]+)?\.vercel\.app$/],
+    clientId: "1b0c6a00-21d0-4206-8315-bbe8027a1e54",
+    home: "https://nuance-therapy.vercel.app",
+    beheer: "https://nuance-therapy.vercel.app/beheer.html",
+  },
   "horsey-valley": {
     name: "Horsey Valley",
     hash: "d109c5e102e4f2c97ba523c9ce2e0e38ec98287b3a55d676e47da1990737ac1e",

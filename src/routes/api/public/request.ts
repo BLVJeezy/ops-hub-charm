@@ -19,9 +19,19 @@ import {
  */
 // the client page also lives on the company website (solynglobal.be/client/<name>), so that site may call this from the browser
 const SITES = ["https://solynglobal.be", "https://www.solynglobal.be"];
+// the beheerpagina (/beheer.html) on each client website sends "Ik heb een probleem / opmerking" here
+const CLIENT_SITES = [
+  /^https:\/\/(www\.)?riory\.be$/,
+  /^https:\/\/(www\.)?villa-amano\.com$/,
+  /^https:\/\/(www\.)?belgomed\.(com|be)$/,
+  /^https:\/\/(www\.)?horseyvalley\.be$/,
+  /^https:\/\/(www\.)?tcsc\.be$/,
+  /^https:\/\/(riory|hotel-bilzen|belgomed(-v2)?|dynamik|tcsv|horse-valley-retreat|nuance-therapy)(-[a-z0-9-]+)?\.vercel\.app$/,
+  /^https:\/\/(belgomed|horsevally)\.lovable\.app$/,
+];
 const cors = (request: Request): Record<string, string> => {
   const origin = request.headers.get("origin") ?? "";
-  return SITES.includes(origin)
+  return SITES.includes(origin) || CLIENT_SITES.some((re) => re.test(origin))
     ? {
         "access-control-allow-origin": origin,
         "access-control-allow-methods": "GET, POST, OPTIONS",
@@ -219,6 +229,27 @@ export const Route = createFileRoute("/api/public/request")({
           if (stored.length)
             await db.from("client_requests").update({ attachments: stored }).eq("id", row.id);
 
+          // sent from a client's beheerpagina: also put it on my task list right away
+          const fromBeheer = raw.source === "beheer";
+          if (fromBeheer) {
+            const { data: task, error: taskError } = await db
+              .from("client_tasks")
+              .insert({
+                client_id: client.id,
+                title: `${input.kind === "probleem" ? "Probleem" : "Melding"}: ${input.title}`.slice(0, 160),
+                assignee: "me",
+                due_date: input.kind === "probleem" ? today : null,
+              })
+              .select("id")
+              .single();
+            if (taskError) console.error("[request] task not made", taskError.message);
+            else
+              await db
+                .from("client_requests")
+                .update({ task_id: task.id, status: "ingepland" })
+                .eq("id", row.id);
+          }
+
           const owner = process.env.ALERT_EMAIL_TO || "jason@solynglobal.be";
           const hub = `${(process.env.HUB_PUBLIC_URL || "https://solyn22.lovable.app").replace(/\/$/, "")}/aanvragen`;
           const lines: [string, string][] = [
@@ -250,12 +281,15 @@ export const Route = createFileRoute("/api/public/request")({
             ...(files.length
               ? [["Bestanden", `${stored.length} van ${files.length} bewaard`] as [string, string]]
               : []),
+            ...(raw.source === "beheer"
+              ? [["Via", "Beheerpagina van de website (ook als taak toegevoegd)"] as [string, string]]
+              : []),
           ];
           const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;color:#111"><h2 style="margin:0 0 4px">Nieuwe aanvraag van ${esc(client.name)}</h2><p style="margin:0 0 16px;font-size:17px">${esc(input.title!)}</p><table style="border-collapse:collapse;font-size:14px">${lines.map(([k, v]) => `<tr><td style="padding:3px 14px 3px 0;color:#666">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>${input.details ? `<p style="white-space:pre-wrap;background:#f5f5f5;border-radius:10px;padding:12px;font-size:14px">${esc(input.details)}</p>` : ""}<p><a href="${hub}" style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none">Open Aanvragen</a></p></div>`;
           const text = `Nieuwe aanvraag van ${client.name}\n${input.title}\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${input.details ?? ""}\n\n${hub}`;
           await mail(
             owner,
-            `Nieuwe aanvraag: ${client.name} – ${input.title}`,
+            `${fromBeheer ? (input.kind === "probleem" ? "Probleem gemeld" : "Melding") + " via beheer" : "Nieuwe aanvraag"}: ${client.name} – ${input.title}`,
             html,
             text,
             input.contact_email,

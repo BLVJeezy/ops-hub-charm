@@ -533,6 +533,68 @@ export type Database = {
           },
         ]
       }
+      client_emails: {
+        Row: {
+          bounced_at: string | null
+          checked_at: string | null
+          client_id: string | null
+          delivered_at: string | null
+          error: string | null
+          id: string
+          kind: string
+          opened_at: string | null
+          ref_id: string | null
+          resend_id: string | null
+          sent_at: string
+          status: string
+          status_at: string | null
+          subject: string
+          to_email: string
+        }
+        Insert: {
+          bounced_at?: string | null
+          checked_at?: string | null
+          client_id?: string | null
+          delivered_at?: string | null
+          error?: string | null
+          id?: string
+          kind: string
+          opened_at?: string | null
+          ref_id?: string | null
+          resend_id?: string | null
+          sent_at?: string
+          status?: string
+          status_at?: string | null
+          subject: string
+          to_email: string
+        }
+        Update: {
+          bounced_at?: string | null
+          checked_at?: string | null
+          client_id?: string | null
+          delivered_at?: string | null
+          error?: string | null
+          id?: string
+          kind?: string
+          opened_at?: string | null
+          ref_id?: string | null
+          resend_id?: string | null
+          sent_at?: string
+          status?: string
+          status_at?: string | null
+          subject?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_emails_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_recurring_tasks: {
         Row: {
           active: boolean

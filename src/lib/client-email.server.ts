@@ -96,7 +96,7 @@ export async function syncEmailStatus(db: any, limit = 60) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { checked: 0, changed: 0 };
   const since = new Date(Date.now() - 7 * 864e5).toISOString();
-  const cols = "id, resend_id, status, sent_at, kind, ref_id";
+  const cols = "id, resend_id, status, sent_at, kind, ref_id, checked_at";
   // Recent mails keep being followed; older ones are checked at least once.
   const [recent, never] = await Promise.all([
     db
@@ -126,8 +126,9 @@ export async function syncEmailStatus(db: any, limit = 60) {
     sent_at: string;
     kind: string;
     ref_id: string | null;
+    checked_at: string | null;
   }[]) {
-    if (!pending(row.status, row.sent_at)) continue;
+    if (row.checked_at && !pending(row.status, row.sent_at)) continue;
     const r = await fetch(`https://api.resend.com/emails/${encodeURIComponent(row.resend_id)}`, {
       headers: { Authorization: `Bearer ${key}` },
     });

@@ -27,8 +27,8 @@ export const SITES: Record<string, BeheerSite> = {
       /^https:\/\/hotel-bilzen(-[a-z0-9-]+)?\.vercel\.app$/,
     ],
     clientId: "a06b8ec3-ff78-4a14-9c5b-52c570c31d0a",
-    home: "https://www.villa-amano.com",
-    beheer: "https://www.villa-amano.com/beheer.html",
+    home: "https://hotel-bilzen.vercel.app",
+    beheer: "https://hotel-bilzen.vercel.app/beheer.html",
   },
   belgomed: {
     name: "Belgomed",

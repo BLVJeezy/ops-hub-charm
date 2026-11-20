@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { SITES as BEHEER_SITES, siteForOrigin } from "@/lib/beheer-sites";
 import { checkFiles, safeName } from "@/lib/booking";
 import {
   answerWithin,
@@ -258,6 +259,29 @@ export const Route = createFileRoute("/api/public/request")({
                 .eq("id", row.id);
           }
 
+          // ...and it becomes a conversation in the support chat, so the client and I can talk it through there
+          let threadId: string | null = null;
+          if (fromBeheer) {
+            const rs = typeof raw.site === "string" ? raw.site : "";
+            const site = BEHEER_SITES[rs] ? rs : siteForOrigin(request.headers.get("origin"));
+            if (site && BEHEER_SITES[site].clientId === client.id) {
+              const { storeChatImage, createThread } = await import("@/lib/support.server");
+              const atts = [];
+              for (const f of files.slice(0, 6)) {
+                if (!/^image\/(jpeg|png|webp)$/.test(f.type)) continue;
+                const att = await storeChatImage(supabaseAdmin, site, new Uint8Array(await f.arrayBuffer()), f.type, f.name);
+                if (att) atts.push(att);
+              }
+              threadId = await createThread(db, {
+                site,
+                title: input.title!,
+                body: input.details ?? input.title!,
+                attachments: atts,
+                requestId: row.id,
+              });
+            }
+          }
+
           // screenshots and marked-up parts of the page travel with the mail (beheerpagina only; max 15 MB)
           const attachments: { filename: string; content: string }[] = [];
           if (raw.source === "beheer") {
@@ -272,7 +296,8 @@ export const Route = createFileRoute("/api/public/request")({
             }
           }
           const owner = process.env.ALERT_EMAIL_TO || "jason@solynglobal.be";
-          const hub = `${(process.env.HUB_PUBLIC_URL || "https://solyn22.lovable.app").replace(/\/$/, "")}/aanvragen`;
+          const hubBase = (process.env.HUB_PUBLIC_URL || "https://solyn22.lovable.app").replace(/\/$/, "");
+          const hub = threadId ? `${hubBase}/support?t=${threadId}` : `${hubBase}/aanvragen`;
           const lines: [string, string][] = [
             ["Klant", client.name],
             [
@@ -306,7 +331,7 @@ export const Route = createFileRoute("/api/public/request")({
               ? [["Via", "Beheerpagina van de website (ook als taak toegevoegd)"] as [string, string]]
               : []),
           ];
-          const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;color:#111"><h2 style="margin:0 0 4px">Nieuwe aanvraag van ${esc(client.name)}</h2><p style="margin:0 0 16px;font-size:17px">${esc(input.title!)}</p><table style="border-collapse:collapse;font-size:14px">${lines.map(([k, v]) => `<tr><td style="padding:3px 14px 3px 0;color:#666">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>${input.details ? `<p style="white-space:pre-wrap;background:#f5f5f5;border-radius:10px;padding:12px;font-size:14px">${esc(input.details)}</p>` : ""}<p><a href="${hub}" style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none">Open Aanvragen</a></p></div>`;
+          const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;color:#111"><h2 style="margin:0 0 4px">Nieuwe aanvraag van ${esc(client.name)}</h2><p style="margin:0 0 16px;font-size:17px">${esc(input.title!)}</p><table style="border-collapse:collapse;font-size:14px">${lines.map(([k, v]) => `<tr><td style="padding:3px 14px 3px 0;color:#666">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>${input.details ? `<p style="white-space:pre-wrap;background:#f5f5f5;border-radius:10px;padding:12px;font-size:14px">${esc(input.details)}</p>` : ""}<p><a href="${hub}" style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none">${threadId ? "Open de chat" : "Open Aanvragen"}</a></p></div>`;
           const text = `Nieuwe aanvraag van ${client.name}\n${input.title}\n\n${lines.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\n${input.details ?? ""}\n\n${hub}`;
           await mail(
             owner,
@@ -316,7 +341,7 @@ export const Route = createFileRoute("/api/public/request")({
             input.contact_email,
             attachments,
           );
-          return json({ ok: true, estimate: price });
+          return json({ ok: true, estimate: price, thread: threadId });
         } catch (e) {
           console.error("[request] failed", e instanceof Error ? e.message : e);
           return json({ error: "Versturen lukte niet. Probeer het opnieuw." }, 500);

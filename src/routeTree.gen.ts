@@ -28,6 +28,7 @@ import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedStatusRouteImport } from './routes/_authenticated/status'
+import { Route as AuthenticatedSupportRouteImport } from './routes/_authenticated/support'
 import { Route as AanvraagTokenRouteImport } from './routes/aanvraag.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
@@ -37,6 +38,7 @@ import { Route as ApiPublicBeheerRouteImport } from './routes/api/public/beheer'
 import { Route as ApiPublicBookingRouteImport } from './routes/api/public/booking'
 import { Route as ApiPublicRequestRouteImport } from './routes/api/public/request'
 import { Route as ApiPublicRequestTimerRouteImport } from './routes/api/public/request-timer'
+import { Route as ApiPublicSupportRouteImport } from './routes/api/public/support'
 import { Route as ApiPublicTRouteImport } from './routes/api/public/t'
 import { Route as ApiPublicWidgetRouteImport } from './routes/api/public/widget'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -150,6 +152,11 @@ const AuthenticatedStatusRoute = AuthenticatedStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSupportRoute = AuthenticatedSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AanvraagTokenRoute = AanvraagTokenRouteImport.update({
   id: '/aanvraag/$token',
   path: '/aanvraag/$token',
@@ -194,6 +201,11 @@ const ApiPublicRequestRoute = ApiPublicRequestRouteImport.update({
 const ApiPublicRequestTimerRoute = ApiPublicRequestTimerRouteImport.update({
   id: '/api/public/request-timer',
   path: '/api/public/request-timer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicSupportRoute = ApiPublicSupportRouteImport.update({
+  id: '/api/public/support',
+  path: '/api/public/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTRoute = ApiPublicTRouteImport.update({
@@ -308,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/support': typeof AuthenticatedSupportRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -316,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
+  '/api/public/support': typeof ApiPublicSupportRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -352,6 +366,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/support': typeof AuthenticatedSupportRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -360,6 +375,7 @@ export interface FileRoutesByTo {
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
+  '/api/public/support': typeof ApiPublicSupportRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -399,6 +415,7 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/status': typeof AuthenticatedStatusRoute
+  '/_authenticated/support': typeof AuthenticatedSupportRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -407,6 +424,7 @@ export interface FileRoutesById {
   '/api/public/booking': typeof ApiPublicBookingRoute
   '/api/public/request': typeof ApiPublicRequestRoute
   '/api/public/request-timer': typeof ApiPublicRequestTimerRoute
+  '/api/public/support': typeof ApiPublicSupportRoute
   '/api/public/t': typeof ApiPublicTRoute
   '/api/public/widget': typeof ApiPublicWidgetRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -446,6 +464,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/support'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/clients/$id'
@@ -454,6 +473,7 @@ export interface FileRouteTypes {
     | '/api/public/booking'
     | '/api/public/request'
     | '/api/public/request-timer'
+    | '/api/public/support'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -490,6 +510,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/support'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/clients/$id'
@@ -498,6 +519,7 @@ export interface FileRouteTypes {
     | '/api/public/booking'
     | '/api/public/request'
     | '/api/public/request-timer'
+    | '/api/public/support'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -536,6 +558,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
     | '/_authenticated/status'
+    | '/_authenticated/support'
     | '/aanvraag/$token'
     | '/email/unsubscribe'
     | '/_authenticated/clients/$id'
@@ -544,6 +567,7 @@ export interface FileRouteTypes {
     | '/api/public/booking'
     | '/api/public/request'
     | '/api/public/request-timer'
+    | '/api/public/support'
     | '/api/public/t'
     | '/api/public/widget'
     | '/lovable/email/suppression'
@@ -575,6 +599,7 @@ export interface RootRouteChildren {
   ApiPublicBookingRoute: typeof ApiPublicBookingRoute
   ApiPublicRequestRoute: typeof ApiPublicRequestRoute
   ApiPublicRequestTimerRoute: typeof ApiPublicRequestTimerRoute
+  ApiPublicSupportRoute: typeof ApiPublicSupportRoute
   ApiPublicTRoute: typeof ApiPublicTRoute
   ApiPublicWidgetRoute: typeof ApiPublicWidgetRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -728,6 +753,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStatusRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/support': {
+      id: '/_authenticated/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof AuthenticatedSupportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/aanvraag/$token': {
       id: '/aanvraag/$token'
       path: '/aanvraag/$token'
@@ -789,6 +821,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/request-timer'
       fullPath: '/api/public/request-timer'
       preLoaderRoute: typeof ApiPublicRequestTimerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/support': {
+      id: '/api/public/support'
+      path: '/api/public/support'
+      fullPath: '/api/public/support'
+      preLoaderRoute: typeof ApiPublicSupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/t': {
@@ -934,6 +973,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedStatusRoute: typeof AuthenticatedStatusRoute
+  AuthenticatedSupportRoute: typeof AuthenticatedSupportRoute
   AuthenticatedStatusIdRoute: typeof AuthenticatedStatusIdRoute
 }
 
@@ -952,6 +992,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedStatusRoute: AuthenticatedStatusRoute,
+  AuthenticatedSupportRoute: AuthenticatedSupportRoute,
   AuthenticatedStatusIdRoute: AuthenticatedStatusIdRoute,
 }
 
@@ -970,6 +1011,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBookingRoute: ApiPublicBookingRoute,
   ApiPublicRequestRoute: ApiPublicRequestRoute,
   ApiPublicRequestTimerRoute: ApiPublicRequestTimerRoute,
+  ApiPublicSupportRoute: ApiPublicSupportRoute,
   ApiPublicTRoute: ApiPublicTRoute,
   ApiPublicWidgetRoute: ApiPublicWidgetRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,

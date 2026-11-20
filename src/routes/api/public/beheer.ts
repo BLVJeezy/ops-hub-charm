@@ -9,7 +9,9 @@ import { SITES, okCode, siteCors as cors } from "@/lib/beheer-sites";
  *   POST /api/public/beheer?a=login    {site, code}
  *   POST /api/public/beheer?a=upload   {site, code, dataUrl}   -> { url }   (foto naar de openbare map "beheer")
  *   POST /api/public/beheer?a=publish  {site, code, content}   -> { ok, at } (live + kopie bij de versies)
- *   POST /api/public/beheer?a=history  {site, code}            -> { versions, live, liveAt }
+ *   POST /api/public/beheer?a=save     {site, code, content}   -> { ok, at } (alleen bewaard als versie, niet live)
+ *   POST /api/public/beheer?a=load     {site, code, pathname}  -> { content } (een versie openen om verder te werken)
+ *   POST /api/public/beheer?a=history  {site, code}            -> { versions: [{pathname, at, kind}], live, liveAt }
  *   POST /api/public/beheer?a=restore  {site, code, id}        -> { ok, content }
  *
  * De toegangscode per site staat hier alleen als sha256. CORS alleen voor de eigen domeinen van elke klant.
@@ -113,11 +115,25 @@ export const Route = createFileRoute("/api/public/beheer")({
             if (live.error) throw new Error(live.error.message);
             return json(h, { ok: true, at });
           }
+          if (a === "save") {
+            const err = validContent(body.content, site);
+            if (err) return json(h, { error: err }, 400);
+            const c = body.content as Partial<Content>;
+            const at = new Date().toISOString();
+            const v = await db.from("beheer_versions").insert({ site, content: { text: c.text ?? {}, img: c.img ?? {} }, kind: "saved", created_at: at });
+            if (v.error) throw new Error(v.error.message);
+            return json(h, { ok: true, at });
+          }
+          if (a === "load") {
+            const { data: v } = await db.from("beheer_versions").select("content").eq("site", site).eq("id", String(body.pathname || "")).maybeSingle();
+            if (!v) return json(h, { error: "Die versie bestaat niet meer." }, 404);
+            return json(h, { content: v.content });
+          }
           if (a === "history") {
-            const { data: versions } = await db.from("beheer_versions").select("id, created_at").eq("site", site).order("created_at", { ascending: false }).limit(15);
+            const { data: versions } = await db.from("beheer_versions").select("id, created_at, kind").eq("site", site).order("created_at", { ascending: false }).limit(20);
             const { data: live } = await db.from("beheer_content").select("content, published_at").eq("site", site).maybeSingle();
             return json(h, {
-              versions: (versions ?? []).map((x: { id: string; created_at: string }) => ({ pathname: x.id, at: x.created_at })),
+              versions: (versions ?? []).map((x: { id: string; created_at: string; kind: string }) => ({ pathname: x.id, at: x.created_at, kind: x.kind })),
               live: live?.content ?? null,
               liveAt: live?.published_at ?? null,
             });
@@ -127,7 +143,7 @@ export const Route = createFileRoute("/api/public/beheer")({
             const { data: v } = await db.from("beheer_versions").select("content").eq("site", site).eq("id", id).maybeSingle();
             if (!v) return json(h, { error: "Die versie bestaat niet meer." }, 404);
             const at = new Date().toISOString();
-            await db.from("beheer_versions").insert({ site, content: v.content });
+            await db.from("beheer_versions").insert({ site, content: v.content, kind: "published" });
             const live = await db.from("beheer_content").upsert({ site, content: v.content, published_at: at });
             if (live.error) throw new Error(live.error.message);
             return json(h, { ok: true, content: v.content });

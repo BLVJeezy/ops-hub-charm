@@ -8,6 +8,10 @@ export type AgendaItem = {
   kind: AgendaKind;
   clientId: string | null;
   color: string;
+  /** where it lives: a calendar row or a booking */
+  src?: "cal" | "booking";
+  outcome?: "done" | "missed" | "cancelled" | null;
+  movedFrom?: string | null;
   contact?: {
     email: string;
     phone: string | null;
@@ -112,4 +116,52 @@ export function perDay(items: AgendaItem[], days: string[]): Record<string, Agen
   }
   for (const d of days) out[d].sort((a, b) => a.start.localeCompare(b.start));
   return out;
+}
+
+/** What happened with an item: done, not done, or cancelled (a cancelled booking is status "cancelled"). */
+export type Outcome = "done" | "missed" | "cancelled";
+export const OUTCOME_LABEL: Record<Outcome, string> = {
+  done: "Gedaan",
+  missed: "Niet gedaan",
+  cancelled: "Geannuleerd",
+};
+
+/** Brussels wall-clock "YYYY-MM-DD" + "HH:MM" → ISO, correct across summer/winter time. */
+export function brusselsIso(day: string, time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  const [y, mo, d] = day.split("-").map(Number);
+  const guess = Date.UTC(y, mo - 1, d, h, m);
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: ZONE,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+      .formatToParts(new Date(guess))
+      .map((x) => [x.type, x.value]),
+  );
+  const shown = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour),
+    Number(p.minute),
+  );
+  return new Date(guess - (shown - guess)).toISOString();
+}
+
+/** Moves an item to another day and/or start time, keeping (or setting) its length. */
+export function moveItem(
+  item: { start: string; end: string },
+  day: string,
+  time?: string,
+  minutes?: number,
+) {
+  const length = minutes ?? Math.round((Date.parse(item.end) - Date.parse(item.start)) / 60000);
+  const start = brusselsIso(day, time ?? timeOf(item.start));
+  return { start, end: new Date(Date.parse(start) + length * 60000).toISOString() };
 }

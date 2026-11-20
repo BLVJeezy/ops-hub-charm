@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientMail, ownerMail, type BookingMail } from "./booking-mail";
+import { changeMail, clientMail, ownerMail, type BookingMail } from "./booking-mail";
 
 const b: BookingMail = {
   name: "Ann <b>Peeters</b>",
@@ -36,5 +36,25 @@ describe("booking mails", () => {
     expect(m.html).toContain("https://hub.example/agenda");
     expect(m.html).toContain("Bakkerij Peeters");
     expect(m.text).toContain("Onderwerp: SEO, Webdesign");
+  });
+});
+
+describe("change mails", () => {
+  it("tells the client the new time and the old one", () => {
+    const m = changeMail(
+      { name: "Ann", mode: "online", location: "" },
+      { kind: "moved", from: "maandag 23 november om 14:00", to: "dinsdag 24 november om 15:00" },
+    );
+    expect(m.subject).toBe("Je afspraak is verplaatst – Solyn Global");
+    expect(m.text).toContain("Nieuw: dinsdag 24 november om 15:00");
+    expect(m.html).toContain("line-through");
+  });
+  it("tells the client it is cancelled and how to rebook", () => {
+    const m = changeMail(
+      { name: "Ann", mode: "onsite", location: "Markt 1" },
+      { kind: "cancelled", when: "maandag 23 november om 14:00" },
+    );
+    expect(m.text).toContain("gaat niet door");
+    expect(m.html).toContain("solynglobal.be/afspraak");
   });
 });

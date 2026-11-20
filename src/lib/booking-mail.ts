@@ -116,3 +116,37 @@ Naam: ${b.name}${b.company ? `\nBedrijf: ${b.company}` : ""}
 E-mail: ${b.email}${b.phone ? `\nTelefoon: ${b.phone}` : ""}${filesLine ? `\nBestanden: ${filesLine}` : ""}${b.note ? `\n\n${b.note}` : ""}${hubUrl ? `\n\nAgenda: ${hubUrl}` : ""}`;
   return { subject, html, text };
 }
+
+/** To the client when I move their appointment, or cancel it. Same look as the confirmation. */
+export function changeMail(
+  b: { name: string; mode: "online" | "onsite"; location: string },
+  change: { kind: "moved"; from: string; to: string } | { kind: "cancelled"; when: string },
+): Mail {
+  const where = b.mode === "onsite" ? `Ter plaatse: ${b.location}` : "Online meeting";
+  const ask = `<p style="margin:14px 0 0">Past dit niet, of heb je een vraag? Antwoord gewoon op deze mail of schrijf naar <a href="mailto:jason@solynglobal.be" style="color:${GOLD}">jason@solynglobal.be</a>.</p>`;
+  if (change.kind === "moved") {
+    const subject = "Je afspraak is verplaatst – Solyn Global";
+    const html = shell(
+      "Je afspraak is verplaatst",
+      `<p style="margin:0 0 4px">Dag ${esc(b.name)},</p><p style="margin:0">We hebben je afspraak verplaatst naar een nieuw moment.</p>${rows(
+        [
+          ["Nieuw", esc(change.to)],
+          [
+            "Was",
+            `<span style="text-decoration:line-through;font-weight:normal">${esc(change.from)}</span>`,
+          ],
+          ["Waar", esc(where)],
+        ],
+      )}${ask}`,
+    );
+    const text = `Dag ${b.name},\n\nWe hebben je afspraak verplaatst.\nNieuw: ${change.to}\nWas: ${change.from}\n${where}\n\nPast dit niet? Antwoord op deze mail of schrijf naar jason@solynglobal.be.\n\nSolyn Global`;
+    return { subject, html, text };
+  }
+  const subject = "Je afspraak is geannuleerd – Solyn Global";
+  const html = shell(
+    "Je afspraak is geannuleerd",
+    `<p style="margin:0 0 4px">Dag ${esc(b.name)},</p><p style="margin:0">Je afspraak van <strong>${esc(change.when)}</strong> gaat niet door.</p><p style="margin:14px 0 0"><a href="https://solynglobal.be/afspraak" style="display:inline-block;background:${INK};color:#fff;padding:11px 18px;border-radius:999px;text-decoration:none">Kies een nieuw moment</a></p>${ask}`,
+  );
+  const text = `Dag ${b.name},\n\nJe afspraak van ${change.when} gaat niet door.\nKies een nieuw moment: https://solynglobal.be/afspraak\n\nVragen? Schrijf naar jason@solynglobal.be.\n\nSolyn Global`;
+  return { subject, html, text };
+}

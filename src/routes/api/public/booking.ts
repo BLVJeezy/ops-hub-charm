@@ -44,6 +44,7 @@ async function busyTimes(db: any, now: Date): Promise<Busy[]> {
       .from("calendar_busy")
       .select("starts_at, ends_at")
       .neq("kind", "block")
+      .or("outcome.is.null,outcome.neq.cancelled")
       .lt("starts_at", to)
       .gt("ends_at", from)
       .limit(2000),

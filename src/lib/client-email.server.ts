@@ -101,7 +101,7 @@ export async function syncEmailStatus(db: any, limit = 60) {
     .select("id, resend_id, status, sent_at, kind, ref_id")
     .not("resend_id", "is", null)
     .in("status", ["sent", "delayed", "delivered"])
-    .gte("sent_at", since)
+    .or(`sent_at.gte.${since},checked_at.is.null`)
     .order("checked_at", { ascending: true, nullsFirst: true })
     .limit(limit);
   let changed = 0;

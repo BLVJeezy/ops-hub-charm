@@ -205,7 +205,11 @@ html.privacy :is(.money, .tabular-nums, .recharts-cartesian-axis-tick-value, .re
 @keyframes perk-flow { from { stroke-dashoffset: 56; } to { stroke-dashoffset: 0; } }
 .perk { transition: transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 200ms ease; }
 .perk:active { transition-duration: 90ms; filter: brightness(1.15); }
-@media (prefers-reduced-motion: reduce) { .perk-flow { animation: none; opacity: 0; } .perk { transition: opacity 200ms ease; } }
+/* the medal as a raised button: stands on its wall, lifts on hover, sinks when pressed */
+.perk-coin { box-shadow: var(--sh); transition: transform 160ms cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 160ms ease; }
+.perk:hover .perk-coin { transform: translateY(-2px); }
+.perk:active .perk-coin { transform: translateY(calc(var(--d) * 0.75)); box-shadow: var(--sh-press); transition-duration: 70ms; }
+@media (prefers-reduced-motion: reduce) { .perk-flow { animation: none; opacity: 0; } .perk { transition: opacity 200ms ease; } .perk-coin { transition: none; } .perk:hover .perk-coin { transform: none; } }
 
 /* Automations map */
 .automap-grid {

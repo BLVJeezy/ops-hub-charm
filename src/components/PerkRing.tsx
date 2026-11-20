@@ -9,17 +9,40 @@ export type PerkItem = BrainNeuron & { icon?: LucideIcon; /** key of the medal t
 const logoUrl = (key: string) => `/logos/${key}.png`;
 const initials = (name: string) => name.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
+/** Mixes a hex colour with black (f < 0) or white (f > 0). */
+function shade(hex: string, f: number) {
+  const n = parseInt(hex.replace("#", "").slice(0, 6).padEnd(6, "0"), 16);
+  const ch = (v: number) => Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f);
+  return `rgb(${ch((n >> 16) & 255)}, ${ch((n >> 8) & 255)}, ${ch(n & 255)})`;
+}
+/** How far a medal of this size stands out of the screen, in pixels. */
+export const depthOf = (size: number) => Math.max(4, Math.round(size * 0.1));
+
+/**
+ * The medal as a physical button: a thick metal rim with a side wall (stacked shadows in a darker tone),
+ * a domed face with a glossy highlight, and a soft shadow on the "floor". Pressing pushes it down into its wall.
+ */
 function Emblem({ id, label, color, size, dim, icon: Icon }: { id: string; label: string; color: string; size: number; dim?: boolean; icon?: LucideIcon }) {
   const [broken, setBroken] = useState(false);
+  const d = depthOf(size), wall = shade(color, -0.55), edge = shade(color, -0.75);
+  const side = (n: number) => Array.from({ length: n }, (_, k) => `0 ${k + 1}px 0 ${k === n - 1 ? edge : wall}`).join(", ");
+  const bevel = "inset 0 2px 1px rgba(255,255,255,0.55), inset 0 -3px 5px rgba(0,0,0,0.55)";
+  const up = `${bevel}, ${side(d)}, 0 ${d + 10}px ${d * 2 + 18}px rgba(0,0,0,0.75), 0 0 ${size * 0.35}px ${color}44`;
+  const down = `${bevel}, ${side(Math.max(1, Math.round(d / 4)))}, 0 ${Math.round(d / 4) + 4}px 10px rgba(0,0,0,0.7), 0 0 ${size * 0.3}px ${color}55`;
+  const face = size - Math.max(10, Math.round(size * 0.12));
   return (
-    <span className="relative grid place-items-center rounded-full" style={{
+    <span className="perk-coin relative grid place-items-center rounded-full" style={{
       width: size, height: size,
       // metal rim in the client's colour, like a perk medal
-      background: `conic-gradient(from 210deg, ${color}, #ffffff 18%, ${color} 38%, #0b0f1e 62%, ${color} 84%, ${color})`,
-      boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 0 ${size * 0.35}px ${color}55, 0 10px 30px rgba(0,0,0,0.6)`,
+      background: `conic-gradient(from 210deg, ${color}, ${shade(color, 0.7)} 16%, ${color} 34%, ${shade(color, -0.6)} 60%, ${color} 84%, ${color})`,
+      ["--sh" as string]: up, ["--sh-press" as string]: down, ["--d" as string]: `${d}px`,
       opacity: dim ? 0.6 : 1,
     }}>
-      <span className="grid place-items-center rounded-full overflow-hidden" style={{ width: size - 8, height: size - 8, background: "radial-gradient(circle at 35% 28%, #1b2340, #05070f 75%)", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.8)" }}>
+      <span className="relative grid place-items-center rounded-full overflow-hidden" style={{
+        width: face, height: face,
+        background: "radial-gradient(circle at 35% 28%, #1b2340, #05070f 75%)",
+        boxShadow: "0 0 0 2px rgba(0,0,0,0.45), inset 0 4px 8px rgba(255,255,255,0.10), inset 0 -8px 14px rgba(0,0,0,0.7)",
+      }}>
         {Icon ? (
           <Icon style={{ width: size * 0.42, height: size * 0.42, color, filter: `drop-shadow(0 0 10px ${color}88)` }} strokeWidth={1.6} />
         ) : broken ? (
@@ -27,6 +50,10 @@ function Emblem({ id, label, color, size, dim, icon: Icon }: { id: string; label
         ) : (
           <img src={logoUrl(id)} alt="" draggable={false} onError={() => setBroken(true)} className="w-full h-full object-cover" />
         )}
+        {/* dome: a gloss on top, a little darker at the bottom */}
+        <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full" style={{
+          background: "radial-gradient(ellipse 70% 45% at 32% 16%, rgba(255,255,255,0.42), rgba(255,255,255,0.08) 55%, transparent 70%), linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.28))",
+        }} />
       </span>
     </span>
   );
@@ -106,7 +133,7 @@ export function PerkRing({ neurons: all, coreLabel, coreValue, selected, onSelec
 
           <div className="absolute -translate-x-1/2 -translate-y-1/2 text-center" style={{ left: cx, top: cy }}>
             <Emblem id="core" label={coreLabel} color="#D8B45A" size={core} />
-            <div className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2 bg-[rgba(5,7,15,0.72)]" style={{ top: core + 4 }}>
+            <div className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2 bg-[rgba(5,7,15,0.72)]" style={{ top: core + 6 + depthOf(core) }}>
               <div className="text-sm font-semibold text-white">{coreLabel}</div>
               <div className="text-xs text-white/60 money">{coreValue}</div>
             </div>
@@ -122,7 +149,7 @@ export function PerkRing({ neurons: all, coreLabel, coreValue, selected, onSelec
                 <Emblem id={p.key} label={p.label} color={p.color} size={perk} dim={p.dim} icon={p.icon} />
                 {p.alert && <span className="absolute right-0 top-0 w-3.5 h-3.5 rounded-full bg-red-500 ring-2 ring-[#05070f]" />}
                 {p.badge ? <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-white text-black text-[11px] font-semibold grid place-items-center">{p.badge}</span> : null}
-                <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center pointer-events-none" style={{ top: perk + 6 }}>
+                <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center pointer-events-none" style={{ top: perk + 6 + depthOf(perk) }}>
                   <span className={`block font-medium text-white/90 ${small ? "text-[10px] max-w-[76px] truncate" : "text-[13px]"}`}>{p.label}</span>
                   {(!small || on) && <span className="block text-[11px] money" style={{ color: p.color }}>{p.value}</span>}
                 </span>
@@ -140,7 +167,7 @@ export function PerkRing({ neurons: all, coreLabel, coreValue, selected, onSelec
                 style={{ left: q.x, top: q.y, opacity: off ? 0.4 : 1, transform: `translate(-50%,-50%) scale(${on ? 1.12 : 1})` }}>
                 <Emblem id={p.key} label={p.label} color={p.color} size={sub} dim={p.dim} icon={p.icon} />
                 {p.badge ? <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 rounded-full bg-white text-black text-[10px] font-semibold grid place-items-center">{p.badge}</span> : null}
-                <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center pointer-events-none" style={q.y < cy ? { bottom: sub + 4 } : { top: sub + 4 }}>
+                <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center pointer-events-none" style={q.y < cy ? { bottom: sub + 4 } : { top: sub + 4 + depthOf(sub) }}>
                   <span className={`block font-medium text-white/85 ${small ? "text-[10px] max-w-[76px] truncate" : "text-[12px]"}`}>{p.label}</span>
                 </span>
               </button>

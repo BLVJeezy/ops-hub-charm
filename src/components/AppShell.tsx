@@ -292,177 +292,137 @@ function MobileNav({ assistant }: { assistant: boolean }) {
   const current = useRouterState({ select: (st) => st.location.pathname });
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const [menu, setMenu] = useState(false);
-  const [search, setSearch] = useState(false);
+  const hidden = usePrivacy();
+  const [more, setMore] = useState(false);
   const [q, setQ] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const here = itemOf(current) ?? NAV_ITEMS[0];
-  const Here = here.icon;
-  useEffect(() => {
-    setMenu(false);
-    setSearch(false);
-  }, [current]);
-  useEffect(() => {
-    if (search) inputRef.current?.focus();
-  }, [search]);
+  const here = groupOf(current);
+  useEffect(() => setMore(false), [current]);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (q.trim()) {
-      navigate({ to: "/search", search: { q: q.trim() } });
-      setSearch(false);
-    }
+    if (q.trim()) navigate({ to: "/search", search: { q: q.trim() } });
   };
   const pill = "backdrop-blur-xl border shadow-2xl shadow-black/40";
   const pillStyle = {
     backgroundColor: "hsl(var(--sidebar-background) / 0.85)",
     borderColor: "hsl(var(--sidebar-border))",
   };
+  const action =
+    "press flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 text-[11px] bg-muted/40";
   return (
     <div className="lg:hidden">
       <div className="edge-fade" aria-hidden />
-      {(menu || search) && (
-        <div
-          className="fade-in fixed inset-0 z-30 bg-black/50"
-          onClick={() => {
-            setMenu(false);
-            setSearch(false);
-          }}
-        />
+      {more && (
+        <div className="fade-in fixed inset-0 z-30 bg-black/50" onClick={() => setMore(false)} />
       )}
 
-      {menu && (
+      {/* ⋯ sheet: search and the few extras that are not pages */}
+      {more && (
         <div
           className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-3xl p-3 pop-in ${pill}`}
           style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
         >
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {NAV_GROUPS.map((g) => (
-              <div key={g.key}>
-                <div className="px-1 pb-1.5 text-xs font-medium text-muted-foreground">
-                  {g.label}
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {g.items.map((it) => {
-                    const active = it === here,
-                      Icon = it.icon;
-                    return (
-                      <Link
-                        key={it.to}
-                        to={it.to}
-                        className="press relative flex flex-col items-center gap-1 rounded-2xl py-2.5"
-                        style={{
-                          backgroundColor: active
-                            ? "hsl(var(--primary) / 0.15)"
-                            : "hsl(var(--muted) / 0.4)",
-                          color: active ? "hsl(var(--primary))" : "hsl(var(--foreground))",
-                        }}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span className="text-[10.5px] leading-tight text-center px-0.5 [overflow-wrap:anywhere]">
-                          {it.label}
-                        </span>
-                        {it.to === "/videos" && <VideoFeedbackBadge />}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={async () => {
-              await signOut();
-              navigate({ to: "/auth" });
-            }}
-            className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground min-h-11 rounded-2xl"
+          <form
+            onSubmit={submit}
+            className="flex items-center gap-2 h-12 pl-4 pr-1.5 rounded-full bg-muted/40"
           >
-            <LogOut className="w-3.5 h-3.5" /> Sign out
-          </button>
+            <SearchIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Zoek klanten, steden, nummers…"
+              className="flex-1 min-w-0 bg-transparent text-base outline-none"
+            />
+            {q.trim() && (
+              <button
+                type="submit"
+                className="h-9 px-4 rounded-full text-sm font-medium"
+                style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}
+              >
+                Zoek
+              </button>
+            )}
+          </form>
+          <div className={`mt-2 grid gap-2 ${assistant ? "grid-cols-3" : "grid-cols-2"}`}>
+            {assistant && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMore(false);
+                  toggleAssistant();
+                }}
+                className={`${action} text-[#C9A14A]`}
+              >
+                <Sparkles className="w-5 h-5" /> Assistent
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={togglePrivacy}
+              aria-pressed={hidden}
+              className={`${action} ${hidden ? "text-[#C9A14A]" : ""}`}
+            >
+              {hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {hidden ? "Cijfers tonen" : "Cijfers verbergen"}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut();
+                navigate({ to: "/auth" });
+              }}
+              className={`${action} text-muted-foreground`}
+            >
+              <LogOut className="w-5 h-5" /> Uitloggen
+            </button>
+          </div>
         </div>
       )}
 
-      {search && (
-        <form
-          onSubmit={submit}
-          className={`fixed z-40 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-full flex items-center gap-2 pl-4 pr-1.5 h-12 pop-in ${pill}`}
-          style={{ ...pillStyle, bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
-        >
-          <SearchIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-          <input
-            ref={inputRef}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Zoek klanten, steden, nummers…"
-            className="flex-1 bg-transparent text-sm outline-none"
-          />
-          <button
-            type="submit"
-            className="h-9 px-4 rounded-full text-sm font-medium"
-            style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}
-          >
-            Zoek
-          </button>
-        </form>
-      )}
-
+      {/* The bar: the four groups, the bell, and ⋯ */}
       <nav
-        className={`fixed z-40 left-1/2 -translate-x-1/2 h-14 rounded-full flex items-center gap-1 px-1.5 ${pill}`}
+        className={`fixed z-40 left-1/2 -translate-x-1/2 h-14 rounded-full flex items-center gap-0.5 px-1.5 ${pill}`}
         style={{ ...pillStyle, bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
       >
-        <button
-          aria-label="Zoeken"
-          onClick={() => {
-            setSearch(!search);
-            setMenu(false);
-          }}
-          className="w-11 h-11 rounded-full flex items-center justify-center"
-          style={{
-            backgroundColor: search ? "hsl(var(--primary) / 0.15)" : "transparent",
-            color: search ? "hsl(var(--primary))" : "hsl(var(--foreground))",
-          }}
-        >
-          {search ? <X className="w-5 h-5" /> : <SearchIcon className="w-5 h-5" />}
-        </button>
-        <button
-          onClick={() => {
-            setMenu(!menu);
-            setSearch(false);
-          }}
-          className="h-11 px-4 rounded-full flex items-center gap-2 text-sm font-medium whitespace-nowrap"
-          style={{ backgroundColor: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}
-        >
-          <Here className="w-4 h-4" /> {here.label}
-        </button>
-        {assistant && (
-          <button
-            type="button"
-            aria-label="Assistent"
-            onClick={() => {
-              setMenu(false);
-              setSearch(false);
-              toggleAssistant();
-            }}
-            className="press w-11 h-11 rounded-full flex items-center justify-center text-[#C9A14A]"
-          >
-            <Sparkles className="w-5 h-5" />
-          </button>
-        )}
+        {NAV_GROUPS.map((g) => {
+          const active = g === here,
+            Icon = g.icon;
+          return (
+            <Link
+              key={g.key}
+              to={groupTarget(g)}
+              aria-label={g.label}
+              aria-current={active ? "page" : undefined}
+              className="press relative h-11 rounded-full flex items-center justify-center gap-1.5 text-sm font-medium whitespace-nowrap transition-all"
+              style={{
+                padding: active ? "0 14px" : "0",
+                width: active ? undefined : 44,
+                backgroundColor: active ? "hsl(var(--primary) / 0.15)" : "transparent",
+                color: active ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+              }}
+            >
+              <Icon className="w-5 h-5" />
+              {active && g.label}
+              {g.items.some((it) => it.to === "/videos") && (
+                <span className="absolute -top-1 -right-1 scale-75 origin-top-right pointer-events-none [&_.video-pill]:ml-0">
+                  <VideoFeedbackBadge />
+                </span>
+              )}
+            </Link>
+          );
+        })}
+        <span className="w-px h-6 mx-0.5 bg-border" aria-hidden />
         <NotificationBell up className="w-11 h-11" />
-        <PrivacyButton className="w-11 h-11" />
         <button
-          aria-label="Menu"
-          aria-expanded={menu}
-          onClick={() => {
-            setMenu(!menu);
-            setSearch(false);
-          }}
+          aria-label="Meer"
+          aria-expanded={more}
+          onClick={() => setMore(!more)}
           className="w-11 h-11 rounded-full flex items-center justify-center"
           style={{
-            backgroundColor: menu ? "hsl(var(--primary) / 0.15)" : "transparent",
-            color: menu ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+            backgroundColor: more ? "hsl(var(--primary) / 0.15)" : "transparent",
+            color: more ? "hsl(var(--primary))" : "hsl(var(--foreground))",
           }}
         >
-          {menu ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
+          {more ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
         </button>
       </nav>
     </div>

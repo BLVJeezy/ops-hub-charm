@@ -9,6 +9,8 @@ export type BeheerSite = {
   clientId: string | null;
   home: string;
   beheer: string;
+  /** Eigenaar ingelogd in dit operations center (Bearer-token) mag het beheer openen zonder code. */
+  ops?: string;
 };
 export const SITES: Record<string, BeheerSite> = {
   riory: {
@@ -29,6 +31,7 @@ export const SITES: Record<string, BeheerSite> = {
     clientId: "a06b8ec3-ff78-4a14-9c5b-52c570c31d0a",
     home: "https://hotel-bilzen.vercel.app",
     beheer: "https://hotel-bilzen.vercel.app/beheer.html",
+    ops: "https://hotel-bilzen.vercel.app/api/ops",
   },
   belgomed: {
     name: "Belgomed",
@@ -49,6 +52,7 @@ export const SITES: Record<string, BeheerSite> = {
     clientId: "1b0c6a00-21d0-4206-8315-bbe8027a1e54",
     home: "https://nuance-therapy.vercel.app",
     beheer: "https://nuance-therapy.vercel.app/beheer.html",
+    ops: "https://hotel-bilzen.vercel.app/api/ops",
   },
   "horsey-valley": {
     name: "Horsey Valley",
@@ -90,8 +94,22 @@ const same = (a: string, b: string) => {
   return diff === 0;
 };
 /** Checks a site's access code (the plain name, lower case) or the master code against their sha256, in constant time. */
+/** "ops:<token>": the owner is logged in to the site's operations center; that center confirms who it is. */
+async function okOps(site: string, token: string): Promise<boolean> {
+  const url = SITES[site]?.ops;
+  if (!url || !/^[A-Za-z0-9._-]{20,2000}$/.test(token)) return false;
+  try {
+    const r = await fetch(url + "?a=me", { headers: { authorization: "Bearer " + token }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return false;
+    const j = (await r.json()) as { user?: { role?: string; id?: string } };
+    return j.user?.role === "owner" && j.user?.id !== "demo-owner";
+  } catch {
+    return false;
+  }
+}
 export async function okCode(site: string, code: unknown): Promise<boolean> {
   if (!SITES[site] || typeof code !== "string") return false;
+  if (code.startsWith("ops:")) return okOps(site, code.slice(4).trim());
   const h = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code.trim().toLowerCase())));
   return same(h, SITES[site].hash) || same(h, MASTER);
 }

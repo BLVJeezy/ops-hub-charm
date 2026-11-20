@@ -23,11 +23,23 @@ const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString
 const json = (h: Record<string, string>, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...h } });
 
-type Content = { text: Record<string, string>; img: Record<string, string> };
+type Contact = Record<string, { t: "phone" | "email" | "text"; f: string; v: string }>;
+type Content = { text: Record<string, string>; img: Record<string, string>; contact?: Contact };
 function validContent(c: unknown, site: string): string | null {
   if (!c || typeof c !== "object" || Array.isArray(c)) return "Geen geldige inhoud.";
   const o = c as Record<string, unknown>;
-  for (const k of Object.keys(o)) if (k !== "text" && k !== "img") return "Onbekend onderdeel: " + k;
+  for (const k of Object.keys(o)) if (k !== "text" && k !== "img" && k !== "contact") return "Onbekend onderdeel: " + k;
+  if (o.contact !== undefined) {
+    const c = o.contact as Record<string, unknown>;
+    if (!c || typeof c !== "object" || Array.isArray(c) || Object.keys(c).length > 12) return "Ongeldige contactgegevens.";
+    for (const [k, v] of Object.entries(c)) {
+      const x = v as Record<string, unknown>;
+      if (k.length > 40 || !x || typeof x !== "object") return "Ongeldige contactgegevens.";
+      if (!["phone", "email", "text"].includes(String(x.t))) return "Ongeldige contactgegevens.";
+      if (typeof x.f !== "string" || typeof x.v !== "string" || x.f.length > 300 || x.v.length > 300) return "Een contactgegeven is te lang.";
+      if (/[<>]/.test(x.v)) return "Een contactgegeven bevat ongeldige tekens.";
+    }
+  }
   const text = (o.text ?? {}) as Record<string, unknown>, img = (o.img ?? {}) as Record<string, unknown>;
   if (typeof text !== "object" || typeof img !== "object") return "Geen geldige inhoud.";
   if (Object.keys(text).length > 3000 || Object.keys(img).length > 500) return "Te veel wijzigingen in één keer.";
@@ -107,7 +119,7 @@ export const Route = createFileRoute("/api/public/beheer")({
             const err = validContent(body.content, site);
             if (err) return json(h, { error: err }, 400);
             const c = body.content as Partial<Content>;
-            const content: Content = { text: c.text ?? {}, img: c.img ?? {} };
+            const content: Content = { text: c.text ?? {}, img: c.img ?? {}, contact: c.contact ?? {} };
             const at = new Date().toISOString();
             const v = await db.from("beheer_versions").insert({ site, content });
             if (v.error) throw new Error(v.error.message);
@@ -120,7 +132,7 @@ export const Route = createFileRoute("/api/public/beheer")({
             if (err) return json(h, { error: err }, 400);
             const c = body.content as Partial<Content>;
             const at = new Date().toISOString();
-            const v = await db.from("beheer_versions").insert({ site, content: { text: c.text ?? {}, img: c.img ?? {} }, kind: "saved", created_at: at });
+            const v = await db.from("beheer_versions").insert({ site, content: { text: c.text ?? {}, img: c.img ?? {}, contact: c.contact ?? {} }, kind: "saved", created_at: at });
             if (v.error) throw new Error(v.error.message);
             return json(h, { ok: true, at });
           }

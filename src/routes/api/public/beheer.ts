@@ -94,7 +94,7 @@ export const Route = createFileRoute("/api/public/beheer")({
           headers: {
             "content-type": "application/javascript; charset=utf-8",
             "access-control-allow-origin": "*",
-            "cache-control": "public, max-age=0, s-maxage=20, stale-while-revalidate=600",
+            "cache-control": "public, max-age=0, s-maxage=15, stale-while-revalidate=30",
           },
         });
       },

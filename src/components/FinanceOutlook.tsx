@@ -41,18 +41,19 @@ export function FinanceOutlook({ invoices, fixedMonthly }: { invoices: unknown[]
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <div>
-          <div className="text-sm font-medium">Omzet, kosten en winst</div>
-          <div className="text-xs text-muted-foreground">volgende {state.months} maanden · geplande facturen, excl. btw, vóór belasting</div>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <div className="text-base sm:text-sm font-semibold sm:font-medium">Omzet, kosten en winst</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Excl. btw, vóór belasting</div>
         </div>
         <div className="flex rounded-full border border-border p-0.5 shrink-0">
           {([6, 12] as const).map((m) => (
             <button
               key={m}
               type="button"
+              aria-pressed={state.months === m}
               onClick={() => save({ ...state, months: m })}
-              className={`h-8 px-3 rounded-full text-xs font-medium ${state.months === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`h-9 sm:h-8 px-3.5 sm:px-3 rounded-full text-sm sm:text-xs font-medium ${state.months === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
             >
               {m} mnd
             </button>
@@ -60,25 +61,48 @@ export function FinanceOutlook({ invoices, fixedMonthly }: { invoices: unknown[]
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      {/* Profit first: the number that matters */}
+      <div className="rounded-xl bg-muted/40 p-4">
+        <div className="text-xs text-muted-foreground">Winst · volgende {state.months} maanden</div>
+        <div className={`text-[1.9rem] sm:text-3xl leading-tight font-bold tabular-nums mt-0.5 ${t.profitLow >= 0 ? "text-emerald-400" : "text-amber-400"}`}>
+          {range(t.profitLow, t.profitHigh)}
+        </div>
+        <div className="text-xs text-muted-foreground mt-0.5">{range(t.profitLow / rows.length, t.profitHigh / rows.length)}/mnd</div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mt-2">
         <div className="rounded-xl bg-muted/40 p-3">
-          <div className="text-[11px] text-muted-foreground">Omzet</div>
-          <div className="text-lg lg:text-2xl font-bold tabular-nums">{eur(t.revenue)}</div>
-          <div className="text-[11px] text-muted-foreground">{eur(t.revenue / rows.length)}/mnd</div>
+          <div className="text-xs text-muted-foreground">Omzet</div>
+          <div className="text-lg sm:text-2xl font-bold tabular-nums">{eur(t.revenue)}</div>
+          <div className="text-xs text-muted-foreground">{eur(t.revenue / rows.length)}/mnd</div>
         </div>
         <div className="rounded-xl bg-muted/40 p-3">
-          <div className="text-[11px] text-muted-foreground">Kosten</div>
-          <div className="text-base lg:text-2xl font-bold tabular-nums text-red-400 leading-tight">{range(t.costLow, t.costHigh)}</div>
-          <div className="text-[11px] text-muted-foreground">{range(t.costLow / rows.length, t.costHigh / rows.length)}/mnd</div>
-        </div>
-        <div className="rounded-xl bg-muted/40 p-3">
-          <div className="text-[11px] text-muted-foreground">Winst</div>
-          <div className={`text-base lg:text-2xl font-bold tabular-nums leading-tight ${t.profitLow >= 0 ? "text-emerald-400" : "text-amber-400"}`}>{range(t.profitLow, t.profitHigh)}</div>
-          <div className="text-[11px] text-muted-foreground">{range(t.profitLow / rows.length, t.profitHigh / rows.length)}/mnd</div>
+          <div className="text-xs text-muted-foreground">Kosten</div>
+          <div className="text-lg sm:text-2xl font-bold tabular-nums text-red-400 leading-snug">{range(t.costLow, t.costHigh)}</div>
+          <div className="text-xs text-muted-foreground">{range(t.costLow / rows.length, t.costHigh / rows.length)}/mnd</div>
         </div>
       </div>
 
-      <table className="w-full text-sm mt-4">
+      {/* Per month: compact rows on phone, a table from tablet up */}
+      <ul className="sm:hidden mt-4 divide-y divide-border">
+        {rows.map((r) => (
+          <li key={r.month} className="py-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="font-medium capitalize">{new Date(r.month + "-15").toLocaleDateString("nl-BE", { month: "long", year: "numeric" })}</span>
+              <span className={`tabular-nums font-semibold ${r.profitLow >= 0 ? "text-emerald-400" : "text-amber-400"}`}>{range(r.profitLow, r.profitHigh)}</span>
+            </div>
+            <div className="flex items-baseline justify-between gap-3 mt-1 text-xs text-muted-foreground tabular-nums">
+              <span>Omzet {eur(r.revenue)}</span>
+              <span>Kosten {range(r.costLow, r.costHigh)}</span>
+            </div>
+            <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden flex" aria-hidden>
+              <span className="bg-red-400/70" style={{ width: `${(Math.min(r.costHigh, r.revenue || r.costHigh) / maxRev) * 100}%` }} />
+              <span className="bg-emerald-400/80" style={{ width: `${(Math.max(0, r.profitLow) / maxRev) * 100}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <table className="hidden sm:table w-full text-sm mt-4">
         <thead>
           <tr className="text-[11px] text-muted-foreground">
             <th className="text-left font-normal py-1.5 pr-2">Maand</th>
@@ -92,21 +116,21 @@ export function FinanceOutlook({ invoices, fixedMonthly }: { invoices: unknown[]
             <tr key={r.month} className="border-t border-border align-top">
               <td className="py-2 pr-2 whitespace-nowrap capitalize">
                 {new Date(r.month + "-15").toLocaleDateString("nl-BE", { month: "short", year: "2-digit" })}
-                <div className="mt-1.5 h-1.5 w-16 sm:w-28 rounded-full bg-muted overflow-hidden flex" aria-hidden>
+                <div className="mt-1.5 h-1.5 w-28 rounded-full bg-muted overflow-hidden flex" aria-hidden>
                   <span className="bg-red-400/70" style={{ width: `${(Math.min(r.costHigh, r.revenue || r.costHigh) / maxRev) * 100}%` }} />
                   <span className="bg-emerald-400/80" style={{ width: `${(Math.max(0, r.profitLow) / maxRev) * 100}%` }} />
                 </div>
               </td>
               <td className="py-2 px-2 text-right tabular-nums">{eur(r.revenue)}</td>
-              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground text-xs sm:text-sm">{range(r.costLow, r.costHigh)}</td>
-              <td className={`py-2 pl-2 text-right tabular-nums font-semibold text-xs sm:text-sm ${r.profitLow >= 0 ? "" : "text-amber-400"}`}>{range(r.profitLow, r.profitHigh)}</td>
+              <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{range(r.costLow, r.costHigh)}</td>
+              <td className={`py-2 pl-2 text-right tabular-nums font-semibold ${r.profitLow >= 0 ? "" : "text-amber-400"}`}>{range(r.profitLow, r.profitHigh)}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
       <details className="mt-3 text-xs text-muted-foreground">
-        <summary className="cursor-pointer py-1">Hoe de schatting werkt · bijkomende kosten aanpassen</summary>
+        <summary className="cursor-pointer py-2 text-sm sm:text-xs">Hoe de schatting werkt · bijkomende kosten aanpassen</summary>
         <p className="mt-2 leading-relaxed">
           Laagste kosten = je vaste maandkosten ({eur(fixedMonthly)}). Hoogste kosten = vaste kosten + een marge voor prijsstijgingen
           en extra credits, + een vast bedrag per maand voor onverwachte dingen (domeinen, hardware, een nieuwe tool).
@@ -117,13 +141,13 @@ export function FinanceOutlook({ invoices, fixedMonthly }: { invoices: unknown[]
             Marge op vaste kosten
             <input type="number" inputMode="numeric" min={0} max={200} value={state.buffer.pct}
               onChange={(e) => save({ ...state, buffer: { ...state.buffer, pct: num(e.target.value) } })}
-              className="w-16 h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground" />%
+              className="w-16 h-10 rounded-md border border-border bg-background px-2 text-base sm:text-sm text-foreground" />%
           </label>
           <label className="flex items-center gap-2">
             Onverwacht per maand €
             <input type="number" inputMode="numeric" min={0} value={state.buffer.perMonth}
               onChange={(e) => save({ ...state, buffer: { ...state.buffer, perMonth: num(e.target.value) } })}
-              className="w-20 h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground" />
+              className="w-20 h-10 rounded-md border border-border bg-background px-2 text-base sm:text-sm text-foreground" />
           </label>
         </div>
       </details>

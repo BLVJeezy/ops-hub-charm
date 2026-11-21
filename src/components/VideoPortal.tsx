@@ -2,15 +2,23 @@ import {useState} from 'react';
 import {Link} from '@tanstack/react-router';
 import {useServerFn} from '@tanstack/react-start';
 import {useQueryClient} from '@tanstack/react-query';
-import {ChevronLeft,ChevronRight,Film,Check} from 'lucide-react';
+import {ChevronLeft,ChevronRight,Film,Check,Download} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogTitle} from '@/components/ui/dialog';
 import {Textarea} from '@/components/ui/textarea';
 import {ClientVideoUpload} from './ClientVideoUpload';
-import {submitVideoFeedback} from '@/lib/video-review.functions';
+import {submitVideoFeedback,videoDownloadLink} from '@/lib/video-review.functions';
 import {VIDEO_LABELS,type VideoBundle,type VideoAsset,type VideoProject} from '@/lib/video-review';
 
 // Shared with the staff workspace: keep these two presentations unchanged.
+/** Original file, exactly as uploaded: no recompression, best quality for posting. */
+function DownloadOriginal({token,videoId}:{token:string;videoId:string}){
+ const get=useServerFn(videoDownloadLink),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ async function go(){setBusy(true);setError('');try{const r=await get({data:{token,videoId}});window.location.href=r.url;}catch(e){setError(e instanceof Error?e.message:'Downloaden lukte niet.');}finally{setBusy(false);}}
+ return <div className="mt-6"><Button className="client-video-button w-full" disabled={busy} onClick={()=>void go()}><Download className="w-5 h-5"/>{busy?'Even klaarzetten…':'Download in volle kwaliteit'}</Button>
+  <p className="text-base text-muted-foreground mt-3">Het originele bestand, niet samengedrukt. Post dit bestand rechtstreeks, niet een versie die via WhatsApp is doorgestuurd: dan verlies je kwaliteit.</p>
+  {error&&<p role="alert" className="text-destructive mt-3">{error}</p>}</div>;
+}
 export function VideoStatusPill({status}:{status:VideoProject['status']}){return <span className={`video-pill ${status==='ter_review'?'video-review-pulse':status==='goedgekeurd'||status==='afgerond'?'video-approved':''}`}>{VIDEO_LABELS[status]}</span>;}
 export function VideoMedia({asset,player,className=''}:{asset:VideoAsset;player?:React.RefObject<HTMLVideoElement|null>;className?:string}){return asset.mime_type.startsWith('video/')?<video ref={player} src={asset.url} poster={asset.thumb_url??undefined} controls playsInline preload="metadata" className={`w-full object-contain ${className}`}/>:<img src={asset.url} alt={asset.caption||'Videomateriaal'} className={`w-full object-contain ${className}`}/>;}
 
@@ -58,7 +66,8 @@ function ClientVideoDetail({bundle,project:p,token,reload}:{bundle:VideoBundle;p
   <div className="client-video-success-icon mx-auto mb-7"><Check className="w-12 h-12"/></div>
   <h1 className="text-3xl font-semibold">{approved?'Top, goedgekeurd!':'Doorgestuurd!'}</h1>
   {!approved&&<p className="text-lg text-muted-foreground mt-5">{p.revisions_used?'We sturen je eerst een prijs voor deze extra aanpassing.':'We maken de aanpassing en laten het je weten.'}</p>}
-  <Button asChild className="client-video-button mt-10 w-full">{next?<Link to="/video/$token/$videoId" params={{token,videoId:next.id}}>Volgende video ›</Link>:<Link to="/video/$token" params={{token}}>Klaar</Link>}</Button>
+  {approved&&<DownloadOriginal token={token} videoId={p.id}/>}
+  <Button asChild className="client-video-button mt-10 w-full" variant={approved?'outline':'default'}>{next?<Link to="/video/$token/$videoId" params={{token,videoId:next.id}}>Volgende video ›</Link>:<Link to="/video/$token" params={{token}}>Klaar</Link>}</Button>
  </section>;
  if(screen==='feedback')return <section className="client-video-feedback-screen">
   <Button variant="ghost" className="px-0 text-lg min-h-12" onClick={()=>setScreen('video')} disabled={saving}><ChevronLeft className="w-5 h-5"/>Terug</Button>
@@ -79,6 +88,7 @@ function ClientVideoDetail({bundle,project:p,token,reload}:{bundle:VideoBundle;p
    <Button className="client-video-button video-approve-button w-full" disabled={saving} onClick={()=>void decide('goedgekeurd')}>{saving?'Even versturen…':'👍 Ja, perfect'}</Button>
    <Button variant="outline" className="client-video-button w-full" disabled={saving} onClick={()=>setScreen('feedback')}>✏️ Nee, iets aanpassen</Button>
   </div><p className="text-base text-muted-foreground mt-5">{p.revisions_used?'Je gratis aanpassing is al gebruikt':'1 aanpassing is gratis inbegrepen'}</p>{error&&<p role="alert" className="text-destructive mt-4">{error}</p>}</section>:<p className="mt-6 text-lg text-muted-foreground">{['goedgekeurd','afgerond'].includes(p.status)?'✅ Deze video is goedgekeurd.':plainStatus(p)}</p>}
+  {['goedgekeurd','afgerond'].includes(p.status)&&asset&&<DownloadOriginal token={token} videoId={p.id}/>}
   {materials.length>0&&<details className="mt-10 border-t border-border pt-5"><summary className="text-lg cursor-pointer min-h-12">Wat we gebruikten ▾</summary><div className="flex gap-3 overflow-x-auto py-4">{materials.map(a=><Button key={a.id} variant="ghost" className="p-0 shrink-0 w-28 h-36 overflow-hidden rounded-lg" aria-label={`Open ${a.caption}`} onClick={()=>setGallery(a)}>{a.mime_type.startsWith('video/')?<video src={a.url} muted playsInline preload="metadata" className="w-full h-full object-cover"/>:<img src={a.url} alt={a.caption} className="w-full h-full object-cover"/>}</Button>)}</div></details>}
   <Dialog open={!!gallery} onOpenChange={open=>{if(!open)setGallery(null);}}><DialogContent className="video-portal video-client w-[95vw] max-w-3xl"><DialogTitle>{gallery?.caption||'Foto of video'}</DialogTitle>{gallery&&<VideoMedia asset={gallery} className="max-h-[75dvh]"/>}</DialogContent></Dialog>
  </>;

@@ -32,3 +32,17 @@ export const prepareVideoUpload=createServerFn({method:'POST'}).inputValidator(f
 export const prepareStaffVideoUpload=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(fileSchema).handler(async({data,context})=>{const p=await context.supabase.from('video_projects').select('client_id').eq('id',data.videoId).single();if(p.error||!p.data)throw new Error('Video niet gevonden');const {reserveUpload}=await import('./video-upload.server');return reserveUpload(data,p.data.client_id,'solyn');});
 export const finishVideoUpload=createServerFn({method:'POST'}).inputValidator(z.object({token,uploadId:id})).handler(async({data})=>{const s=await import('./video-review.server');const c=await s.tokenClient(data.token);const {completeUpload}=await import('./video-upload.server');return completeUpload(data.uploadId,c.id,'client',process.env['RESEND_API_KEY'],process.env['HUB_PUBLIC_URL']);});
 export const finishStaffVideoUpload=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({uploadId:id})).handler(async({data,context})=>{const role=await context.supabase.rpc('is_staff',{_user_id:context.userId});if(!role.data)throw new Error('Alleen voor het team');const {completeUpload}=await import('./video-upload.server');return completeUpload(data.uploadId,null,'solyn',process.env['RESEND_API_KEY'],process.env['HUB_PUBLIC_URL']);});
+/** Approved video, original file as uploaded (no recompression), as a one-hour download link. Logs the download for the staff timeline. */
+export const videoDownloadLink=createServerFn({method:'POST'}).inputValidator(z.object({token,videoId:id})).handler(async({data})=>{
+ const s=await import('./video-review.server');const c=await s.tokenClient(data.token);const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
+ const p=await db.from('video_projects').select('id,title,status').eq('id',data.videoId).eq('client_id',c.id).maybeSingle();
+ if(!p.data)throw new Error('Video niet gevonden.');if(!['goedgekeurd','afgerond'].includes(p.data.status))throw new Error('Je kunt de video downloaden zodra hij goedgekeurd is.');
+ const a=await db.from('video_assets').select('storage_path,mime_type,version').eq('video_project_id',p.data.id).eq('kind','versie').order('version',{ascending:false}).limit(1).maybeSingle();
+ if(!a.data)throw new Error('Er is nog geen videobestand.');
+ const ext=a.data.storage_path.split('.').pop()?.toLowerCase()||(a.data.mime_type==='video/quicktime'?'mov':'mp4');
+ const name=`${c.name} - ${p.data.title}`.replace(/[^\p{L}\p{N} ._-]+/gu,'').replace(/\s+/g,' ').trim().slice(0,120)||'video';
+ const r=await db.storage.from('client-videos').createSignedUrl(a.data.storage_path,3600,{download:`${name}.${ext}`});
+ if(r.error)throw new Error('De download kon niet klaargezet worden.');
+ await db.from('video_events').insert({video_project_id:p.data.id,label:'Klant downloadde de video in volle kwaliteit'});
+ return {url:r.data.signedUrl};
+});

@@ -8,6 +8,7 @@ import { ForecastChart, SERVICE_COLS } from "@/components/ForecastChart";
 import { brusselsToday, forecastByService, type ForecastInvoice } from "@/lib/invoice-schedule";
 import { clientAnnualProjection, clientMRR, serviceMRR, type FeeClient } from "@/lib/fees";
 import { BookOpen } from "lucide-react";
+import { FinanceOutlook } from "@/components/FinanceOutlook";
 
 export const Route = createFileRoute("/_authenticated/finance")({
   component: Finance,
@@ -195,6 +196,9 @@ function Finance() {
 
       {/* What is coming: scheduled invoices per month and per service */}
       <ForecastTable invoices={invoices} />
+
+      {/* Revenue vs costs vs profit, 6 or 12 months, with a cost range */}
+      <FinanceOutlook invoices={invoices} fixedMonthly={totalMonthlyExpenses} />
 
       <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-3 lg:items-start">
       {/* Who pays */}

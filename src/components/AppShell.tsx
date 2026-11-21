@@ -158,7 +158,7 @@ function GroupTabs() {
       className="border-b overflow-x-auto [scrollbar-width:none]"
       style={{ borderColor: "hsl(var(--border))" }}
     >
-      <div className="flex gap-1 px-3 lg:px-6 min-w-max">
+      <div className="flex gap-1 sm:gap-2 lg:gap-1 px-2 sm:px-4 lg:px-6 min-w-max">
         {g.items.map((it) => {
           const active = matches(current, it),
             Icon = it.icon;
@@ -167,13 +167,13 @@ function GroupTabs() {
               key={it.to}
               to={it.to}
               aria-current={active ? "page" : undefined}
-              className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 h-11 text-sm whitespace-nowrap transition-colors ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              className={`relative flex items-center gap-2 lg:gap-1.5 px-3.5 sm:px-4 lg:px-3 h-14 sm:h-16 lg:h-11 text-base sm:text-[17px] lg:text-sm font-medium lg:font-normal whitespace-nowrap transition-colors ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
-              <Icon className="hidden sm:block w-4 h-4" />
+              <Icon className="hidden sm:block w-5 h-5 lg:w-4 lg:h-4" />
               {it.label}
               {it.to === "/videos" && <VideoFeedbackBadge />}
               {active && (
-                <span className="absolute left-2 right-2 bottom-0 h-0.5 rounded-full bg-primary" />
+                <span className="absolute left-2 right-2 bottom-0 h-[3px] lg:h-0.5 rounded-full bg-primary" />
               )}
             </Link>
           );

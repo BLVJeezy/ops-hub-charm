@@ -24,6 +24,7 @@ import {
   History,
   MailCheck,
   Sun,
+  UserCog,
   Clapperboard,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -71,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/wijzigingen", label: "Wijzigingen", icon: History },
       { to: "/status", label: "Status", icon: Activity },
       { to: "/automations", label: "Automations", icon: Workflow },
+      { to: "/teamleden", label: "Team", icon: UserCog },
     ],
   },
   {

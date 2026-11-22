@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (roles.includes("admin")) setRole("admin");
       else if (roles.includes("ops")) setRole("ops");
       else if (roles.includes("sales")) setRole("sales");
+      else if (roles.includes("member")) setRole("member");
       else setRole(null);
     }
 

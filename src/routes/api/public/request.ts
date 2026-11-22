@@ -258,6 +258,14 @@ export const Route = createFileRoute("/api/public/request")({
                 .eq("id", row.id);
           }
 
+          // hand it to the team member who does this kind of work for this client (if any)
+          const { autoAssignRequest } = await import("@/lib/team.server");
+          const assignedTo = await autoAssignRequest(row.id, input.kind!, client.id, input.title!, client.name);
+          if (assignedTo) {
+            const { data: rr } = await db.from("client_requests").select("task_id").eq("id", row.id).single();
+            if (rr?.task_id) await db.from("client_tasks").update({ assignee_user_id: assignedTo }).eq("id", rr.task_id);
+          }
+
           // screenshots and marked-up parts of the page travel with the mail (beheerpagina only; max 15 MB)
           const attachments: { filename: string; content: string }[] = [];
           if (raw.source === "beheer") {

@@ -135,7 +135,7 @@ function RootComponent() {
 function RootGate() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isPublic =
-    pathname === "/unsubscribe" || pathname === "/afspraak" || pathname.startsWith("/aanvraag/") || pathname.startsWith("/video/");
+    pathname === "/unsubscribe" || pathname === "/afspraak" || pathname.startsWith("/aanvraag/") || pathname.startsWith("/video/") || pathname === "/team";
   if (isPublic) return <Outlet />;
   return (
     <PinGate>

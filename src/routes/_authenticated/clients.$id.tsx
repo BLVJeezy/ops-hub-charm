@@ -23,6 +23,7 @@ import { sendClientDocument } from "@/lib/document-send.functions";
 import { formatInvoiceNumber } from "@/lib/invoice-code";
 import { ClientReports } from "@/components/ClientReports";
 import { ClientVideoHub } from "@/components/ClientVideoHub";
+import { ClientDriveLink } from "@/components/ClientDriveLink";
 import { videoHead } from "@/lib/video-review";
 
 export const Route = createFileRoute("/_authenticated/clients/$id")({
@@ -565,6 +566,7 @@ function ClientDetail() {
           />
         </label>
       </div>
+      <ClientDriveLink clientId={client.id} value={(client as { drive_url?: string | null }).drive_url} />
       <div className="rounded-xl border border-border bg-card divide-y divide-border mb-6">
         {documents.length === 0 ? (
           <div className="p-8 text-center">

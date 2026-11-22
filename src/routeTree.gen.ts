@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AfspraakRouteImport } from './routes/afspraak'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as TeamRouteImport } from './routes/team'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedAanvragenRouteImport } from './routes/_authenticated/aanvragen'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
@@ -30,6 +31,7 @@ import { Route as AuthenticatedMailsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedStatusRouteImport } from './routes/_authenticated/status'
+import { Route as AuthenticatedTeamledenRouteImport } from './routes/_authenticated/teamleden'
 import { Route as AuthenticatedVideosRouteImport } from './routes/_authenticated/videos'
 import { Route as AuthenticatedWijzigingenRouteImport } from './routes/_authenticated/wijzigingen'
 import { Route as AanvraagTokenRouteImport } from './routes/aanvraag.$token'
@@ -78,6 +80,11 @@ const AfspraakRoute = AfspraakRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -166,6 +173,11 @@ const AuthenticatedSearchRoute = AuthenticatedSearchRouteImport.update({
 const AuthenticatedStatusRoute = AuthenticatedStatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTeamledenRoute = AuthenticatedTeamledenRouteImport.update({
+  id: '/teamleden',
+  path: '/teamleden',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedVideosRoute = AuthenticatedVideosRouteImport.update({
@@ -338,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
+  '/team': typeof TeamRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/aanvragen': typeof AuthenticatedAanvragenRoute
   '/agenda': typeof AuthenticatedAgendaRoute
@@ -355,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/teamleden': typeof AuthenticatedTeamledenRoute
   '/videos': typeof AuthenticatedVideosRoute
   '/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
@@ -390,6 +404,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
+  '/team': typeof TeamRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/aanvragen': typeof AuthenticatedAanvragenRoute
   '/agenda': typeof AuthenticatedAgendaRoute
@@ -406,6 +421,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/search': typeof AuthenticatedSearchRoute
   '/status': typeof AuthenticatedStatusRoute
+  '/teamleden': typeof AuthenticatedTeamledenRoute
   '/videos': typeof AuthenticatedVideosRoute
   '/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
@@ -443,6 +459,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/afspraak': typeof AfspraakRoute
   '/auth': typeof AuthRoute
+  '/team': typeof TeamRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/aanvragen': typeof AuthenticatedAanvragenRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
@@ -460,6 +477,7 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/status': typeof AuthenticatedStatusRoute
+  '/_authenticated/teamleden': typeof AuthenticatedTeamledenRoute
   '/_authenticated/videos': typeof AuthenticatedVideosRoute
   '/_authenticated/wijzigingen': typeof AuthenticatedWijzigingenRoute
   '/aanvraag/$token': typeof AanvraagTokenRoute
@@ -497,6 +515,7 @@ export interface FileRouteTypes {
     | '/'
     | '/afspraak'
     | '/auth'
+    | '/team'
     | '/unsubscribe'
     | '/aanvragen'
     | '/agenda'
@@ -514,6 +533,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/teamleden'
     | '/videos'
     | '/wijzigingen'
     | '/aanvraag/$token'
@@ -549,6 +569,7 @@ export interface FileRouteTypes {
     | '/'
     | '/afspraak'
     | '/auth'
+    | '/team'
     | '/unsubscribe'
     | '/aanvragen'
     | '/agenda'
@@ -565,6 +586,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/search'
     | '/status'
+    | '/teamleden'
     | '/videos'
     | '/wijzigingen'
     | '/aanvraag/$token'
@@ -601,6 +623,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/afspraak'
     | '/auth'
+    | '/team'
     | '/unsubscribe'
     | '/_authenticated/aanvragen'
     | '/_authenticated/agenda'
@@ -618,6 +641,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/search'
     | '/_authenticated/status'
+    | '/_authenticated/teamleden'
     | '/_authenticated/videos'
     | '/_authenticated/wijzigingen'
     | '/aanvraag/$token'
@@ -655,6 +679,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AfspraakRoute: typeof AfspraakRoute
   AuthRoute: typeof AuthRoute
+  TeamRoute: typeof TeamRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   AanvraagTokenRoute: typeof AanvraagTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -711,6 +736,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/unsubscribe': {
@@ -830,6 +862,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof AuthenticatedStatusRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/teamleden': {
+      id: '/_authenticated/teamleden'
+      path: '/teamleden'
+      fullPath: '/teamleden'
+      preLoaderRoute: typeof AuthenticatedTeamledenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/videos': {
@@ -1075,6 +1114,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedStatusRoute: typeof AuthenticatedStatusRoute
+  AuthenticatedTeamledenRoute: typeof AuthenticatedTeamledenRoute
   AuthenticatedVideosRoute: typeof AuthenticatedVideosRoute
   AuthenticatedWijzigingenRoute: typeof AuthenticatedWijzigingenRoute
   AuthenticatedStatusIdRoute: typeof AuthenticatedStatusIdRoute
@@ -1097,6 +1137,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedStatusRoute: AuthenticatedStatusRoute,
+  AuthenticatedTeamledenRoute: AuthenticatedTeamledenRoute,
   AuthenticatedVideosRoute: AuthenticatedVideosRoute,
   AuthenticatedWijzigingenRoute: AuthenticatedWijzigingenRoute,
   AuthenticatedStatusIdRoute: AuthenticatedStatusIdRoute,
@@ -1110,6 +1151,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AfspraakRoute: AfspraakRoute,
   AuthRoute: AuthRoute,
+  TeamRoute: TeamRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   AanvraagTokenRoute: AanvraagTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,

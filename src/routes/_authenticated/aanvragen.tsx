@@ -77,6 +77,8 @@ type Req = {
   start_mailed_at: string | null;
   done_mailed_at: string | null;
   estimate_minutes: number | null;
+  assignee_user_id?: string | null;
+  review_ready_at?: string | null;
   run_started_at: string | null;
   worked_seconds: number | null;
 };
@@ -122,6 +124,9 @@ function useTick(on: boolean) {
 }
 
 /** Client requests as a pipeline: in → busy (clock runs, client mailed) → done (client mailed, with my note). */
+/** Team member names by user id, for the "who does it" chip on each card. */
+let TEAM_NAMES = new Map<string, string>();
+
 function RequestsPage() {
   const [rows, setRows] = useState<Req[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -147,6 +152,8 @@ function RequestsPage() {
         .order("name"),
     ]);
     if (r.error) toast.error(r.error.message);
+    const { data: team } = await db.from("team_members").select("user_id, full_name");
+    TEAM_NAMES = new Map((team ?? []).map((m: { user_id: string; full_name: string }) => [m.user_id, m.full_name.split(" ")[0]]));
     setRows(r.data ?? []);
     setClients(c.data ?? []);
     setLoading(false);
@@ -406,6 +413,12 @@ function RequestCard({
               <span className="inline-flex items-center gap-0.5">
                 <Paperclip className="w-3 h-3" />
                 {r.attachments.length}
+              </span>
+            )}
+            {r.assignee_user_id && (
+              <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 ${r.review_ready_at && stage !== "klaar" ? "bg-primary/15 text-primary" : "bg-muted"}`}>
+                {TEAM_NAMES.get(r.assignee_user_id) ?? "teamlid"}
+                {r.review_ready_at && stage !== "klaar" ? " · klaar voor controle" : ""}
               </span>
             )}
             {r.task_id && (

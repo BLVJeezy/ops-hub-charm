@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Bell, CalendarCheck, Inbox } from "lucide-react";
+import { AlertTriangle, Bell, CalendarCheck, Inbox, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,11 +10,11 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export type Note = {
   id: string;
-  kind: "booking" | "request" | "flag";
+  kind: "booking" | "request" | "flag" | "idea";
   title: string;
   sub: string;
   at: string;
-  to: "/agenda" | "/aanvragen" | "/wijzigingen";
+  to: "/agenda" | "/aanvragen" | "/wijzigingen" | "/ideeen";
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,9 +99,34 @@ const fromFlag = (f: FlagRow): Note => ({
   sub: `${f.changes} ${f.changes === 1 ? "aanpassing" : "aanpassingen"} · ${f.flags.map((x) => FLAG_TEXT[x] ?? x).join(", ")}`,
 });
 
+// growth ideas: one note per scan (how many new ideas) and one per idea that is ready to check
+type IdeaRow = { id: string; batch: string; title: string; status: string; created_at: string; review_at: string | null };
+function ideaNotes(rows: IdeaRow[]): Note[] {
+  const batches = new Map<string, { n: number; at: string; titles: string[] }>();
+  for (const r of rows) {
+    const b = batches.get(r.batch) ?? { n: 0, at: r.created_at, titles: [] };
+    b.n++;
+    if (r.created_at < b.at) b.at = r.created_at;
+    if (b.titles.length < 2) b.titles.push(r.title);
+    batches.set(r.batch, b);
+  }
+  const out: Note[] = [...batches].map(([batch, b]) => ({
+    id: `ib:${batch}`,
+    kind: "idea",
+    to: "/ideeen",
+    at: b.at,
+    title: `${b.n} ${b.n === 1 ? "nieuw idee" : "nieuwe ideeën"} voor je klanten`,
+    sub: b.titles.join(" · "),
+  }));
+  for (const r of rows)
+    if (r.review_at && r.status === "ter_controle")
+      out.push({ id: `ir:${r.id}`, kind: "idea", to: "/ideeen", at: r.review_at, title: "Klaar om na te kijken", sub: r.title });
+  return out;
+}
+
 async function load() {
   const since = new Date(Date.now() - 14 * 864e5).toISOString();
-  const [b, r, f] = await Promise.all([
+  const [b, r, f, g] = await Promise.all([
     db
       .from("bookings")
       .select("id, name, company, starts_at, created_at, client_id, mode")
@@ -121,11 +146,18 @@ async function load() {
       .neq("flags", "{}")
       .order("created_at", { ascending: false })
       .limit(30),
+    db
+      .from("growth_ideas")
+      .select("id, batch, title, status, created_at, review_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(80),
   ]);
   notes = [
     ...((b.data ?? []) as BookingRow[]).map(fromBooking),
     ...((r.data ?? []) as RequestRow[]).map(fromRequest),
     ...((f.data ?? []) as FlagRow[]).map(fromFlag),
+    ...ideaNotes((g.data ?? []) as IdeaRow[]),
   ]
     .sort((x, y) => y.at.localeCompare(x.at))
     .slice(0, 40);
@@ -174,6 +206,18 @@ function start() {
         toast.warning(n.title, { description: n.sub });
       },
     )
+    .on("postgres_changes", { event: "*", schema: "public", table: "growth_ideas" }, (p) => {
+      const row = p.new as IdeaRow;
+      if (!row?.id) return;
+      if (p.eventType === "INSERT" && !notes.some((n) => n.id === `ib:${row.batch}`)) {
+        // first idea of a new scan: reload so the count is right, and say it once
+        void load().then(() => toast("Nieuwe ideeën voor je klanten", { description: "Bekijk ze bij Ideeën", icon: "💡" }));
+      } else if (p.eventType === "UPDATE" && row.status === "ter_controle" && row.review_at) {
+        const n: Note = { id: `ir:${row.id}`, kind: "idea", to: "/ideeen", at: row.review_at, title: "Klaar om na te kijken", sub: row.title };
+        put(n);
+        toast(n.title, { description: n.sub, icon: "🔎" });
+      }
+    })
     .subscribe();
 }
 function markSeen() {
@@ -270,7 +314,9 @@ export function NotificationBell({
                       ? CalendarCheck
                       : n.kind === "flag"
                         ? AlertTriangle
-                        : Inbox,
+                        : n.kind === "idea"
+                          ? Lightbulb
+                          : Inbox,
                   fresh = n.at > shownSeen;
                 return (
                   <li key={n.id}>
@@ -283,7 +329,7 @@ export function NotificationBell({
                       className="w-full flex items-start gap-3 px-3.5 py-2.5 text-left hover:bg-muted/60"
                     >
                       <span
-                        className={`mt-0.5 grid place-items-center w-8 h-8 rounded-xl shrink-0 ${n.kind === "booking" ? "bg-[#C9A14A]/15 text-[#C9A14A]" : n.kind === "flag" ? "bg-amber-500/15 text-amber-400" : "bg-sky-500/15 text-sky-400"}`}
+                        className={`mt-0.5 grid place-items-center w-8 h-8 rounded-xl shrink-0 ${n.kind === "booking" ? "bg-[#C9A14A]/15 text-[#C9A14A]" : n.kind === "flag" ? "bg-amber-500/15 text-amber-400" : n.kind === "idea" ? "bg-emerald-500/15 text-emerald-400" : "bg-sky-500/15 text-sky-400"}`}
                       >
                         <I className="w-4 h-4" />
                       </span>

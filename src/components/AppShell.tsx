@@ -24,6 +24,7 @@ import {
   History,
   MailCheck,
   Sun,
+  Lightbulb,
   UserCog,
   Clapperboard,
 } from "lucide-react";
@@ -49,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { to: "/agenda", label: "Agenda", icon: CalendarDays },
       { to: "/briefing", label: "Briefing", icon: Film },
+      { to: "/ideeen", label: "Ideeën", icon: Lightbulb },
     ],
   },
   {

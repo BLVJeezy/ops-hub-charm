@@ -16,6 +16,8 @@ import {
   MoveRight,
   Paperclip,
   Phone,
+  Plus,
+  Trash2,
   RotateCcw,
   Video,
 } from "lucide-react";
@@ -30,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { AgendaNewItem } from "@/components/AgendaNewItem";
 import {
   KIND_COLOR,
   OUTCOME_LABEL,
@@ -87,6 +90,7 @@ function AgendaPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropDay, setDropDay] = useState<string | null>(null);
   const [step, setStep] = useState<BookingStep | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
   const today = dayOf(new Date().toISOString());
 
   const load = useCallback(async () => {
@@ -125,6 +129,7 @@ function AgendaPage() {
         client_id: string | null;
         outcome: Outcome | null;
         moved_from: string | null;
+        source: string;
       }) => {
         const title = r.title || "Bezet",
           kind = (r.kind && r.kind !== "other" ? r.kind : kindOf(title)) as AgendaKind;
@@ -139,6 +144,7 @@ function AgendaPage() {
           color: (r.client_id && color[r.client_id]) || KIND_COLOR[kind],
           outcome: r.outcome,
           movedFrom: r.moved_from,
+          own: r.source === "hub",
         };
       },
     );
@@ -186,7 +192,8 @@ function AgendaPage() {
       }),
     );
     setSynced(
-      ((cal.data ?? []) as { synced_at: string }[])
+      ((cal.data ?? []) as { synced_at: string; source: string }[])
+        .filter((r) => r.source === "google")
         .map((r) => r.synced_at)
         .sort()
         .pop() ?? null,
@@ -267,6 +274,25 @@ function AgendaPage() {
               edited_at: new Date().toISOString(),
             })
             .eq("id", i.id);
+        },
+      },
+    });
+  };
+  /** Something you planned in the Hub yourself: delete, with undo. */
+  const remove = async (i: AgendaItem) => {
+    setOpen(null);
+    setItems((xs) => (xs ?? []).filter((x) => x.id !== i.id));
+    const { data, error } = await db.from("calendar_busy").delete().eq("id", i.id).select("*").single();
+    if (error) {
+      toast.error(`Verwijderen lukte niet: ${error.message}`);
+      return void load();
+    }
+    toast.success("Verwijderd", {
+      action: {
+        label: "Ongedaan maken",
+        onClick: async () => {
+          await db.from("calendar_busy").insert(data);
+          void load();
         },
       },
     });
@@ -359,6 +385,13 @@ function AgendaPage() {
         >
           <Copy className="w-4 h-4" /> Boekingslink kopiëren
         </button>
+        <button
+          type="button"
+          onClick={() => setPlan(shift === 0 ? today : days[0])}
+          className="press h-10 px-4 rounded-full bg-[#C9A14A] text-black text-sm font-semibold inline-flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Inplannen
+        </button>
       </div>
       <p className="text-sm text-muted-foreground mt-1">
         {upcoming} {upcoming === 1 ? "geboekte afspraak" : "geboekte afspraken"} gepland. Tik op een
@@ -442,12 +475,22 @@ function AgendaPage() {
                 }}
                 className={`rounded-2xl border p-2.5 min-w-0 transition-colors ${target ? "border-white/60 bg-white/[0.06]" : isToday ? "border-[#C9A14A]/60 bg-[#C9A14A]/[0.05]" : "border-border bg-card"} ${list.length === 0 && !dragId ? "hidden md:block" : ""}`}
               >
-                <h2
-                  className={`text-xs font-semibold capitalize mb-2 ${isToday ? "text-[#C9A14A]" : "text-muted-foreground"}`}
-                >
-                  {dayLabel(d)}
-                  {isToday ? " · vandaag" : ""}
-                </h2>
+                <div className="flex items-center gap-1 mb-2">
+                  <h2
+                    className={`flex-1 min-w-0 text-xs font-semibold capitalize ${isToday ? "text-[#C9A14A]" : "text-muted-foreground"}`}
+                  >
+                    {dayLabel(d)}
+                    {isToday ? " · vandaag" : ""}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setPlan(d)}
+                    aria-label={`Inplannen op ${dayLabel(d)}`}
+                    className="press -my-1 w-8 h-8 shrink-0 grid place-items-center rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
                 {list.length === 0 ? (
                   <p className="text-xs text-muted-foreground/60">
                     {target ? "Hierheen verplaatsen" : "Niets gepland"}
@@ -517,6 +560,7 @@ function AgendaPage() {
                               onMove={(day, time, len) => move(i, day, time, len)}
                               onFile={openFile}
                               onGcal={() => sendToGoogle(i)}
+                              onDelete={i.own ? () => void remove(i) : undefined}
                             />
                           )}
                         </li>
@@ -533,6 +577,16 @@ function AgendaPage() {
         </div>
       )}
 
+      {plan && (
+        <AgendaNewItem
+          day={plan}
+          onClose={() => setPlan(null)}
+          onSaved={() => {
+            setPlan(null);
+            void load();
+          }}
+        />
+      )}
       {step && (
         <BookingDialog
           step={step}
@@ -572,12 +626,14 @@ function ItemPanel({
   onMove,
   onFile,
   onGcal,
+  onDelete,
 }: {
   item: AgendaItem;
   onMark: (o: Outcome) => void;
   onMove: (day: string, time: string, minutes: number) => void;
   onFile: (p: string) => void;
   onGcal?: () => void;
+  onDelete?: () => void;
 }) {
   const [day, setDay] = useState(dayOf(i.start));
   const [time, setTime] = useState(timeOf(i.start));
@@ -654,6 +710,15 @@ function ItemPanel({
         )}
       </div>
 
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="press h-9 w-full rounded-full border border-border px-3 text-xs text-red-300 inline-flex items-center justify-center gap-2"
+        >
+          <Trash2 className="w-4 h-4" /> Verwijderen
+        </button>
+      )}
       {i.src === "booking" && i.outcome !== "cancelled" && onGcal && (
         <div>
           <button

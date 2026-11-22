@@ -10,6 +10,8 @@ export type AgendaItem = {
   color: string;
   /** where it lives: a calendar row or a booking */
   src?: "cal" | "booking";
+  /** planned in the Hub itself (not copied from Google), so it can be deleted here */
+  own?: boolean;
   outcome?: "done" | "missed" | "cancelled" | null;
   movedFrom?: string | null;
   /** booking only: when I last sent it to Google Calendar with the button */

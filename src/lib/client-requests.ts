@@ -159,3 +159,7 @@ export function answerBy(r: { kind: Kind; urgency: Urgency; created_at: string }
   const w = answerWithin(r.kind, r.urgency);
   return w ? new Date(Date.parse(r.created_at) + w.hours * 3600_000).toISOString() : null;
 }
+
+/** The client's video portal on our own domain: solynglobal.be/video/<name>#<key>[/<video>]. */
+export const videoLink = (token: string, name: string, videoId?: string) =>
+  `https://solynglobal.be/video/${slugOf(name)}#${token}${videoId ? `/${videoId}` : ""}`;

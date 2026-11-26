@@ -24,6 +24,7 @@ import { formatInvoiceNumber } from "@/lib/invoice-code";
 import { ClientReports } from "@/components/ClientReports";
 import { ClientVideoHub } from "@/components/ClientVideoHub";
 import { ClientDriveLink } from "@/components/ClientDriveLink";
+import { ClientChecklist } from "@/components/ClientChecklist";
 import { videoHead } from "@/lib/video-review";
 
 export const Route = createFileRoute("/_authenticated/clients/$id")({
@@ -305,6 +306,7 @@ function ClientDetail() {
       </div>
 
       {/* Business details */}
+      <ClientChecklist clientId={id} />
       <ClientVideoHub clientId={id} />
       <div className="rounded-xl border border-border bg-card p-4 mb-4 space-y-5">
         {hasWebsite && (

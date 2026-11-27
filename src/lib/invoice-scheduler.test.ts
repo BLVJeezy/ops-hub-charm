@@ -36,6 +36,10 @@ function builder() {
       filters.push((r) => r[c] != null);
       return b;
     },
+    is(c: string, v: null | boolean) {
+      filters.push((r) => (v === null ? r[c] == null : r[c] === v));
+      return b;
+    },
     or(expr: string) {
       const stale = expr.split("schedule_locked_at.lt.")[1];
       filters.push((r) => r.schedule_locked_at == null || r.schedule_locked_at < stale);
@@ -248,5 +252,12 @@ describe("monthly repeats", () => {
     await processScheduledInvoices(db, new Date("2026-11-02T09:00:00Z"));
     expect(rows.filter((r) => r.repeat_parent === "src")).toHaveLength(1);
     expect(sent).toEqual(["new-100"]);
+  });
+
+  it("never repeats an invoice whose repeat was stopped", async () => {
+    rows.push({ ...src(), repeat_stopped_at: "2026-10-25T10:00:00Z" });
+    const s = await processScheduledInvoices(db, NOW);
+    expect(s.repeatsSent).toBe(0);
+    expect(rows).toHaveLength(1);
   });
 });

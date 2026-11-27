@@ -40,15 +40,19 @@ function Finance() {
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  // sent credit notes reduce revenue (by credit-note date and client)
+  const [credits, setCredits] = useState<{ client: string | null; client_name: string | null; amount: number; date: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"paid" | "projection">("paid");
 
   async function load() {
-    const [c, i, e] = await Promise.all([
+    const [c, i, e, cn] = await Promise.all([
       supabase.from("clients").select("*"),
       supabase.from("invoices").select("id,invoice_number,client,client_name,total,status,date,line_items,scheduled_send_at,repeat_monthly,repeat_day,next_repeat_on"),
       supabase.from("expenses").select("id,monthly_cost,linked_client"),
+      (supabase as any).from("credit_notes").select("client,client_name,amount,date,status").neq("status", "Draft"),
     ]);
+    setCredits(((cn.data as any[]) ?? []).map((x) => ({ ...x, amount: Number(x.amount || 0) })));
     setClients((c.data as unknown as Client[]) ?? []);
     setInvoices((i.data as unknown as Invoice[]) ?? []);
     setExpenses((e.data as unknown as Expense[]) ?? []);
@@ -61,6 +65,7 @@ function Finance() {
       .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "invoices" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "credit_notes" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
@@ -82,8 +87,8 @@ function Finance() {
   const netProfit = mrr - totalMonthlyExpenses;
 
   const lifetimeRevenue = useMemo(
-    () => invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + Number(i.total || 0), 0),
-    [invoices]
+    () => invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + Number(i.total || 0), 0) - credits.reduce((s, c) => s + c.amount, 0),
+    [invoices, credits]
   );
 
   const pipelineValue = useMemo(
@@ -102,11 +107,15 @@ function Finance() {
       if (!clientId) return;
       paidByClient[clientId] = (paidByClient[clientId] || 0) + Number(i.total || 0);
     });
+    credits.forEach((c) => {
+      const clientId = c.client || (c.client_name ? idByName.get(norm(c.client_name)) : undefined);
+      if (clientId) paidByClient[clientId] = (paidByClient[clientId] || 0) - c.amount;
+    });
     return Object.entries(paidByClient)
       .map(([id, total]) => ({ id, total, name: clientById[id]?.name ?? "Unknown" }))
-      .filter((row) => row.name !== "Unknown")
+      .filter((row) => row.name !== "Unknown" && Math.abs(row.total) > 0.005)
       .sort((a, b) => b.total - a.total);
-  }, [invoices, clients, clientById]);
+  }, [invoices, credits, clients, clientById]);
 
   const annualProjectionPerClient = useMemo(
     () => activeClients
@@ -136,8 +145,13 @@ function Finance() {
       if (y === year) rows[m - 1].thisYear += Number(inv.total || 0);
       else if (y === year - 1) rows[m - 1].lastYear += Number(inv.total || 0);
     }
+    for (const cn of credits) {
+      const [y, m] = (cn.date || "").split("-").map(Number);
+      if (y === year) rows[m - 1].thisYear -= cn.amount;
+      else if (y === year - 1) rows[m - 1].lastYear -= cn.amount;
+    }
     return rows;
-  }, [invoices, year]);
+  }, [invoices, credits, year]);
 
   const ytd = revenueReport.slice(0, now.getMonth() + 1).reduce((s, r) => s + r.thisYear, 0);
   const lastYearTotal = revenueReport.reduce((s, r) => s + r.lastYear, 0);

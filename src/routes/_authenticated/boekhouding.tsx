@@ -104,7 +104,7 @@ function Bookkeeping() {
           <TabsTrigger value="export" className="text-xs">Export</TabsTrigger>
           <TabsTrigger value="contracten" className="text-xs">Contracten</TabsTrigger>
         </TabsList>
-        <TabsContent value="overzicht"><Overview P={P} accounts={accounts} entries={entries} lines={lines} /></TabsContent>
+        <TabsContent value="overzicht"><Overview P={P} accounts={accounts} entries={entries} lines={lines} onPick={(from) => { setKind("month"); setAnchor(from); window.scrollTo({ top: 0, behavior: "smooth" }); }} /></TabsContent>
         <TabsContent value="bank"><BankTab P={P} accounts={accounts} onChange={load} /></TabsContent>
         <TabsContent value="dagboek"><Journal P={P} accounts={accounts} entries={entries} lines={lines} periods={periods} onChange={load} /></TabsContent>
         <TabsContent value="rekeningen"><Accounts P={P} accounts={accounts} entries={entries} lines={lines} onChange={load} /></TabsContent>
@@ -146,7 +146,7 @@ function Delta({ v, lowerIsBetter = false }: { v: number | null; lowerIsBetter?:
   return <span className={good ? "text-emerald-400" : "text-red-400"}>{v >= 0 ? "▲" : "▼"} {Math.abs(v)}%</span>;
 }
 
-function Overview({ P, accounts, entries, lines }: Data) {
+function Overview({ P, accounts, entries, lines, onPick }: Data & { onPick: (from: string) => void }) {
   const prev = shiftPeriod(P, -1), ly = sameLastYear(P);
   const now = profitAndLoss(accounts, entries, lines, P);
   const a = profitAndLoss(accounts, entries, lines, prev);
@@ -244,9 +244,45 @@ function Overview({ P, accounts, entries, lines }: Data) {
           </tbody>
         </table>
       </div>
+      <MonthlyResults accounts={accounts} entries={entries} lines={lines} current={P} onPick={onPick} />
       <p className={`text-xs flex items-center gap-1 ${tb.balanced ? "text-emerald-500" : "text-red-500"}`}>
         <Scale className="w-3.5 h-3.5" /> Proefbalans t/m {P.to}: debet {eur(tb.debit)} · credit {eur(tb.credit)} {tb.balanced ? "· in evenwicht" : "· NIET in evenwicht"}
       </p>
+    </div>
+  );
+}
+
+/** Every month since the first booking, newest first: income, costs and result. Tap a month to open it. */
+function MonthlyResults({ accounts, entries, lines, current, onPick }: Omit<Data, "P"> & { current: Period; onPick: (from: string) => void }) {
+  const first = entries.reduce((m, e) => (e.date < m ? e.date : m), todayISO());
+  const months: Period[] = [];
+  for (let p = periodOf("month", todayISO()); p.from >= first.slice(0, 7) + "-01"; p = shiftPeriod(p, -1)) months.push(p);
+  const rows = months.map((p) => ({ p, ...profitAndLoss(accounts, entries, lines, p) }));
+  const tot = rows.reduce((t, r) => ({ income: t.income + r.income, expense: t.expense + r.expense, result: t.result + r.result }), { income: 0, expense: 0, result: 0 });
+  if (!rows.length) return null;
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-x-auto">
+      <table className="w-full text-xs md:text-sm">
+        <thead className="text-[11px] md:text-xs text-muted-foreground">
+          <tr className="border-b border-border"><th className="text-left p-2 md:p-3 font-medium">Resultaat per maand</th><th className="text-right p-2 md:p-3 font-medium">Opbrengsten</th><th className="text-right p-2 md:p-3 font-medium">Kosten</th><th className="text-right p-2 md:p-3 font-medium">Resultaat</th></tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.p.from} onClick={() => onPick(r.p.from)} className={`border-b border-border/50 cursor-pointer hover:bg-muted/40 ${current.kind === "month" && current.from === r.p.from ? "bg-muted/40" : ""}`}>
+              <td className="p-2 md:p-3 capitalize">{r.p.label}</td>
+              <td className="p-2 md:p-3 text-right tabular-nums whitespace-nowrap">{r.income ? eur(r.income) : "—"}</td>
+              <td className="p-2 md:p-3 text-right tabular-nums whitespace-nowrap">{r.expense ? eur(r.expense) : "—"}</td>
+              <td className={`p-2 md:p-3 text-right tabular-nums whitespace-nowrap font-medium ${r.result < 0 ? "text-red-500" : ""}`}>{eur(r.result)}</td>
+            </tr>
+          ))}
+          <tr className="font-semibold border-t border-border">
+            <td className="p-2 md:p-3">Totaal</td>
+            <td className="p-2 md:p-3 text-right tabular-nums whitespace-nowrap">{eur(tot.income)}</td>
+            <td className="p-2 md:p-3 text-right tabular-nums whitespace-nowrap">{eur(tot.expense)}</td>
+            <td className={`p-2 md:p-3 text-right tabular-nums whitespace-nowrap ${tot.result < 0 ? "text-red-500" : ""}`}>{eur(tot.result)}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }

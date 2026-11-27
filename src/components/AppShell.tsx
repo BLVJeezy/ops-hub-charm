@@ -157,12 +157,16 @@ function GroupTabs() {
   }, [current]);
   if (!g) return null;
   return (
-    <div
-      ref={bar}
-      className="border-b overflow-x-auto [scrollbar-width:none]"
-      style={{ borderColor: "hsl(var(--border))" }}
-    >
-      <div className="flex gap-1 sm:gap-2 lg:gap-1 px-2 sm:px-4 lg:px-6 min-w-max">
+    <>
+      {/* phone: every section of the group in one row of icon buttons, nothing hidden off-screen */}
+      <nav
+        aria-label={g.label}
+        className="sm:hidden grid gap-1 px-2 py-2 border-b"
+        style={{
+          borderColor: "hsl(var(--border))",
+          gridTemplateColumns: `repeat(${g.items.length}, minmax(0, 1fr))`,
+        }}
+      >
         {g.items.map((it) => {
           const active = matches(current, it),
             Icon = it.icon;
@@ -171,19 +175,51 @@ function GroupTabs() {
               key={it.to}
               to={it.to}
               aria-current={active ? "page" : undefined}
-              className={`relative flex items-center gap-2 lg:gap-1.5 px-3.5 sm:px-4 lg:px-3 h-14 sm:h-16 lg:h-11 text-base sm:text-[17px] lg:text-sm font-medium lg:font-normal whitespace-nowrap transition-colors ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              className={`press relative flex flex-col items-center justify-center gap-1 h-16 rounded-2xl transition-colors ${active ? "bg-primary/15 text-primary" : "text-muted-foreground"}`}
             >
-              <Icon className="hidden sm:block w-5 h-5 lg:w-4 lg:h-4" />
-              {it.label}
-              {it.to === "/videos" && <VideoFeedbackBadge />}
-              {active && (
-                <span className="absolute left-2 right-2 bottom-0 h-[3px] lg:h-0.5 rounded-full bg-primary" />
+              <Icon className="w-[22px] h-[22px]" />
+              <span
+                className={`text-[11px] leading-none max-w-full truncate px-0.5 ${active ? "font-semibold" : ""}`}
+              >
+                {it.label}
+              </span>
+              {it.to === "/videos" && (
+                <span className="absolute top-1 right-1 scale-75 origin-top-right">
+                  <VideoFeedbackBadge />
+                </span>
               )}
             </Link>
           );
         })}
+      </nav>
+      <div
+        ref={bar}
+        className="hidden sm:block border-b overflow-x-auto [scrollbar-width:none]"
+        style={{ borderColor: "hsl(var(--border))" }}
+      >
+        <div className="flex gap-1 sm:gap-2 lg:gap-1 px-2 sm:px-4 lg:px-6 min-w-max">
+          {g.items.map((it) => {
+            const active = matches(current, it),
+              Icon = it.icon;
+            return (
+              <Link
+                key={it.to}
+                to={it.to}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex items-center gap-2 lg:gap-1.5 px-3.5 sm:px-4 lg:px-3 h-14 sm:h-16 lg:h-11 text-base sm:text-[17px] lg:text-sm font-medium lg:font-normal whitespace-nowrap transition-colors ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Icon className="hidden sm:block w-5 h-5 lg:w-4 lg:h-4" />
+                {it.label}
+                {it.to === "/videos" && <VideoFeedbackBadge />}
+                {active && (
+                  <span className="absolute left-2 right-2 bottom-0 h-[3px] lg:h-0.5 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

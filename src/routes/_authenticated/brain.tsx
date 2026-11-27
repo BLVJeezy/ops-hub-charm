@@ -284,7 +284,6 @@ function BrainPage() {
                   </div>
                 </div>
               )}
-              {w.id === "tasks" && <TaskAgenda className={`${card} text-white`} clientId={sel?.id ?? null} onChange={changed} tick={tick} />}
               {w.id === "videos" && <Videos clients={videoClients} videos={data.videos.filter((v) => v.month === month)} month={month} colorOf={m.colorOf} onChange={load} />}
               {w.id === "payments" && (
             <section className={card}>
@@ -374,8 +373,6 @@ function BrainPage() {
           ))}
         </div>
       </div>
-      {/* on a phone: the tasks, right under the Brain */}
-      <TaskAgenda className="lg:hidden mt-3 rounded-3xl border border-white/10 bg-white/[0.04] p-4 text-white" onChange={changed} tick={tick} />
       <ClientProfileDialog client={prof} color={prof ? m.colorOf[prof.id] ?? "#8A93A6" : "#8A93A6"}
         sites={prof ? data.sites.filter((s) => s.client_id === prof.id) : []}
         invoices={prof ? data.invoices.filter((v) => v.client === prof.id) : []}
@@ -394,15 +391,15 @@ function BrainPage() {
   );
 }
 
-type WidgetId = "brain" | "tasks" | "videos" | "payments" | "forecast" | "activity" | "clients" | "sites" | "services";
+type WidgetId = "brain" | "videos" | "payments" | "forecast" | "activity" | "clients" | "sites" | "services";
 type WidgetState = { id: WidgetId; span: number; hidden?: boolean };
 const WIDGETS: Record<WidgetId, { title: string }> = {
-  brain: { title: "Stelsel" }, tasks: { title: "Taken" }, videos: { title: "Video's" }, payments: { title: "Betalingen" }, forecast: { title: "Projectie" },
+  brain: { title: "Stelsel" }, videos: { title: "Video's" }, payments: { title: "Betalingen" }, forecast: { title: "Projectie" },
   activity: { title: "Wat er gebeurd is" }, clients: { title: "Klanten" }, sites: { title: "Websites" }, services: { title: "Per dienst" },
 };
 const SPANS = [3, 4, 6, 8, 9, 12];
 const DEFAULT_LAYOUT: WidgetState[] = [
-  { id: "brain", span: 8 }, { id: "tasks", span: 4 }, { id: "payments", span: 4 }, { id: "videos", span: 4 }, { id: "forecast", span: 4 }, { id: "activity", span: 4 },
+  { id: "brain", span: 8 }, { id: "payments", span: 4 }, { id: "videos", span: 4 }, { id: "forecast", span: 4 }, { id: "activity", span: 4 },
   { id: "clients", span: 4, hidden: true }, { id: "sites", span: 4, hidden: true }, { id: "services", span: 4, hidden: true },
 ];
 function readLayout(): WidgetState[] {

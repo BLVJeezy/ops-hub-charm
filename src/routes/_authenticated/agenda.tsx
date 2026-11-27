@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { AgendaNewItem } from "@/components/AgendaNewItem";
+import { TaskAgenda } from "@/components/TaskAgenda";
 import {
   KIND_COLOR,
   OUTCOME_LABEL,
@@ -282,7 +283,12 @@ function AgendaPage() {
   const remove = async (i: AgendaItem) => {
     setOpen(null);
     setItems((xs) => (xs ?? []).filter((x) => x.id !== i.id));
-    const { data, error } = await db.from("calendar_busy").delete().eq("id", i.id).select("*").single();
+    const { data, error } = await db
+      .from("calendar_busy")
+      .delete()
+      .eq("id", i.id)
+      .select("*")
+      .single();
     if (error) {
       toast.error(`Verwijderen lukte niet: ${error.message}`);
       return void load();
@@ -576,6 +582,11 @@ function AgendaPage() {
           )}
         </div>
       )}
+
+      {/* tasks live here, under the week: add, tick off, time them */}
+      <section className="mt-6">
+        <TaskAgenda className="rounded-2xl border border-border bg-card p-4" />
+      </section>
 
       {plan && (
         <AgendaNewItem

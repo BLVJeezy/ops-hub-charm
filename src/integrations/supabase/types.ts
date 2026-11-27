@@ -480,6 +480,59 @@ export type Database = {
           },
         ]
       }
+      client_checklist: {
+        Row: {
+          auto_at: string | null
+          auto_detail: string | null
+          auto_state: string | null
+          client_id: string
+          grp: string | null
+          id: string
+          key: string
+          label: string | null
+          note: string | null
+          state: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_at?: string | null
+          auto_detail?: string | null
+          auto_state?: string | null
+          client_id: string
+          grp?: string | null
+          id?: string
+          key: string
+          label?: string | null
+          note?: string | null
+          state?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_at?: string | null
+          auto_detail?: string | null
+          auto_state?: string | null
+          client_id?: string
+          grp?: string | null
+          id?: string
+          key?: string
+          label?: string | null
+          note?: string | null
+          state?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_checklist_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_documents: {
         Row: {
           client: string
@@ -647,6 +700,7 @@ export type Database = {
       }
       client_requests: {
         Row: {
+          assignee_user_id: string | null
           attachments: Json
           client_id: string
           contact_email: string | null
@@ -662,6 +716,7 @@ export type Database = {
           note: string | null
           pages: number | null
           priority: number | null
+          review_ready_at: string | null
           run_started_at: string | null
           start_mailed_at: string | null
           started_at: string | null
@@ -674,6 +729,7 @@ export type Database = {
           worked_seconds: number
         }
         Insert: {
+          assignee_user_id?: string | null
           attachments?: Json
           client_id: string
           contact_email?: string | null
@@ -689,6 +745,7 @@ export type Database = {
           note?: string | null
           pages?: number | null
           priority?: number | null
+          review_ready_at?: string | null
           run_started_at?: string | null
           start_mailed_at?: string | null
           started_at?: string | null
@@ -701,6 +758,7 @@ export type Database = {
           worked_seconds?: number
         }
         Update: {
+          assignee_user_id?: string | null
           attachments?: Json
           client_id?: string
           contact_email?: string | null
@@ -716,6 +774,7 @@ export type Database = {
           note?: string | null
           pages?: number | null
           priority?: number | null
+          review_ready_at?: string | null
           run_started_at?: string | null
           start_mailed_at?: string | null
           started_at?: string | null
@@ -785,6 +844,7 @@ export type Database = {
       client_tasks: {
         Row: {
           assignee: string
+          assignee_user_id: string | null
           breaks: number
           client_id: string | null
           created_at: string
@@ -802,6 +862,7 @@ export type Database = {
         }
         Insert: {
           assignee?: string
+          assignee_user_id?: string | null
           breaks?: number
           client_id?: string | null
           created_at?: string
@@ -819,6 +880,7 @@ export type Database = {
         }
         Update: {
           assignee?: string
+          assignee_user_id?: string | null
           breaks?: number
           client_id?: string | null
           created_at?: string
@@ -903,6 +965,7 @@ export type Database = {
           contract_start_date: string | null
           created_at: string
           created_by: string | null
+          drive_url: string | null
           health: Database["public"]["Enums"]["health_status"]
           id: string
           is_internal: boolean
@@ -947,6 +1010,7 @@ export type Database = {
           contract_start_date?: string | null
           created_at?: string
           created_by?: string | null
+          drive_url?: string | null
           health?: Database["public"]["Enums"]["health_status"]
           id?: string
           is_internal?: boolean
@@ -993,6 +1057,7 @@ export type Database = {
           contract_start_date?: string | null
           created_at?: string
           created_by?: string | null
+          drive_url?: string | null
           health?: Database["public"]["Enums"]["health_status"]
           id?: string
           is_internal?: boolean
@@ -1267,6 +1332,123 @@ export type Database = {
             columns: ["linked_client"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      growth_ideas: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_prompt: string | null
+          area: string
+          batch: string
+          branch: string | null
+          client_id: string | null
+          created_at: string
+          decided_at: string | null
+          diff_url: string | null
+          error: string | null
+          feedback: string | null
+          findings: Json
+          finished_at: string | null
+          id: string
+          impact: string
+          kind: string
+          merge_sha: string | null
+          preview_url: string | null
+          prompt: string
+          result_summary: string | null
+          reverted_at: string | null
+          review_at: string | null
+          rounds: number
+          site_id: string | null
+          started_at: string | null
+          status: string
+          task_id: string | null
+          title: string
+          updated_at: string
+          why: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_prompt?: string | null
+          area?: string
+          batch: string
+          branch?: string | null
+          client_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          diff_url?: string | null
+          error?: string | null
+          feedback?: string | null
+          findings?: Json
+          finished_at?: string | null
+          id?: string
+          impact?: string
+          kind?: string
+          merge_sha?: string | null
+          preview_url?: string | null
+          prompt: string
+          result_summary?: string | null
+          reverted_at?: string | null
+          review_at?: string | null
+          rounds?: number
+          site_id?: string | null
+          started_at?: string | null
+          status?: string
+          task_id?: string | null
+          title: string
+          updated_at?: string
+          why: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_prompt?: string | null
+          area?: string
+          batch?: string
+          branch?: string | null
+          client_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          diff_url?: string | null
+          error?: string | null
+          feedback?: string | null
+          findings?: Json
+          finished_at?: string | null
+          id?: string
+          impact?: string
+          kind?: string
+          merge_sha?: string | null
+          preview_url?: string | null
+          prompt?: string
+          result_summary?: string | null
+          reverted_at?: string | null
+          review_at?: string | null
+          rounds?: number
+          site_id?: string | null
+          started_at?: string | null
+          status?: string
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+          why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "growth_ideas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "growth_ideas_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_sites"
             referencedColumns: ["id"]
           },
         ]
@@ -2353,6 +2535,51 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          access_until: string | null
+          active: boolean
+          auto_kinds: string[]
+          client_ids: string[] | null
+          created_at: string
+          email: string
+          full_name: string
+          invited_at: string
+          invited_by: string | null
+          last_seen_at: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          access_until?: string | null
+          active?: boolean
+          auto_kinds?: string[]
+          client_ids?: string[] | null
+          created_at?: string
+          email: string
+          full_name: string
+          invited_at?: string
+          invited_by?: string | null
+          last_seen_at?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          access_until?: string | null
+          active?: boolean
+          auto_kinds?: string[]
+          client_ids?: string[] | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          invited_at?: string
+          invited_by?: string | null
+          last_seen_at?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2751,7 +2978,7 @@ export type Database = {
     }
     Enums: {
       action_status: "Planned" | "In Progress" | "Completed" | "Blocked"
-      app_role: "admin" | "sales" | "ops"
+      app_role: "admin" | "sales" | "ops" | "member"
       billing_frequency: "Monthly" | "Yearly"
       client_sector:
         | "Plumber"
@@ -2919,7 +3146,7 @@ export const Constants = {
   public: {
     Enums: {
       action_status: ["Planned", "In Progress", "Completed", "Blocked"],
-      app_role: ["admin", "sales", "ops"],
+      app_role: ["admin", "sales", "ops", "member"],
       billing_frequency: ["Monthly", "Yearly"],
       client_sector: [
         "Plumber",

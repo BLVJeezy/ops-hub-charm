@@ -155,6 +155,12 @@ export async function syncEmailStatus(db: any, limit = 60) {
         if (next === "complained") inv.complained_at = now;
         await db.from("invoices").update(inv).eq("resend_message_id", row.resend_id);
       }
+      if (row.ref_id && row.kind === "creditnota" && patch.delivered_at) {
+        await db
+          .from("credit_notes")
+          .update({ delivered_at: now })
+          .eq("resend_message_id", row.resend_id);
+      }
     }
     await db.from("client_emails").update(patch).eq("id", row.id);
   }

@@ -111,6 +111,12 @@ export const Route = createFileRoute("/api/public/hooks/resend")({
           console.error("resend webhook update failed", error);
           return Response.json({ ok: false, error: error.message }, { status: 500 });
         }
+        if (type === "email.delivered") {
+          await supabaseAdmin
+            .from("credit_notes")
+            .update({ delivered_at: now })
+            .eq("resend_message_id", emailId);
+        }
         return Response.json({ ok: true, type, emailId });
       },
     },

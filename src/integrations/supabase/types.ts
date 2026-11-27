@@ -1145,6 +1145,84 @@ export type Database = {
           },
         ]
       }
+      credit_notes: {
+        Row: {
+          amount: number
+          client: string | null
+          client_address: string | null
+          client_name: string | null
+          client_vat_number: string | null
+          created_at: string
+          created_by: string | null
+          credit_number: string
+          date: string
+          delivered_at: string | null
+          id: string
+          invoice_id: string
+          line_items: Json
+          reason: string
+          resend_message_id: string | null
+          sent_at: string | null
+          status: string
+          vat_note: string | null
+        }
+        Insert: {
+          amount: number
+          client?: string | null
+          client_address?: string | null
+          client_name?: string | null
+          client_vat_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_number: string
+          date?: string
+          delivered_at?: string | null
+          id?: string
+          invoice_id: string
+          line_items?: Json
+          reason: string
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          vat_note?: string | null
+        }
+        Update: {
+          amount?: number
+          client?: string | null
+          client_address?: string | null
+          client_name?: string | null
+          client_vat_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_number?: string
+          date?: string
+          delivered_at?: string | null
+          id?: string
+          invoice_id?: string
+          line_items?: Json
+          reason?: string
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          vat_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_notes_client_fkey"
+            columns: ["client"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_briefings: {
         Row: {
           chapters: Json | null
@@ -1560,6 +1638,8 @@ export type Database = {
           complained_at: string | null
           created_at: string
           created_by: string | null
+          credited_amount: number | null
+          credited_at: string | null
           date: string
           delivered_at: string | null
           email_status: string | null
@@ -1574,6 +1654,7 @@ export type Database = {
           repeat_hour: number | null
           repeat_monthly: boolean
           repeat_parent: string | null
+          repeat_stopped_at: string | null
           resend_message_id: string | null
           schedule_error: string | null
           schedule_locked_at: string | null
@@ -1594,6 +1675,8 @@ export type Database = {
           complained_at?: string | null
           created_at?: string
           created_by?: string | null
+          credited_amount?: number | null
+          credited_at?: string | null
           date: string
           delivered_at?: string | null
           email_status?: string | null
@@ -1608,6 +1691,7 @@ export type Database = {
           repeat_hour?: number | null
           repeat_monthly?: boolean
           repeat_parent?: string | null
+          repeat_stopped_at?: string | null
           resend_message_id?: string | null
           schedule_error?: string | null
           schedule_locked_at?: string | null
@@ -1628,6 +1712,8 @@ export type Database = {
           complained_at?: string | null
           created_at?: string
           created_by?: string | null
+          credited_amount?: number | null
+          credited_at?: string | null
           date?: string
           delivered_at?: string | null
           email_status?: string | null
@@ -1642,6 +1728,7 @@ export type Database = {
           repeat_hour?: number | null
           repeat_monthly?: boolean
           repeat_parent?: string | null
+          repeat_stopped_at?: string | null
           resend_message_id?: string | null
           schedule_error?: string | null
           schedule_locked_at?: string | null

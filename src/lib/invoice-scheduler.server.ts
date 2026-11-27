@@ -98,6 +98,7 @@ export async function processScheduledInvoices(
     .eq("repeat_monthly", true)
     .in("status", ["Sent", "Paid"])
     .not("next_repeat_on", "is", null)
+    .is("repeat_stopped_at", null)
     .lte("next_repeat_on", today);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const src of ((repeats ?? []) as Array<Record<string, any>>).filter((r) =>

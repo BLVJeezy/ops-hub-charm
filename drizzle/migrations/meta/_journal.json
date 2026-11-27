@@ -57,6 +57,13 @@
       "when": 1795193951870,
       "tag": "0007_video_atomic_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795792512875,
+      "tag": "0008_credit_notes_and_stop_repeat",
+      "breakpoints": true
     }
   ]
 }

@@ -64,6 +64,13 @@
       "when": 1795792512875,
       "tag": "0008_credit_notes_and_stop_repeat",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795802004901,
+      "tag": "0009_client_offboarding_rpcs",
+      "breakpoints": true
     }
   ]
 }

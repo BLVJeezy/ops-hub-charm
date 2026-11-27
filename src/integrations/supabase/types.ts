@@ -3012,6 +3012,26 @@ export type Database = {
         }
         Returns: number
       }
+      offboard_client: {
+        Args: {
+          _all: boolean
+          _client_id: string
+          _close_videos?: boolean
+          _credit_notes?: Json
+          _end_agreements?: boolean
+          _end_date: string
+          _pause_client?: boolean
+          _reason?: string
+          _services: string[]
+          _stop_invoices?: boolean
+          _stop_tasks?: boolean
+        }
+        Returns: Json
+      }
+      reactivate_client: {
+        Args: { _client_id: string; _date?: string; _services?: string[] }
+        Returns: Json
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

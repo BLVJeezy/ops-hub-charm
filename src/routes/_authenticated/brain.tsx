@@ -12,6 +12,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrainCanvas, type BrainNeuron } from "@/components/BrainCanvas";
 import { PerkRing, type PerkItem } from "@/components/PerkRing";
 import { ClientProfileDialog, type ProfileClient } from "@/components/ClientProfileDialog";
+import { OffboardClientDialog } from "@/components/OffboardClientDialog";
+import { ReactivateClientDialog } from "@/components/ReactivateClientDialog";
+import { useAuth } from "@/hooks/use-auth";
+import { isAdmin as isAdminRole } from "@/lib/permissions";
 import type { BrainMode } from "@/lib/brain3d";
 
 type View = BrainMode | "perks";
@@ -59,6 +63,10 @@ function BrainPage() {
   const [ring, setRing] = useState<"clients" | "pages">(() => { try { return localStorage.getItem("brain-ring") === "pages" ? "pages" : "clients"; } catch { return "clients"; } });
   const pickRing = (k: "clients" | "pages") => { setRing(k); try { localStorage.setItem("brain-ring", k); } catch { /* storage unavailable */ } };
   const [profile, setProfile] = useState<string | null>(null);
+  const [offboardClient, setOffboardClient] = useState<{ id: string; name: string } | null>(null);
+  const [reactivateClient, setReactivateClient] = useState<ProfileClient | null>(null);
+  const { role } = useAuth();
+  const admin = isAdminRole(role);
   const [tick, setTick] = useState(0);
   const [drag, setDrag] = useState({ x: 0, live: false });
   const swipeRef = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null);
@@ -378,7 +386,9 @@ function BrainPage() {
         invoices={prof ? data.invoices.filter((v) => v.client === prof.id) : []}
         tasks={prof ? data.tasks.filter((t) => t.client_id === prof.id) : []}
         videos={prof && Number(prof.social_videos_per_month) > 0 ? { sent: profVideos.length, posted: profVideos.filter((v) => v.status === "geplaatst").length } : null}
-        onClose={() => { setProfile(null); setSelected(null); }} onSend={sendInvoice}>
+        onClose={() => { setProfile(null); setSelected(null); }} onSend={sendInvoice}
+        onOffboard={admin && prof ? () => setOffboardClient({ id: prof.id, name: prof.name }) : undefined}
+        onReactivate={admin && prof ? () => setReactivateClient(prof) : undefined}>
         {prof && (
           <div className="space-y-3">
             <TaskAgenda className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white" clientId={prof.id} onChange={changed} tick={tick} />
@@ -387,6 +397,23 @@ function BrainPage() {
           </div>
         )}
       </ClientProfileDialog>
+      {offboardClient && (
+        <OffboardClientDialog
+          clientId={offboardClient.id}
+          clientName={offboardClient.name}
+          open
+          onOpenChange={(o) => { if (!o) setOffboardClient(null); }}
+          onCompleted={changed}
+        />
+      )}
+      {reactivateClient && (
+        <ReactivateClientDialog
+          client={reactivateClient}
+          open
+          onOpenChange={(o) => { if (!o) setReactivateClient(null); }}
+          onCompleted={changed}
+        />
+      )}
     </div>
   );
 }

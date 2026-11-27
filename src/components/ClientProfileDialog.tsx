@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Globe, Mail, MapPin, Phone, Send, User } from "lucide-react";
+import { ArrowRight, Globe, Mail, MapPin, PauseCircle, Phone, RotateCcw, Send, User } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { clientMRR, clientMRRBreakdown, type FeeClient } from "@/lib/fees";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -13,7 +13,7 @@ export type ProfileClient = FeeClient & {
 type Invoice = { id: string; date: string; total?: number | string | null; status?: string | null; scheduled_send_at?: string | null; next_repeat_on?: string | null; repeat_monthly?: boolean | null };
 
 /** Everything about one client at a glance, opened from the Brain. */
-export function ClientProfileDialog({ client, color, sites, invoices, tasks, videos, onClose, onSend, children }: {
+export function ClientProfileDialog({ client, color, sites, invoices, tasks, videos, onClose, onSend, onOffboard, onReactivate, children }: {
   client: ProfileClient | null; color: string;
   sites: { id: string; name: string; last_status: string | null }[];
   invoices: Invoice[];
@@ -22,6 +22,8 @@ export function ClientProfileDialog({ client, color, sites, invoices, tasks, vid
   onClose: () => void;
   /** send a planned invoice now; resolves when it is done */
   onSend?: (invoiceId: string) => Promise<void>;
+  onOffboard?: () => void;
+  onReactivate?: () => void;
   /** things to do right here: add a task, tick off a video */
   children?: React.ReactNode;
 }) {
@@ -117,7 +119,31 @@ export function ClientProfileDialog({ client, color, sites, invoices, tasks, vid
 
           {client.notes && <Block title="Notities"><p className="text-sm text-white/75 whitespace-pre-wrap">{client.notes}</p></Block>}
 
-          <Link to="/clients/$id" params={{ id: client.id }} className="press w-full h-12 rounded-full bg-white text-black font-semibold inline-flex items-center justify-center gap-2">Open klantpagina <ArrowRight className="w-4 h-4" /></Link>
+          <div className="space-y-2">
+            <Link to="/clients/$id" params={{ id: client.id }} className="press w-full h-12 rounded-full bg-white text-black font-semibold inline-flex items-center justify-center gap-2">Open klantpagina <ArrowRight className="w-4 h-4" /></Link>
+            {(onOffboard || (onReactivate && client.status === "Paused")) && (
+              <div className="flex flex-wrap gap-2">
+                {onReactivate && client.status === "Paused" && (
+                  <button
+                    type="button"
+                    onClick={onReactivate}
+                    className="press flex-1 min-w-[140px] h-10 px-4 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-xs font-medium inline-flex items-center justify-center gap-1.5 hover:bg-emerald-500/20"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Heractiveren
+                  </button>
+                )}
+                {onOffboard && (
+                  <button
+                    type="button"
+                    onClick={onOffboard}
+                    className="press flex-1 min-w-[180px] h-10 px-4 rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-300 text-xs font-medium inline-flex items-center justify-center gap-1.5 hover:bg-amber-500/20"
+                  >
+                    <PauseCircle className="w-3.5 h-3.5" /> Samenwerking stopzetten
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

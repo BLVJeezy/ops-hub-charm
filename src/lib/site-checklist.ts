@@ -1,6 +1,6 @@
 /** Launch checklist for a client website. Items with `auto` can be checked by the Hub itself. */
 
-export type Group = "paginas" | "domein" | "vindbaarheid" | "overdracht";
+export type Group = "start" | "paginas" | "domein" | "vindbaarheid" | "overdracht";
 export type AutoCheck =
   | "home" | "contact" | "faq" | "privacy" | "voorwaarden" | "cookies" | "notfound"
   | "https" | "mx" | "spf" | "dmarc" | "favicon" | "og" | "meta" | "sitemap" | "robots" | "schema" | "analytics" | "mobile";
@@ -8,6 +8,7 @@ export type AutoCheck =
 export type Item = { key: string; label: string; hint?: string; group: Group; auto?: AutoCheck };
 
 export const GROUPS: { id: Group; label: string }[] = [
+  { id: "start", label: "Start" },
   { id: "paginas", label: "Pagina's" },
   { id: "domein", label: "Domein en e-mail" },
   { id: "vindbaarheid", label: "Vindbaarheid" },
@@ -15,6 +16,9 @@ export const GROUPS: { id: Group; label: string }[] = [
 ];
 
 export const TEMPLATE: Item[] = [
+  { key: "s-bestanden", group: "start", label: "Bestanden van klant ontvangen", hint: "logo, teksten, foto's, huisstijl" },
+  { key: "s-toegang", group: "start", label: "Toegang domein/DNS ontvangen", hint: "login registrar of DNS-beheer" },
+
   { key: "p-home", group: "paginas", label: "Hoofdpagina", auto: "home" },
   { key: "p-diensten", group: "paginas", label: "Diensten of aanbod" },
   { key: "p-over", group: "paginas", label: "Over ons" },
@@ -41,6 +45,7 @@ export const TEMPLATE: Item[] = [
   { key: "v-schema", group: "vindbaarheid", label: "LocalBusiness-schema", auto: "schema" },
   { key: "v-gsc", group: "vindbaarheid", label: "Google Search Console + sitemap ingediend" },
   { key: "v-gbp", group: "vindbaarheid", label: "Google Bedrijfsprofiel gekoppeld aan de site" },
+  { key: "v-gbp-opt", group: "vindbaarheid", label: "Bedrijfsprofiel geoptimaliseerd", hint: "categorieën, diensten, foto's, openingsuren, beschrijving" },
   { key: "v-analytics", group: "vindbaarheid", label: "Bezoekers meten (analytics)", auto: "analytics" },
   { key: "v-mobile", group: "vindbaarheid", label: "Mobiel nagekeken en snel", auto: "mobile" },
 

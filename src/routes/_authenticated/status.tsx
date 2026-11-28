@@ -21,10 +21,12 @@ import {
   Home,
   History,
   ChevronDown,
+  ClipboardCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DeliveryOverview, type ChecklistRowWithClient, type DeliveryClient } from "@/components/DeliveryOverview";
 import { EmptyState } from "@/components/EmptyState";
 import { SiteModal, DB_PROVIDERS, type SiteRow } from "@/components/SiteModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,7 +140,8 @@ function StatusPage() {
 
   const [sites, setSites] = useState<Site[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<DeliveryClient[]>([]);
+  const [checklistRows, setChecklistRows] = useState<ChecklistRowWithClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -147,17 +150,19 @@ function StatusPage() {
   const [backups, setBackups] = useState<BackupRun[]>([]);
 
   const load = useCallback(async () => {
-    const [s, i, c, b] = await Promise.all([
+    const [s, i, c, b, cl] = await Promise.all([
       db.from("monitored_sites").select("*, clients:client_id(name)").order("name"),
       db.from("incidents").select("*").order("opened_at", { ascending: false }).limit(60),
-      supabase.from("clients").select("id,name").order("name"),
+      supabase.from("clients").select("id,name,status,brand_color").order("name"),
       db.rpc("backup_status"),
+      db.from("client_checklist").select("client_id,key,label,grp,state,note,auto_state,auto_detail,auto_at"),
     ]);
     setBackups((b.data as BackupRun[]) ?? []);
     if (s.error) toast.error(s.error.message);
     setSites((s.data as Site[]) ?? []);
     setIncidents((i.data as Incident[]) ?? []);
-    setClients((c.data as { id: string; name: string }[]) ?? []);
+    setClients((c.data as DeliveryClient[]) ?? []);
+    setChecklistRows((cl.data as ChecklistRowWithClient[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -272,6 +277,11 @@ function StatusPage() {
       <ProblemBar
         items={listProblems(incidents, backups, siteName, (t) => BACKUP_TARGETS[t] ?? t)}
       />
+
+      {/* Oplevering per klant */}
+      <Section icon={<ClipboardCheck className="w-4 h-4" />} title="Oplevering per klant">
+        <DeliveryOverview clients={clients} rows={checklistRows} loading={loading} />
+      </Section>
 
       {/* Sites */}
       <Section icon={<Activity className="w-4 h-4" />} title="Clients">

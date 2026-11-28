@@ -17,7 +17,15 @@ export const Route = createFileRoute("/_authenticated/clients/")({
   component: ClientsPage,
 });
 
-type Row = ClientRow & { id: string; is_internal?: boolean | null; brand_color?: string | null };
+type Row = ClientRow & { id: string; is_internal?: boolean | null; brand_color?: string | null; writeoff_reason?: string | null };
+
+/** Tabs: Paused = collaboration stopped (offboarding/churn), Write-off = never became a paying client or lost. */
+const TABS = [
+  { key: "Active", label: "Active" },
+  { key: "Paused", label: "Paused / churned" },
+  { key: "Write-off", label: "Write-off" },
+  { key: "All", label: "All" },
+] as const;
 type Invoice = { client: string | null; total: number; status: string };
 type Expense = { linked_client: string | null; monthly_cost: number };
 
@@ -70,7 +78,7 @@ function ClientsPage() {
   }, [expenses]);
 
   const filtered = useMemo(() => {
-    if (tab === "All") return rows.filter((r) => r.status === "Active" || r.status === "Paused");
+    if (tab === "All") return rows.filter((r) => r.status !== "Prospect");
     return rows.filter((r) => r.status === tab);
   }, [rows, tab]);
 
@@ -120,9 +128,15 @@ function ClientsPage() {
 
       <Tabs value={tab} onValueChange={setTab} className="mb-3">
         <TabsList>
-          {(["Active", "Paused", "All"] as const).map((t) => (
-            <TabsTrigger key={t} value={t}>{t}</TabsTrigger>
-          ))}
+          {TABS.map((t) => {
+            const n = t.key === "All" ? rows.filter((r) => r.status !== "Prospect").length : rows.filter((r) => r.status === t.key).length;
+            return (
+              <TabsTrigger key={t.key} value={t.key}>
+                {t.label}
+                <span className="ml-1.5 text-[11px] tabular-nums opacity-60">{n}</span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
       </Tabs>
 
@@ -156,7 +170,10 @@ function ClientsPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground mt-0.5">
-                  <span className="truncate">{r.location || "No location"}</span>
+                  <span className="truncate">
+                    {r.status === "Write-off" && r.writeoff_reason ? `Reden: ${r.writeoff_reason} · ` : ""}
+                    {r.location || "No location"}
+                  </span>
                   <span className="shrink-0 tabular-nums">
                     {total ? `${formatCurrency(total)} paid` : "nothing paid yet"} · net {formatCurrency(net)}
                   </span>

@@ -31,7 +31,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { togglePrivacy, usePrivacy } from "@/lib/privacy";
 import { Assistant, toggleAssistant } from "@/components/Assistant";
 import { NotificationBell, useNotes } from "@/components/Notifications";
-import { VideoFeedbackBadge } from "@/components/VideoFeedbackBadge";
 import { DeskRail, PlanRail, useRails } from "@/components/DeskRails";
 import {
   DropdownMenu,
@@ -148,7 +147,6 @@ function TopNav() {
           <Link key={it.to} to={it.to} title={it.label} aria-current={active ? "page" : undefined} className={pill(active)}>
             <Icon className="w-4 h-4 shrink-0" />
             <span className="hidden min-[1400px]:inline">{it.label}</span>
-            {it.to === "/clients" && <VideoFeedbackBadge />}
           </Link>
         );
       })}
@@ -218,11 +216,6 @@ function GroupTabs() {
               >
                 {it.label}
               </span>
-              {it.to === "/clients" && (
-                <span className="absolute top-1 right-1 scale-75 origin-top-right">
-                  <VideoFeedbackBadge />
-                </span>
-              )}
             </Link>
           );
         })}
@@ -245,8 +238,7 @@ function GroupTabs() {
               >
                 <Icon className="hidden sm:block w-5 h-5 lg:w-4 lg:h-4" />
                 {it.label}
-                {it.to === "/clients" && <VideoFeedbackBadge />}
-                {active && (
+                    {active && (
                   <span className="absolute left-2 right-2 bottom-0 h-[3px] lg:h-0.5 rounded-full bg-primary" />
                 )}
               </Link>
@@ -413,11 +405,6 @@ function MobileNav({ assistant }: { assistant: boolean }) {
                   <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                     {g.items.map((it) => it.label).join(", ")}
                   </div>
-                  {g.items.some((it) => it.to === "/clients") && (
-                    <span className="absolute top-2.5 right-2.5">
-                      <VideoFeedbackBadge />
-                    </span>
-                  )}
                 </Link>
               );
             })}

@@ -8,7 +8,6 @@ import {
   Search as SearchIcon,
   LogOut,
   Activity,
-  Film,
   Workflow,
   TrendingUp,
   BookOpen,
@@ -24,9 +23,7 @@ import {
   History,
   MailCheck,
   Sun,
-  Lightbulb,
   UserCog,
-  Clapperboard,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SolynLogo } from "./SolynLogo";
@@ -58,8 +55,6 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/brain", label: "Brain", icon: BrainCircuit },
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { to: "/agenda", label: "Agenda", icon: CalendarDays },
-      { to: "/briefing", label: "Briefing", icon: Film },
-      { to: "/ideeen", label: "Ideeën", icon: Lightbulb },
     ],
   },
   {
@@ -71,7 +66,6 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/pipeline", label: "Pipeline", icon: GitBranch },
       { to: "/aanvragen", label: "Aanvragen", icon: Inbox },
       { to: "/mails", label: "Mails", icon: MailCheck },
-      { to: "/videos", label: "Video's", icon: Clapperboard },
     ],
   },
   {
@@ -134,7 +128,7 @@ function useRememberTab() {
 }
 
 /** Pages that get their own spot in the desktop top bar; everything else sits under "Meer", grouped. */
-const TOP_PAGES = ["/brain", "/agenda", "/clients", "/pipeline", "/aanvragen", "/videos", "/invoices", "/finance", "/boekhouding"];
+const TOP_PAGES = ["/brain", "/agenda", "/clients", "/pipeline", "/aanvragen", "/mails", "/invoices", "/finance", "/boekhouding"];
 
 function TopNav() {
   const current = useRouterState({ select: (s) => s.location.pathname });
@@ -154,7 +148,7 @@ function TopNav() {
           <Link key={it.to} to={it.to} title={it.label} aria-current={active ? "page" : undefined} className={pill(active)}>
             <Icon className="w-4 h-4 shrink-0" />
             <span className="hidden min-[1400px]:inline">{it.label}</span>
-            {it.to === "/videos" && <VideoFeedbackBadge />}
+            {it.to === "/clients" && <VideoFeedbackBadge />}
           </Link>
         );
       })}
@@ -224,7 +218,7 @@ function GroupTabs() {
               >
                 {it.label}
               </span>
-              {it.to === "/videos" && (
+              {it.to === "/clients" && (
                 <span className="absolute top-1 right-1 scale-75 origin-top-right">
                   <VideoFeedbackBadge />
                 </span>
@@ -251,7 +245,7 @@ function GroupTabs() {
               >
                 <Icon className="hidden sm:block w-5 h-5 lg:w-4 lg:h-4" />
                 {it.label}
-                {it.to === "/videos" && <VideoFeedbackBadge />}
+                {it.to === "/clients" && <VideoFeedbackBadge />}
                 {active && (
                   <span className="absolute left-2 right-2 bottom-0 h-[3px] lg:h-0.5 rounded-full bg-primary" />
                 )}
@@ -270,6 +264,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [search, setSearch] = useState("");
   useRememberTab();
   const [rails, toggleRail] = useRails();
+  // custom gold cursor while you are in the Operations Center (not on the public client pages)
+  useEffect(() => {
+    document.documentElement.classList.add("hub-cursor");
+    return () => document.documentElement.classList.remove("hub-cursor");
+  }, []);
 
   const initial = (user?.email || "?").charAt(0).toUpperCase();
 
@@ -414,7 +413,7 @@ function MobileNav({ assistant }: { assistant: boolean }) {
                   <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                     {g.items.map((it) => it.label).join(", ")}
                   </div>
-                  {g.items.some((it) => it.to === "/videos") && (
+                  {g.items.some((it) => it.to === "/clients") && (
                     <span className="absolute top-2.5 right-2.5">
                       <VideoFeedbackBadge />
                     </span>

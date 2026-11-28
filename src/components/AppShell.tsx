@@ -124,23 +124,42 @@ function useRememberTab() {
   }, [current]);
 }
 
-function GroupLink({ group }: { group: NavGroup }) {
+/** Desktop sidebar: every group with all its pages, so the whole Hub is one click away. */
+function SidebarGroup({ group }: { group: NavGroup }) {
   const current = useRouterState({ select: (s) => s.location.pathname });
-  const active = groupOf(current) === group;
+  const inGroup = groupOf(current) === group;
   const Icon = group.icon;
   return (
-    <Link
-      to={groupTarget(group)}
-      className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition"
-      style={{
-        backgroundColor: active ? "hsl(var(--sidebar-accent))" : "transparent",
-        color: active ? "hsl(var(--primary))" : "hsl(var(--sidebar-foreground))",
-      }}
-    >
-      <Icon className="w-4 h-4" />
-      <span className="flex-1">{group.label}</span>
-      {group.items.some((it) => it.to === "/videos") && <VideoFeedbackBadge />}
-    </Link>
+    <div>
+      <div
+        className="flex items-center gap-2 px-3 pb-1 text-[11px] font-medium"
+        style={{ color: inGroup ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+      >
+        <Icon className="w-3.5 h-3.5" />
+        {group.label}
+      </div>
+      <div className="space-y-0.5">
+        {group.items.map((it) => {
+          const active = matches(current, it);
+          const ItemIcon = it.icon;
+          return (
+            <Link
+              key={it.to}
+              to={it.to}
+              className="flex items-center gap-3 px-3 py-[5px] rounded-md text-[13px] transition hover:bg-[hsl(var(--sidebar-accent))]"
+              style={{
+                backgroundColor: active ? "hsl(var(--sidebar-accent))" : undefined,
+                color: active ? "hsl(var(--primary))" : "hsl(var(--sidebar-foreground))",
+              }}
+            >
+              <ItemIcon className="w-4 h-4 opacity-80" />
+              <span className="flex-1 truncate">{it.label}</span>
+              {it.to === "/videos" && <VideoFeedbackBadge />}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -194,7 +213,7 @@ function GroupTabs() {
       </nav>
       <div
         ref={bar}
-        className="hidden sm:block border-b overflow-x-auto [scrollbar-width:none]"
+        className="hidden sm:block lg:hidden border-b overflow-x-auto [scrollbar-width:none]"
         style={{ borderColor: "hsl(var(--border))" }}
       >
         <div className="flex gap-1 sm:gap-2 lg:gap-1 px-2 sm:px-4 lg:px-6 min-w-max">
@@ -256,9 +275,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="text-xs text-muted-foreground">Ops Hub</div>
           </div>
         </div>
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-2 py-3 space-y-3 overflow-y-auto">
           {NAV_GROUPS.map((g) => (
-            <GroupLink key={g.key} group={g} />
+            <SidebarGroup key={g.key} group={g} />
           ))}
         </nav>
         <div className="p-3 border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>

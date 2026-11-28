@@ -35,6 +35,15 @@ import { togglePrivacy, usePrivacy } from "@/lib/privacy";
 import { Assistant, toggleAssistant } from "@/components/Assistant";
 import { NotificationBell, useNotes } from "@/components/Notifications";
 import { VideoFeedbackBadge } from "@/components/VideoFeedbackBadge";
+import { DeskRail, PlanRail, useRails } from "@/components/DeskRails";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 type NavGroup = { key: string; label: string; icon: typeof LayoutDashboard; items: NavItem[] };
@@ -124,42 +133,55 @@ function useRememberTab() {
   }, [current]);
 }
 
-/** Desktop sidebar: every group with all its pages, so the whole Hub is one click away. */
-function SidebarGroup({ group }: { group: NavGroup }) {
+/** Pages that get their own spot in the desktop top bar; everything else sits under "Meer", grouped. */
+const TOP_PAGES = ["/brain", "/agenda", "/clients", "/pipeline", "/aanvragen", "/videos", "/invoices", "/finance", "/boekhouding"];
+
+function TopNav() {
   const current = useRouterState({ select: (s) => s.location.pathname });
-  const inGroup = groupOf(current) === group;
-  const Icon = group.icon;
+  const top = TOP_PAGES.map((to) => NAV_ITEMS.find((it) => it.to === to)!).filter(Boolean);
+  const rest = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !TOP_PAGES.includes(it.to)) })).filter((g) => g.items.length);
+  const moreActive = rest.some((g) => g.items.some((it) => matches(current, it)));
+  const pill = (active: boolean) =>
+    `h-8 px-2.5 rounded-md inline-flex items-center gap-1.5 text-[13px] whitespace-nowrap transition-colors ${
+      active ? "bg-muted text-foreground font-medium shadow-[inset_0_0_0_1px_hsl(var(--border))]" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+    }`;
   return (
-    <div>
-      <div
-        className="flex items-center gap-2 px-3 pb-1 text-[11px] font-medium"
-        style={{ color: inGroup ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
-      >
-        <Icon className="w-3.5 h-3.5" />
-        {group.label}
-      </div>
-      <div className="space-y-0.5">
-        {group.items.map((it) => {
-          const active = matches(current, it);
-          const ItemIcon = it.icon;
-          return (
-            <Link
-              key={it.to}
-              to={it.to}
-              className="flex items-center gap-3 px-3 py-[5px] rounded-md text-[13px] transition hover:bg-[hsl(var(--sidebar-accent))]"
-              style={{
-                backgroundColor: active ? "hsl(var(--sidebar-accent))" : undefined,
-                color: active ? "hsl(var(--primary))" : "hsl(var(--sidebar-foreground))",
-              }}
-            >
-              <ItemIcon className="w-4 h-4 opacity-80" />
-              <span className="flex-1 truncate">{it.label}</span>
-              {it.to === "/videos" && <VideoFeedbackBadge />}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
+    <nav aria-label="Pagina's" className="flex-1 min-w-0 flex items-center justify-center gap-0.5">
+      {top.map((it) => {
+        const Icon = it.icon;
+        const active = matches(current, it);
+        return (
+          <Link key={it.to} to={it.to} title={it.label} aria-current={active ? "page" : undefined} className={pill(active)}>
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="hidden min-[1400px]:inline">{it.label}</span>
+            {it.to === "/videos" && <VideoFeedbackBadge />}
+          </Link>
+        );
+      })}
+      <DropdownMenu>
+        <DropdownMenuTrigger className={pill(moreActive)}>
+          <MoreHorizontal className="w-4 h-4" />
+          <span className="hidden min-[1400px]:inline">{moreActive ? itemOf(current)?.label ?? "Meer" : "Meer"}</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" className="w-[420px] p-2 grid grid-cols-2 gap-x-2">
+          {rest.map((g) => (
+            <div key={g.key} className="py-1">
+              <DropdownMenuLabel className="text-[11px] text-muted-foreground font-medium py-1">{g.label}</DropdownMenuLabel>
+              {g.items.map((it) => {
+                const Icon = it.icon;
+                return (
+                  <DropdownMenuItem key={it.to} asChild>
+                    <Link to={it.to} className={matches(current, it) ? "text-primary" : ""}>
+                      <Icon className="w-4 h-4 mr-2" /> {it.label}
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
+            </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </nav>
   );
 }
 
@@ -247,6 +269,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   useRememberTab();
+  const [rails, toggleRail] = useRails();
 
   const initial = (user?.email || "?").charAt(0).toUpperCase();
 
@@ -257,85 +280,73 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Desktop sidebar */}
-      <aside
-        className="hidden lg:flex fixed top-0 left-0 h-screen w-56 flex-col border-r"
-        style={{
-          backgroundColor: "hsl(var(--sidebar-background))",
-          borderColor: "hsl(var(--sidebar-border))",
-        }}
-      >
-        <div
-          className="p-4 flex items-center gap-2 border-b"
-          style={{ borderColor: "hsl(var(--sidebar-border))" }}
-        >
-          <SolynLogo size={32} />
-          <div className="text-sm">
-            <div className="font-semibold">Solyn Global</div>
-            <div className="text-xs text-muted-foreground">Ops Hub</div>
-          </div>
-        </div>
-        <nav className="flex-1 px-2 py-3 space-y-3 overflow-y-auto">
-          {NAV_GROUPS.map((g) => (
-            <SidebarGroup key={g.key} group={g} />
-          ))}
-        </nav>
-        <div className="p-3 border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium"
-              style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}
-            >
-              {initial}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium truncate">{user?.email}</div>
-              <div className="text-[10px] text-muted-foreground uppercase">{role || "no role"}</div>
-            </div>
-          </div>
-          <button
-            onClick={async () => {
-              await signOut();
-              navigate({ to: "/auth" });
-            }}
-            className="w-full flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded transition"
-          >
-            <LogOut className="w-3.5 h-3.5" /> Sign out
-          </button>
-        </div>
-      </aside>
-
-      {/* Top bar (desktop) */}
+      {/* Desktop top bar: every main page side by side, the rest under "Meer" */}
       <header
-        className="hidden lg:flex fixed top-0 left-56 right-0 h-16 items-center px-6 border-b bg-background z-10"
+        className="hidden lg:flex fixed top-0 left-0 right-0 h-14 items-center gap-3 px-4 border-b bg-background/95 backdrop-blur z-20"
         style={{ borderColor: "hsl(var(--border))" }}
       >
-        <form onSubmit={onSearch} className="w-full max-w-md relative">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search clients by name, city, or phone…"
-            className="w-full pl-9 pr-3 h-9 rounded-md bg-card border border-input text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </form>
-        <div className="ml-auto mr-2">
+        <Link to="/brain" className="flex items-center gap-2 shrink-0 mr-1" aria-label="Solyn Global, naar Brain">
+          <SolynLogo size={28} />
+          <span className="hidden 2xl:block text-sm font-semibold">Solyn Global</span>
+        </Link>
+        <TopNav />
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <form onSubmit={onSearch} className="relative">
+            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Zoek klant…"
+              aria-label="Zoek klant"
+              className="w-36 min-[1400px]:w-44 pl-8 pr-2 h-9 rounded-full bg-card border border-input text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </form>
           <NotificationBell className="w-9 h-9 border border-border hover:bg-muted" />
+          {role === "admin" && (
+            <button
+              type="button"
+              onClick={toggleAssistant}
+              title="Assistent"
+              className="press h-9 px-3 rounded-full border border-[#C9A14A]/50 bg-[#C9A14A]/10 text-[#C9A14A] text-sm inline-flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" /> <span className="hidden min-[1400px]:inline">Assistent</span>
+            </button>
+          )}
+          <PrivacyButton className="lg:!px-0 lg:w-9 [&>span]:!hidden" />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold"
+              style={{ backgroundColor: "#C9A14A", color: "#1B2228" }}
+              aria-label="Account"
+            >
+              {initial}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="text-xs font-medium truncate">{user?.email}</div>
+                <div className="text-[10px] text-muted-foreground uppercase">{role || "no role"}</div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={async () => {
+                  await signOut();
+                  navigate({ to: "/auth" });
+                }}
+              >
+                <LogOut className="w-4 h-4 mr-2" /> Uitloggen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        {role === "admin" && (
-          <button
-            type="button"
-            onClick={toggleAssistant}
-            className="press mr-2 h-9 px-3 rounded-full border border-[#C9A14A]/50 bg-[#C9A14A]/10 text-[#C9A14A] text-sm inline-flex items-center gap-2"
-          >
-            <Sparkles className="w-4 h-4" /> Assistent
-          </button>
-        )}
-        <PrivacyButton />
       </header>
 
+      <DeskRail open={rails.left} onToggle={() => toggleRail("left")} />
+      <PlanRail open={rails.right} onToggle={() => toggleRail("right")} />
+
       {/* Content */}
-      <main className="lg:ml-56 pt-[env(safe-area-inset-top)] lg:pt-16 pb-28 lg:pb-0 min-h-screen">
+      <main
+        className={`pt-[env(safe-area-inset-top)] lg:pt-14 pb-28 lg:pb-0 min-h-screen ${rails.left ? "min-[1400px]:ml-60" : "min-[1400px]:ml-11"} ${rails.right ? "min-[1400px]:mr-64" : "min-[1400px]:mr-11"}`}
+      >
         <GroupTabs />
         {children}
       </main>
